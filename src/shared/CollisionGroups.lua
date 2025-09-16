@@ -3,7 +3,6 @@ local COLL_GROUPS = {
 	TRIGGER = "Trigger",
 	PLAYER = "Player",
 	WATER = "Water",
-	IGNORE = "Ignore",
 }
 table.freeze(COLL_GROUPS)
 

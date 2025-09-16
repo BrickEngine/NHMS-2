@@ -1,5 +1,5 @@
 {
-  "name": "Cat Controller",
+  "name": "NHMS 2",
 
   "tree": {
     "$className": "DataModel",
@@ -11,9 +11,7 @@
     },
     "ServerScriptService": {
       "$className": "ServerScriptService",
-      "Server": {
-        "$path": "src/server"
-      }
+      "$path": "src/server"
     },
     "StarterPlayer": {
       "$properties": {

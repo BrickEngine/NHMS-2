@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local playerScripts = script.Parent
 
-local CatController = require(playerScripts:WaitForChild("CatController"))
+local Controller = require(ReplicatedStorage.Shared.Controller)
 local NetApiDef = require(ReplicatedStorage.Shared.NetworkApiDef)
 local CliApi = require(script.CliApi)
 

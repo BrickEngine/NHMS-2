@@ -6,12 +6,10 @@
     remoteFunctions := always invoked by client
 --]]
 
-local FOLD_NAME = "Network"
-
 local NetApi = {}
 
 NetApi = {
-    FOLD_NAME = FOLD_NAME,
+    FOLD_NAME = "Network",
 
     -- client -> server
     clientEvents = {

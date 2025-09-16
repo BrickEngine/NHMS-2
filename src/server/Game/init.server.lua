@@ -4,31 +4,38 @@ local StarterPlayer = game:GetService("StarterPlayer")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
+local Global = require(ReplicatedStorage.Shared.Global)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local CollisionGroups = require(ReplicatedStorage.Shared.CollisionGroups)
 local NetApiDef = require(ReplicatedStorage.Shared.NetworkApiDef)
 local ServApi = require(script.ServApi)
 
-local spawns = Workspace.Spawns:GetChildren()
---local starterCharPreset = StarterPlayer.DefaultCharacter :: Model
+local PLAYERS_FOLD_NAME = Global.PLAYERS_FOLD_NAME
 
-local PLAYERS_FOLD_NAME = "ActivePlayers"
-
--- Workspace init
+------------------------------------------------------------------------------------------------------
+-- Initialize Workspace
 do
-    -- create workspace folder for runtime player characters
-    if (not Workspace:FindFirstChild(PLAYERS_FOLD_NAME)) then
-        local plrFold = Instance.new("Folder")
-        plrFold.Name = PLAYERS_FOLD_NAME
-        plrFold.Parent = Workspace
+    -- create ReplicatedStorage network folder
+    if (not ReplicatedStorage:FindFirstChild(NetApiDef.FOLD_NAME)) then
+        local netFold = Instance.new("Folder", ReplicatedStorage)
+        netFold.Name = NetApiDef.FOLD_NAME
     end
-    -- check if all collision groups are registered
+
+    -- Create Workspace folder for runtime player characters
+    if (not Workspace:FindFirstChild(PLAYERS_FOLD_NAME)) then
+        local plrFold = Instance.new("Folder", Workspace)
+        plrFold.Name = PLAYERS_FOLD_NAME
+    end
+
+    -- Check if all collision groups are registered
     for _, groupName in pairs(CollisionGroups) do
         if (not PhysicsService:IsCollisionGroupRegistered(groupName)) then
             warn("unregistered collision group: " .. groupName)
         end
     end
 end
+
+------------------------------------------------------------------------------------------------------
 
 local function removePlayerCharacter(plr: Player)
 	if (plr.Character) then plr.Character:Destroy() end
@@ -59,11 +66,12 @@ local function spawnAndSetPlrChar(plr: Player)
     local plrMdl = StarterPlayer:FindFirstChild("PlayerModel")
 	local newCharacter = CharacterDef.createCharacter(plrMdl)
 
-	local SelectedSpawn = spawns[math.random(1, #spawns)]
+	local spawnPos : Vector3 = Workspace:FindFirstAncestorOfClass("SpawnLocation") or Vector3.new(0, 50, 0)  --spawns[math.random(1, #spawns)]
     do
         newCharacter.Name = tostring(plr.UserId)
         newCharacter.Parent = Workspace.ActivePlayers
-        newCharacter:MoveTo(SelectedSpawn.Position)
+        newCharacter:MoveTo(spawnPos)
+
         newCharacter.PrimaryPart:SetNetworkOwner(plr)
         plr.Character = newCharacter
     end
