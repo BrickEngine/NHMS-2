@@ -1,0 +1,9 @@
+# Project place file
+/Cat Controller.rbxlx
+
+# Roblox Studio lock files
+/*.rbxlx.lock
+/*.rbxl.lock
+
+**/init.meta.json
+**/idea.txt
