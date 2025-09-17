@@ -47,16 +47,16 @@ local function setPlrReplicationFocus(plr: Player)
     end
 
     local repPart: BasePart
+    local basePlate = Workspace:FindFirstChild("Baseplate")
 
-    if (Workspace.Baseplate) then
-        repPart = Workspace.Baseplate
+    if (basePlate) then
+        repPart = basePlate
     else
-        repPart = Instance.new("Part")
+        repPart = Instance.new("Part", Workspace)
         repPart.Anchored = true
         repPart.CFrame = CFrame.identity
         repPart.CanCollide, repPart.CanQuery, repPart.CanTouch = false, false, false
         repPart.Transparency = 1
-        repPart.Parent = Workspace
     end
     plr.ReplicationFocus = repPart
 end
@@ -66,7 +66,9 @@ local function spawnAndSetPlrChar(plr: Player)
     local plrMdl = StarterPlayer:FindFirstChild("PlayerModel")
 	local newCharacter = CharacterDef.createCharacter(plrMdl)
 
-	local spawnPos : Vector3 = Workspace:FindFirstAncestorOfClass("SpawnLocation") or Vector3.new(0, 50, 0)  --spawns[math.random(1, #spawns)]
+    -- TODO: proper spawn management
+    local tmpSpawn : SpawnLocation = Workspace:FindFirstChildWhichIsA("SpawnLocation", true)
+	local spawnPos : Vector3 = (tmpSpawn.CFrame.Position + Vector3.new(0,2,0)) or Vector3.new(0, 50, 0)  --spawns[math.random(1, #spawns)]
     do
         newCharacter.Name = tostring(plr.UserId)
         newCharacter.Parent = Workspace.ActivePlayers
@@ -85,7 +87,7 @@ end
 
 local function onPlayerAdded(plr: Player)
     print(plr.Name .. " WAS ADDED")
-    setPlrReplicationFocus(plr)
+    --setPlrReplicationFocus(plr)
 end
 
 local function onPlayerRemoving(plr: Player)

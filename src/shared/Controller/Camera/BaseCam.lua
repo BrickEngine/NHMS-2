@@ -3,25 +3,22 @@ local UserInputService = game:GetService("UserInputService")
 local UserGameSettings = UserSettings():GetService("UserGameSettings")
 local Workspace = game:GetService("Workspace")
 
+local ZoomController = require(script.Parent.ZoomController)
+local CamUtils = require(script.Parent.CamUtils)
+local CamInput = require(script.Parent.CamInput)
+
 local UNIT_Z = Vector3.new(0,0,1)
 local X1_Y0_Z1 = Vector3.new(1,0,1)
-
-local DEFAULT_DISTANCE = 12.5
+local VEC3_ZERO = Vector3.new(0,0,0)
 
 -- Note: DotProduct check in CoordinateFrame::lookAt() prevents using values within about
 -- 8.11 degrees of the +/- Y axis, that's why these limits are currently 80 degrees
 local MIN_Y = math.rad(-80)
 local MAX_Y = math.rad(80)
-
-local VEC3_ZERO = Vector3.new(0,0,0)
-
-local HEAD_OFFSET = Vector3.new(0,1.5,0)
+local DEFAULT_DISTANCE = 12.5
+local CAM_OFFSET = Vector3.new(0,1.5,0)
 local ZOOM_SENSITIVITY_CURVATURE = 0.5
 local ZOOM_MIN = 1
-
-local ZoomController = require(script.Parent.ZoomController)
-local CamUtils = require(script.Parent.CamUtils)
-local CamInput = require(script.Parent.CamInput)
 
 local player = Players.LocalPlayer
 
@@ -51,18 +48,12 @@ function BaseCamera.new()
 
 	-- Used by modules which want to reset the camera angle on respawn.
 	self.resetCameraAngle = true
-
 	self.enabled = false
 
 	-- Input Event Connections
-
 	self.PlayerGui = nil
-
 	self.cameraChangedConn = nil
 	self.viewportSizeChangedConn = nil
-
-	-- Mouse locked formerly known as shift lock mode
-	self.mouseLockOffset = VEC3_ZERO
 
 	-- Initialization things used to always execute at game load time, but now these camera modules are instantiated
 	-- when needed, so the code here may run well after the start of the game
@@ -148,17 +139,17 @@ end
 
 function BaseCamera:getSubjectCFrame(): CFrame
 	local result = self.lastSubjectCFrame
-	local camera = workspace.CurrentCamera
+	local camera = Workspace.CurrentCamera
 	local cameraSubject = camera and camera.CameraSubject
 
-	if not cameraSubject then
+	if (not cameraSubject) then
 		return result
 	end
 
     -- Should always be a player character
     if (cameraSubject:IsA("Model")) then
         if cameraSubject.PrimaryPart then
-			result = (cameraSubject :: PVInstance):GetPivot() * CFrame.new(HEAD_OFFSET)
+			result = (cameraSubject :: PVInstance):GetPivot() * CFrame.new(CAM_OFFSET)
 		else
 			result = CFrame.new()
 		end
@@ -179,10 +170,10 @@ function BaseCamera:getSubjectVelocity(): Vector3
 		return VEC3_ZERO
 	end
 
-	if cameraSubject:IsA("BasePart") then
+	if (cameraSubject:IsA("BasePart")) then
 		return cameraSubject.AssemblyLinearVelocity
 
-	elseif cameraSubject:IsA("Model") then
+	elseif (cameraSubject:IsA("Model")) then
 		local primaryPart = cameraSubject.PrimaryPart
 
 		if primaryPart then
@@ -201,10 +192,10 @@ function BaseCamera:getSubjectRotVelocity(): Vector3
 		return VEC3_ZERO
 	end
 
-	if cameraSubject:IsA("BasePart") then
+	if (cameraSubject:IsA("BasePart")) then
 		return cameraSubject.AssemblyAngularVelocity
 
-	elseif cameraSubject:IsA("Model") then
+	elseif (cameraSubject:IsA("Model")) then
 		local primaryPart = cameraSubject.PrimaryPart
 
 		if primaryPart then
@@ -219,10 +210,10 @@ function BaseCamera:stepZoom()
 	local zoom: number = self.currentSubjectDistance
 	local zoomDelta: number = CamInput.getZoomDelta()
 
-	if math.abs(zoomDelta) > 0 then
+	if (math.abs(zoomDelta) > 0) then
 		local newZoom
 
-		if zoomDelta > 0 then
+		if (zoomDelta > 0) then
 			newZoom = zoom + zoomDelta*(1 + zoom * ZOOM_SENSITIVITY_CURVATURE)
 			newZoom = math.max(newZoom, ZOOM_MIN)
 		else
@@ -230,7 +221,7 @@ function BaseCamera:stepZoom()
 			newZoom = math.max(newZoom, ZOOM_MIN)
 		end
 
-		if newZoom < ZOOM_MIN then
+		if (newZoom < ZOOM_MIN) then
 			newZoom = ZOOM_MIN
 		end
 
@@ -245,9 +236,9 @@ function BaseCamera:getSubjectPosition(): Vector3?
 	local camera = game.Workspace.CurrentCamera
 	local cameraSubject = camera and camera.CameraSubject
 
-	if cameraSubject then
-        if cameraSubject:IsA("Model") and cameraSubject:IsA("PVInstance") then
-			if cameraSubject.PrimaryPart then
+	if (cameraSubject) then
+        if (cameraSubject:IsA("Model")) then
+			if (cameraSubject.PrimaryPart) then
 				result = (cameraSubject :: PVInstance):GetPivot().Position
 			end
 		end

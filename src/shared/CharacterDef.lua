@@ -16,15 +16,15 @@ local MAIN_ROOT_PRIO = 100
 
 local PARAMS = {
     ROOT_ATT_NAME = "Root",
-    ROOTPART_SIZE = Vector3.new(0, 0, 0),
-    MAINCOLL_SIZE = Vector3.new(1, 2, 2),
-    LEGCOLL_SIZE = Vector3.new(2, 2, 2),
+    ROOTPART_SIZE = Vector3.new(1, 1, 1),
+    MAINCOLL_SIZE = Vector3.new(3, 3, 3),
+    LEGCOLL_SIZE = Vector3.new(2, 3, 3),
     ROOTPART_SHAPE = Enum.PartType.Block,
     MAINCOLL_SHAPE = Enum.PartType.Cylinder,
     LEGCOLL_SHAPE = Enum.PartType.Cylinder,
     ROOTPART_CF = CFrame.identity,
     MAINCOLL_CF = CFrame.new(
-        0, 0.5, 0,
+        0, 1.5, 0,
         0, -1, 0,
         1, 0, 0,
         0, 0, 1
@@ -36,7 +36,7 @@ local PARAMS = {
         0, 0, 1
     ),
     PLAYERMODEL_OFFSET_CF = CFrame.new(
-        0, 0.72, 0,
+        0, 0, 0,
         1, 0, 0,
         0, 1, 0,
         0, 0, 1

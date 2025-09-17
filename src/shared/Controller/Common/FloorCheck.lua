@@ -13,6 +13,7 @@ local PHI = 1.61803398875
 
 local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1 ,0)
+local VEC3_FARDOWN = -Vector3.new(999999, 999999, 999999)
 local BOUND_POINTS = math.round(2 * math.sqrt(NUM_RAYS))
 
 local function radiusDist(k: number, n: number, b: number)
@@ -23,6 +24,7 @@ local function radiusDist(k: number, n: number, b: number)
 	end
 end
 
+-- Calculates a virtual plane normal from given points,
 local function avgPlaneFromPoints(ptsArr: {Vector3}) : {centroid: Vector3, normal: Vector3}
 	local n = #ptsArr
 	local noPlane = {
@@ -66,7 +68,8 @@ local function avgPlaneFromPoints(ptsArr: {Vector3}) : {centroid: Vector3, norma
 	else
 		dir = Vector3.new(xy*yz - xz*yy, xy*xz - yz*xx, det_z)
 	end
-	-- how did I overlook this?
+
+	-- Invert normal, if upside down
 	if (dir:Dot(VEC3_UP) < 0) then
 		dir = -dir
 	end
@@ -82,6 +85,7 @@ local Phys = {}
 export type physData = {
 	grounded: boolean,
 	pos: Vector3,
+	closestPos: Vector3,
 	normal: Vector3,
 	gndHeight: number,
 	normalAngle: number
@@ -94,18 +98,20 @@ function Phys.colliderCast(
 	gndClearDist: number,
 	rayParams: RaycastParams
 )
-	local _grounded = false
-	local targetPos = -VEC3_UP * 9999
+	local grounded = false
+	local closestPos = VEC3_FARDOWN
+	local closestDist = math.huge
+	local targetPos = VEC3_FARDOWN
     local targetNorm = VEC3_UP
     local pNormAngle = 0
-
 	local numHits = 0
 	local adjHipHeight = hipHeight + RAY_Y_OFFSET
 
-	-- cylinder cast checks
+	-- Cylinder cast checks with sunflower distribution
 	local hitPointsArr = {} :: {Vector3}
 	local hitNormalsArr = {} :: {Vector3}
-	-- TODO: return a hit BasePart, which is closest to the root part
+
+	-- TODO: return a hit BasePart, which is closest to the RootPart
 	--local hitObjectArr = {} :: {BasePart}
 
 	for i=1, NUM_RAYS, 1 do
@@ -131,8 +137,10 @@ function Phys.colliderCast(
 				hitPointsArr[numHits] = ray.Position
 				hitNormalsArr[numHits] = ray.Normal
 				debug_gnd_hit = true
-			else
-				debug_gnd_hit = false
+			end
+			if (ray.Distance < closestDist) then
+				closestDist = ray.Distance
+				closestPos = ray.Position
 			end
 
 			-- DEBUG
@@ -148,7 +156,7 @@ function Phys.colliderCast(
 		end
 	end
 
-	_grounded = true
+	grounded = true
 
 	if (numHits > 2) then
 		local planeData = avgPlaneFromPoints(hitPointsArr, hitNormalsArr)
@@ -164,16 +172,17 @@ function Phys.colliderCast(
 		targetPos = hitPointsArr[1]
 		targetNorm = hitNormalsArr[1]
 	else
-		_grounded = false
+		grounded = false
 	end
 
 	pNormAngle = math.asin((VEC3_UP:Cross(targetNorm)).Magnitude) --math.deg(math.acos(targetNorm:Dot(VEC3_UP)))
 
-	DebugVisualize.normalPart(targetPos, targetNorm, Vector3.new(0.1,0.1,2))
+	DebugVisualize.normalPart(targetPos, targetNorm, Vector3.new(0.1, 0.1, 2))
 
 	return {
-        grounded = _grounded,
+        grounded = grounded,
 		pos = targetPos,
+		closestPos = closestPos,
 		normal = targetNorm.Unit,
         gndHeight = targetPos.Y,
         normalAngle = pNormAngle

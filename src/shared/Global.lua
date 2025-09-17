@@ -1,7 +1,7 @@
 local GLOBAL_VARS = {
     -- Debug
-    GAME_PHYS_DEBUG = false,
-    GAME_UI_DEBUG = false,
+    GAME_PHYS_DEBUG = true,
+    GAME_UI_DEBUG = true,
 
     -- Reference Names
     PLAYERS_FOLD_NAME = "ActivePlayers",

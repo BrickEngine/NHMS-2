@@ -2,6 +2,10 @@
 	CameraModule implements a singleton class to manage the
 	selection, activation, and deactivation of the current camera controller, character occlusion controller.
 	This script binds to RenderStepped at Camera priority and calls the Update() methods on the active controller instances.
+
+	This is a modified version of the default Roblox Camera module with the following changes:
+	- Dev camera mode settings are ignored (same behavior as Scriptable)
+	- FPCam is the default and currently only camera controller
 --]]
 
 local Players = game:GetService("Players")
@@ -25,7 +29,7 @@ local PLAYER_CAMERA_PROPERTIES = {
 	-- Character movement mode
 	"DevComputerMovementMode",
 	"DevTouchMovementMode",
-	"DevEnableMouseLock",				-- Corresponds to StarterPlayer.EnableMouseLockOption
+	"DevEnableMouseLock",				-- Not used at the moment, mouse lock enabled by default
 }
 
 local USER_GAME_SETTINGS_PROPERTIES = {
@@ -34,9 +38,7 @@ local USER_GAME_SETTINGS_PROPERTIES = {
 	"ControlMode",
 	"GamepadCameraSensitivity",
 	"MouseSensitivity",
-	"RotationType",
-	"TouchCameraMovementMode",
-	"TouchMovementMode",
+	"RotationType"
 }
 
 local CamUtils = require(script.CamUtils)
@@ -237,10 +239,6 @@ function CameraModule:onLocalPlayerCameraPropertyChanged(propertyName: string)
 			self.activeCameraController:updateForDistancePropertyChange()
 		end
 	end
-end
-
-function CameraModule:onUserGameSettingsPropertyChanged(propertyName: string)
-	-- Not needed for now
 end
 
 --[[

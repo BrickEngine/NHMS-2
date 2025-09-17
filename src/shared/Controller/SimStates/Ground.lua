@@ -12,32 +12,29 @@ local FloorCheck = require(controller.Common.FloorCheck)
 local STATE_ID = 0
 
 -- physics
-local GND_WALK_SPEED = 1
-local GND_RUN_SPEED = 2.5
-local GND_CLEAR = 0.5
-local MAX_INCLINE = math.rad(70) -- rad
-local JUMP_HEIGHT = 6 -- studs
+local GND_MOVE_SPEED = 2.5
+local GND_CLEAR_DIST = 0.2
+local MAX_INCLINE = math.rad(70)    -- degrees
+local JUMP_HEIGHT = 6
 local JUMP_TIME = 0.3
-local MOVE_DAMP = 5
-local PHYS_DT = 0.05
-local ROT_DT = 0.25 -- lower value ~ slower rotation
+local MOVE_DAMP = 0.4               -- Lower value ~ more rigid movement
+local PHYS_DT = 0.05                -- Time delta for walk acceleration
+
+local GND_MIN_DIST = 0.5
+local FORCE_STEPUP = false          -- Whether the player will be forced up steep inclines, if too low to the ground
 
 -- animation speeds / threshold
-local ANIM_TH_WALK = 0.1 -- studs/s
-local ANIM_TH_TROT = 15 -- studs/s
-local ANIM_TH_RUN = 22 -- studs/s
-local ANIM_SPEED_FAC_CROUCH = 1
-local ANIM_SPEED_FAC_WALK = 0.3
-local ANIM_SPEED_FAC_TROT = 1
-local ANIM_SPEED_FAC_RUN = 0.08
+local ANIM_THRESHHOLD = 0.1 -- studs/s
+local ANIM_SPEED_FAC = 0.3
 
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
+local COLL_HEIGHT = CharacterDef.PARAMS.MAINCOLL_SIZE.X
 local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1, 0)
 local PI2 = math.pi*2
 
--- local vars
+-- Ground ray parameters
 local ray_params_gnd = RaycastParams.new()
 ray_params_gnd.CollisionGroup = CollisionGroups.PLAYER
 ray_params_gnd.FilterType = Enum.RaycastFilterType.Exclude
@@ -49,6 +46,7 @@ local jSignal = false
 
 local function createForces(mdl: Model): {[string]: Instance}
     local att = Instance.new("Attachment")
+    att.WorldAxis = Vector3.new(0, 1, 0)
     att.Name = "Ground"
     att.Parent = mdl.PrimaryPart
 
@@ -61,13 +59,15 @@ local function createForces(mdl: Model): {[string]: Instance}
 
     local rotForce = Instance.new("AlignOrientation")
     rotForce.Enabled = false
-    rotForce.Mode = Enum.OrientationAlignmentMode.OneAttachment
     rotForce.Attachment0 = att
-    rotForce.AlignType = Enum.AlignType.AllAxes
+    rotForce.Mode = Enum.OrientationAlignmentMode.OneAttachment
+    rotForce.AlignType = Enum.AlignType.PrimaryAxisParallel
     rotForce.Responsiveness = 200
-    rotForce.MaxTorque = 200000000
+    rotForce.MaxTorque = math.huge
     rotForce.MaxAngularVelocity = math.huge
     rotForce.Parent = mdl.PrimaryPart
+    rotForce.ReactionTorqueEnabled = true
+    rotForce.PrimaryAxis = VEC3_UP
 
     local posForce = Instance.new("AlignPosition")
     posForce.Enabled = false
@@ -124,15 +124,9 @@ local function projectOnPlaneVec3(v: Vector3, norm: Vector3)
 end
 
 local function calcWalkAccel(moveVec: Vector3, rootPos: Vector3, currVel: Vector3, normal: Vector3, dt: number): Vector3
-    local isRunning = InputManager:getIsRunning()
     --local adjMoveVec = projectOnPlaneVec3(moveVec, normal)
-    local target
-    if (isRunning) then
-        target = rootPos - moveVec * GND_RUN_SPEED
-    else
-        target = rootPos - moveVec * GND_WALK_SPEED
-    end
-    return 2*((target - rootPos) - currVel*dt)/(dt*dt*MOVE_DAMP), isRunning
+    local target = rootPos - moveVec * GND_MOVE_SPEED
+    return 2*((target - rootPos) - currVel*dt)/(dt*MOVE_DAMP)
 end
 
 local function angleAbs(angle: number): number
@@ -182,11 +176,13 @@ function Ground.new(...)
     local self = setmetatable(BaseState.new(...) :: BaseState.BaseStateType, Ground) :: any
 
     self.id = STATE_ID
+
     self.character = self._simulation.character :: Model
     self.forces = createForces(self.character)
-    self.normal =  VEC3_UP
 
     self.animation = self._simulation.animation
+
+    ray_params_gnd.FilterDescendantsInstances = self.character:GetChildren()
 
     return self
 end
@@ -214,21 +210,23 @@ local lastTargetAng = 0
 local lastYPos = 0
 local jumped = false
 
+---------------------------------------------------------------------------------------
+-- Ground update
+---------------------------------------------------------------------------------------
+
 function Ground:update(dt: number)
     local primaryPart: BasePart = self.character.PrimaryPart
     local camCFrame: CFrame = Workspace.CurrentCamera.CFrame
     local currVel: Vector3 = primaryPart.AssemblyLinearVelocity
     local currPos: Vector3 = primaryPart.CFrame.Position
     local g = Workspace.Gravity
-    local gravityVec: Vector3 = Vector3.new(0, g, 0)
     local mass: number = primaryPart.AssemblyMass
     local movingUp: boolean = currVel.Y > 0.1
 
-    -- do phys checks
+    -- Do physics checks
     local physData: FloorCheck.physData = FloorCheck(
-        currPos, PHYS_RADIUS, HIP_HEIGHT, GND_CLEAR, ray_params_gnd
+        currPos, PHYS_RADIUS, HIP_HEIGHT, GND_CLEAR_DIST, ray_params_gnd
     )
-    self.normal = physData.normal
 
     if (physData.inWater) then
         self._simulation:transitionState(self._simulation.states.Water)
@@ -236,45 +234,23 @@ function Ground:update(dt: number)
 
     local moveDirVec = getCFrameRelMoveVec(camCFrame)
     local currHoriVel = Vector3.new(currVel.X, 0, currVel.Z)
-    local accelVec, isRunning = calcWalkAccel(
+    local accelVec = calcWalkAccel(
         moveDirVec, currPos, currHoriVel, physData.normal, PHYS_DT
     )
 
-    -- primaryPart rotation based on vecForce direction and ground normal
-    local lookVec = primaryPart.CFrame.LookVector
-    if (currHoriVel.Magnitude > 0.1) then
-        local currAng = math.atan2(lookVec.Z, lookVec.X)
-        local targetAng
-        if (moveDirVec.Magnitude > 0.05) then
-            targetAng = math.atan2(-moveDirVec.Z, -moveDirVec.X)
-        else
-            targetAng = lastTargetAng
-        end
-
-        if (math.abs(angleShortest(currAng, targetAng)) > 0) then
-            targetAng = lerpAngle(currAng, targetAng, ROT_DT)
-        end
-
-        -- self.forces.rotForce.CFrame = makeCFrame(
-        --     VEC3_UP, Vector3.new(math.cos(targetAng), 0, math.sin(targetAng))
-        -- )
-        self.forces.rotForce.CFrame = CFrame.lookAlong(
-            VEC3_ZERO, Vector3.new(math.cos(targetAng), 0, math.sin(targetAng))
+    -- Align primary part orientation
+    primaryPart.CFrame = CFrame.lookAlong(
+        primaryPart.CFrame.Position, Vector3.new(
+            camCFrame.LookVector.X, 0, camCFrame.LookVector.Z
         )
+    )
+    primaryPart.AssemblyAngularVelocity = VEC3_ZERO
 
-        lastTargetAng = targetAng
-    end
 
-    -- update animation
-    if (currHoriVel.Magnitude >= ANIM_TH_RUN) then
-        self.animation:setState("Run")
-        self.animation:adjustSpeed(currHoriVel.Magnitude * ANIM_SPEED_FAC_RUN)
-    elseif (currHoriVel.Magnitude >= ANIM_TH_TROT) then
+    -- Update animation
+    if (currHoriVel.Magnitude >= ANIM_THRESHHOLD) then
         self.animation:setState("Walk")
-        self.animation:adjustSpeed(currHoriVel.Magnitude * ANIM_SPEED_FAC_WALK)
-    elseif (currHoriVel.Magnitude >= ANIM_TH_WALK) then
-        self.animation:setState("Walk")
-        self.animation:adjustSpeed(currHoriVel.Magnitude * ANIM_SPEED_FAC_WALK)
+        self.animation:adjustSpeed(currHoriVel.Magnitude * ANIM_SPEED_FAC)
     else
         self.animation:setState("Idle")
         self.animation:adjustSpeed(1)
@@ -293,6 +269,18 @@ function Ground:update(dt: number)
             onIncline = true
         else
             self.forces.moveForce.Force = accelVec * mass
+        end
+
+        if (math.abs(primaryPart.CFrame.Position.Y - physData.closestPos.Y) < GND_MIN_DIST) then
+            local newPosOffset = VEC3_UP * (physData.closestPos.Y - primaryPart.CFrame.Position.Y + HIP_HEIGHT)
+            print(physData.closestPos.Y)
+            
+            primaryPart.CFrame *= CFrame.new(newPosOffset)
+            self.forces.posForce.Position = newPosOffset
+            -- self.forces.posForce.Position = Vector3.new(
+            --     0, primaryPart.CFrame.Position.Y + GND_MIN_DIST * 20, 0
+            -- )
+
         end
 
         -- handle jumping
