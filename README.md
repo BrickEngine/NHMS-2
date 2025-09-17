@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # NHMS
 Non Humanoid Movement System for first person Roblox experiences
 
