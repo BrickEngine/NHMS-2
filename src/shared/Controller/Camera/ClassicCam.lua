@@ -45,7 +45,6 @@ function ClassicCamera:update(dt)
 	end
 
 	local player = PlayersService.LocalPlayer
-	local cameraSubject = camera.CameraSubject
 
 	if self.lastUpdate == nil or dt > 1 then
 		self.lastCameraTransform = nil

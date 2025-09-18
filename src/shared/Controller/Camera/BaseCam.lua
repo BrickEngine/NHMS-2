@@ -13,12 +13,14 @@ local VEC3_ZERO = Vector3.new(0,0,0)
 
 -- Note: DotProduct check in CoordinateFrame::lookAt() prevents using values within about
 -- 8.11 degrees of the +/- Y axis, that's why these limits are currently 80 degrees
-local MIN_Y = math.rad(-80)
-local MAX_Y = math.rad(80)
+local DEFAULT_MIN_Y = math.rad(-80)
+local DEFAULT_MAX_Y = math.rad(80)
 local DEFAULT_DISTANCE = 12.5
-local CAM_OFFSET = Vector3.new(0,1.5,0)
 local ZOOM_SENSITIVITY_CURVATURE = 0.5
 local ZOOM_MIN = 1
+
+local ZOOM_DIST_MIN = 0.5
+local ZOOM_DIST_MAX = 128
 
 local player = Players.LocalPlayer
 
@@ -30,7 +32,6 @@ function BaseCamera.new()
 	
 	-- So that derived classes have access to this
 	self.cameraType = nil
-	self.cameraMovementMode = nil
 
 	self.lastCameraTransform = nil
 	self.lastUserPanCamera = tick()
@@ -40,7 +41,7 @@ function BaseCamera.new()
 	self.lastSubjectPosition = Vector3.new(0, 5, 0)
 	self.lastSubjectCFrame = CFrame.new(self.lastSubjectPosition)
 
-	self.currentSubjectDistance = math.clamp(DEFAULT_DISTANCE, player.CameraMinZoomDistance, player.CameraMaxZoomDistance)
+	self.currentSubjectDistance = math.clamp(DEFAULT_DISTANCE, ZOOM_DIST_MIN, ZOOM_DIST_MAX)
 
 	self.inMouseLockedMode = false
 	self.isSmallTouchScreen = false
@@ -66,33 +67,33 @@ function BaseCamera.new()
 		self:onCharacterAdded(char)
 	end)
 
-	if self.playerCameraModeChangeConn then self.playerCameraModeChangeConn:Disconnect() end
-	self.playerCameraModeChangeConn = player:GetPropertyChangedSignal("CameraMode"):Connect(function()
-		self:onPlayerCameraPropertyChange()
-	end)
+	-- if self.playerCameraModeChangeConn then self.playerCameraModeChangeConn:Disconnect() end
+	-- self.playerCameraModeChangeConn = player:GetPropertyChangedSignal("CameraMode"):Connect(function()
+	-- 	self:onPlayerCameraPropertyChange()
+	-- end)
 
-	if self.minDistanceChangeConn then self.minDistanceChangeConn:Disconnect() end
-	self.minDistanceChangeConn = player:GetPropertyChangedSignal("CameraMinZoomDistance"):Connect(function()
-		self:onPlayerCameraPropertyChange()
-	end)
+	-- if self.minDistanceChangeConn then self.minDistanceChangeConn:Disconnect() end
+	-- self.minDistanceChangeConn = player:GetPropertyChangedSignal("CameraMinZoomDistance"):Connect(function()
+	-- 	self:onPlayerCameraPropertyChange()
+	-- end)
 
-	if self.maxDistanceChangeConn then self.maxDistanceChangeConn:Disconnect() end
-	self.maxDistanceChangeConn = player:GetPropertyChangedSignal("CameraMaxZoomDistance"):Connect(function()
-		self:onPlayerCameraPropertyChange()
-	end)
+	-- if self.maxDistanceChangeConn then self.maxDistanceChangeConn:Disconnect() end
+	-- self.maxDistanceChangeConn = player:GetPropertyChangedSignal("CameraMaxZoomDistance"):Connect(function()
+	-- 	self:onPlayerCameraPropertyChange()
+	-- end)
 
-	if self.playerDevTouchMoveModeChangeConn then self.playerDevTouchMoveModeChangeConn:Disconnect() end
-	self.playerDevTouchMoveModeChangeConn = player:GetPropertyChangedSignal("DevTouchMovementMode"):Connect(function()
-		self:onDevTouchMovementModeChanged()
-	end)
-	self:onDevTouchMovementModeChanged() -- Init
+	-- if self.playerDevTouchMoveModeChangeConn then self.playerDevTouchMoveModeChangeConn:Disconnect() end
+	-- self.playerDevTouchMoveModeChangeConn = player:GetPropertyChangedSignal("DevTouchMovementMode"):Connect(function()
+	-- 	self:onDevTouchMovementModeChanged()
+	-- end)
+	-- self:onDevTouchMovementModeChanged() -- Init
 
-	if self.gameSettingsTouchMoveMoveChangeConn then self.gameSettingsTouchMoveMoveChangeConn:Disconnect() end
-	self.gameSettingsTouchMoveMoveChangeConn = UserGameSettings:GetPropertyChangedSignal("TouchMovementMode"):Connect(function()
-		self:onGameSettingsTouchMovementModeChanged()
-	end)
+	-- if self.gameSettingsTouchMoveMoveChangeConn then self.gameSettingsTouchMoveMoveChangeConn:Disconnect() end
+	-- self.gameSettingsTouchMoveMoveChangeConn = UserGameSettings:GetPropertyChangedSignal("TouchMovementMode"):Connect(function()
+	-- 	self:onGameSettingsTouchMovementModeChanged()
+	-- end)
 
-	self:onGameSettingsTouchMovementModeChanged() -- Init
+	-- self:onGameSettingsTouchMovementModeChanged() -- Init
 
 	UserGameSettings:setCameraYInvertVisible()
 	UserGameSettings:setGamepadCameraSensitivityVisible()
@@ -106,7 +107,7 @@ function BaseCamera.new()
 		end)
 	end
 
-	self:onPlayerCameraPropertyChange()
+	--self:onPlayerCameraPropertyChange()
 
 	return self
 end
@@ -146,10 +147,10 @@ function BaseCamera:getSubjectCFrame(): CFrame
 		return result
 	end
 
-    -- Should always be a player character
+    -- Should always be a player character with a primary part assigned
     if (cameraSubject:IsA("Model")) then
-        if cameraSubject.PrimaryPart then
-			result = (cameraSubject :: PVInstance):GetPivot() * CFrame.new(CAM_OFFSET)
+        if (cameraSubject.PrimaryPart) then
+			result = cameraSubject.PrimaryPart.CFrame
 		else
 			result = CFrame.new()
 		end
@@ -301,29 +302,29 @@ function BaseCamera:onDynamicThumbstickDisabled()
 	self.isDynamicThumbstickEnabled = false
 end
 
-function BaseCamera:onGameSettingsTouchMovementModeChanged()
-	if player.DevTouchMovementMode == Enum.DevTouchMovementMode.UserChoice then
-		if (UserGameSettings.TouchMovementMode == Enum.TouchMovementMode.DynamicThumbstick
-			or UserGameSettings.TouchMovementMode == Enum.TouchMovementMode.Default) then
-			self:onDynamicThumbstickEnabled()
-		else
-			self:onDynamicThumbstickDisabled()
-		end
-	end
-end
+-- function BaseCamera:onGameSettingsTouchMovementModeChanged()
+-- 	if player.DevTouchMovementMode == Enum.DevTouchMovementMode.UserChoice then
+-- 		if (UserGameSettings.TouchMovementMode == Enum.TouchMovementMode.DynamicThumbstick
+-- 			or UserGameSettings.TouchMovementMode == Enum.TouchMovementMode.Default) then
+-- 			self:onDynamicThumbstickEnabled()
+-- 		else
+-- 			self:onDynamicThumbstickDisabled()
+-- 		end
+-- 	end
+-- end
 
-function BaseCamera:onDevTouchMovementModeChanged()
-	if player.DevTouchMovementMode == Enum.DevTouchMovementMode.DynamicThumbstick then
-		self:onDynamicThumbstickEnabled()
-	else
-		self:onGameSettingsTouchMovementModeChanged()
-	end
-end
+-- function BaseCamera:onDevTouchMovementModeChanged()
+-- 	if player.DevTouchMovementMode == Enum.DevTouchMovementMode.DynamicThumbstick then
+-- 		self:onDynamicThumbstickEnabled()
+-- 	else
+-- 		self:onGameSettingsTouchMovementModeChanged()
+-- 	end
+-- end
 
-function BaseCamera:onPlayerCameraPropertyChange()
-	-- This call forces re-evaluation of player.CameraMode and clamping to min/max distance which may have changed
-	self:setCameraToSubjectDistance(self.currentSubjectDistance)
-end
+-- function BaseCamera:onPlayerCameraPropertyChange()
+-- 	-- This call forces re-evaluation of player.CameraMode and clamping to min/max distance which may have changed
+-- 	self:setCameraToSubjectDistance(self.currentSubjectDistance)
+-- end
 
 function BaseCamera:inputTranslationToCameraAngleChange(translationVector, sensitivity)
 	return translationVector * sensitivity
@@ -407,24 +408,6 @@ function BaseCamera:setCameraToSubjectDistance(desiredSubjectDistance: number): 
 	return self.currentSubjectDistance
 end
 
-function BaseCamera:setCameraType(cameraType)
-	--Used by derived classes
-	self.cameraType = cameraType
-end
-
-function BaseCamera:getCameraType()
-	return self.cameraType
-end
-
--- Movement mode standardized to Enum.ComputerCameraMovementMode values
-function BaseCamera:setCameraMovementMode( cameraMovementMode )
-	self.cameraMovementMode = cameraMovementMode
-end
-
-function BaseCamera:getCameraMovementMode()
-	return self.cameraMovementMode
-end
-
 function BaseCamera:setIsMouseLocked(mouseLocked: boolean)
 	self.inMouseLockedMode = mouseLocked
 end
@@ -471,7 +454,7 @@ end
 function BaseCamera:calculateNewLookCFrameFromArg(suppliedLookVector: Vector3?, rotateInput: Vector2): CFrame
 	local currLookVector: Vector3 = suppliedLookVector or self:getCameraLookVector()
 	local currPitchAngle = math.asin(currLookVector.Y)
-	local yTheta = math.clamp(rotateInput.Y, -MAX_Y + currPitchAngle, -MIN_Y + currPitchAngle)
+	local yTheta = math.clamp(rotateInput.Y, -DEFAULT_MAX_Y + currPitchAngle, -DEFAULT_MIN_Y + currPitchAngle)
 	local constrainedRotateInput = Vector2.new(rotateInput.X, yTheta)
 	local startCFrame = CFrame.new(VEC3_ZERO, currLookVector)
 	local newLookCFrame = CFrame.Angles(0, -constrainedRotateInput.X, 0) * startCFrame * CFrame.Angles(-constrainedRotateInput.Y,0,0)

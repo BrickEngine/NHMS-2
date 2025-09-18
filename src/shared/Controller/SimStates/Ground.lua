@@ -11,19 +11,21 @@ local FloorCheck = require(controller.Common.FloorCheck)
 
 local STATE_ID = 0
 
--- physics
+-- General physics config
 local GND_MOVE_SPEED = 2.5
 local GND_CLEAR_DIST = 0.2
-local MAX_INCLINE = math.rad(70)    -- degrees
+local MAX_INCLINE = math.rad(70) -- degrees
 local JUMP_HEIGHT = 6
 local JUMP_TIME = 0.3
-local MOVE_DAMP = 0.4               -- Lower value ~ more rigid movement
-local PHYS_DT = 0.05                -- Time delta for walk acceleration
+local MOVE_DAMP = 0.4 -- Lower value ~ more rigid movement
+local PHYS_DT = 0.05 -- Time delta for walk acceleration
 
-local GND_MIN_DIST = 0.5
-local FORCE_STEPUP = false          -- Whether the player will be forced up steep inclines, if too low to the ground
+local FORCE_STEPUP = false -- Whether the player will be forced up steep inclines, if too low to the ground
+local GND_FORCE_DIST = 0.4 -- Height at which player will be forced up, if FORCE_STEUP is true
 
--- animation speeds / threshold
+local DO_QUAKE_JUMP_SOUND = true -- To be removed later
+
+-- Animation
 local ANIM_THRESHHOLD = 0.1 -- studs/s
 local ANIM_SPEED_FAC = 0.3
 
@@ -161,7 +163,7 @@ local function jumpSignal()
 	return false
 end
 
-local function decrementCounter(count: number, dt: number): number
+local function decCount(count: number, dt: number): number
     count -= dt
     if (count < 0) then count = 0 end
     return count
@@ -224,18 +226,22 @@ function Ground:update(dt: number)
     local movingUp: boolean = currVel.Y > 0.1
 
     -- Do physics checks
-    local physData: FloorCheck.physData = FloorCheck(
+    local gndPhysData: FloorCheck.physData = FloorCheck(
         currPos, PHYS_RADIUS, HIP_HEIGHT, GND_CLEAR_DIST, ray_params_gnd
     )
 
-    if (physData.inWater) then
+    -- State transitions
+    ---------------------------------------------------------------------------------------
+    if (gndPhysData.inWater) then
         self._simulation:transitionState(self._simulation.states.Water)
     end
+
+    ---------------------------------------------------------------------------------------
 
     local moveDirVec = getCFrameRelMoveVec(camCFrame)
     local currHoriVel = Vector3.new(currVel.X, 0, currVel.Z)
     local accelVec = calcWalkAccel(
-        moveDirVec, currPos, currHoriVel, physData.normal, PHYS_DT
+        moveDirVec, currPos, currHoriVel, gndPhysData.normal, PHYS_DT
     )
 
     -- Align primary part orientation
@@ -256,34 +262,52 @@ function Ground:update(dt: number)
         self.animation:adjustSpeed(1)
     end
 
-    if (physData.grounded) then
-        local targetPosY = physData.gndHeight + HIP_HEIGHT
+    if (gndPhysData.grounded) then
+        local targetPosY = gndPhysData.gndHeight + HIP_HEIGHT
         local onIncline = false
 
         self.forces.posForce.Position = Vector3.new(0, targetPosY, 0)
         self.forces.posForce.MaxAxesForce = VEC3_UP * g * mass * 20
 
-        if (physData.normalAngle > MAX_INCLINE) then
-            self.forces.moveForce.Force = projectOnPlaneVec3(accelVec * 0.1, physData.normal) * mass
+        if (gndPhysData.normalAngle > MAX_INCLINE) then
+            self.forces.moveForce.Force = projectOnPlaneVec3(accelVec * 0.1, gndPhysData.normal) * mass
             self.forces.posForce.Enabled = false
             onIncline = true
         else
             self.forces.moveForce.Force = accelVec * mass
         end
 
-        if (math.abs(primaryPart.CFrame.Position.Y - physData.closestPos.Y) < GND_MIN_DIST) then
-            local newPosOffset = VEC3_UP * (physData.closestPos.Y - primaryPart.CFrame.Position.Y + HIP_HEIGHT)
-            print(physData.closestPos.Y)
-            
-            primaryPart.CFrame *= CFrame.new(newPosOffset)
-            self.forces.posForce.Position = newPosOffset
-            -- self.forces.posForce.Position = Vector3.new(
-            --     0, primaryPart.CFrame.Position.Y + GND_MIN_DIST * 20, 0
-            -- )
+        -- Force character to get more ground distance, if too close to ground
+        if (FORCE_STEPUP) then
+            local closestPosDiff = math.abs(gndPhysData.closestPos.Y - primaryPart.CFrame.Position.Y)
 
+            if (closestPosDiff < GND_FORCE_DIST) then
+                local isSteep = false
+
+                -- Step-up only possible, if there is no low ceiling and no steep slope
+                local upRay = Workspace:Raycast(
+                    gndPhysData.closestPos, VEC3_UP * (HIP_HEIGHT + COLL_HEIGHT + 0.05), ray_params_gnd
+                ) :: RaycastResult
+                -- TODO: get normal from gndPhysData returned part directly
+                local downRay = Workspace:Raycast(
+                    gndPhysData.closestPos + VEC3_UP * 0.1, -VEC3_UP, ray_params_gnd
+                ) :: RaycastResult
+
+                if (downRay and downRay.Normal) then
+                    local incAng = math.acos(downRay.Normal.Unit:Dot(VEC3_UP))
+                    print(math.deg(incAng))
+                    isSteep = incAng > MAX_INCLINE
+                end
+                if (not (isSteep or upRay)) then
+                    local newPosOffset = VEC3_UP * (closestPosDiff + HIP_HEIGHT)
+
+                    primaryPart.CFrame *= CFrame.new(newPosOffset)
+                    self.forces.posForce.Position = newPosOffset
+                end
+            end
         end
 
-        -- handle jumping
+        -- Handle Jumping
         if (not onIncline) then
             if (jTime <= 0 or (jumped and currPos.Y < lastYPos)) then
                 self.forces.posForce.Enabled = true
@@ -291,8 +315,7 @@ function Ground:update(dt: number)
             end
 
             if (jumpSignal() and jTime <= 0) then
-                -- temp sound for fun
-                do
+                if (DO_QUAKE_JUMP_SOUND) then
                     local s = Instance.new("Sound")
                     s.SoundId = "rbxassetid://5466166437"
                     SoundService:PlayLocalSound(s)
@@ -312,7 +335,7 @@ function Ground:update(dt: number)
         self.forces.posForce.Enabled = false
     end
 
-    jTime = decrementCounter(jTime, dt)
+    jTime = decCount(jTime, dt)
     lastYPos = currPos.Y
 end
 

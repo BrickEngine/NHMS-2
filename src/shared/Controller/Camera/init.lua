@@ -9,26 +9,26 @@
 --]]
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local UserGameSettings = UserSettings():GetService("UserGameSettings")
 local Workspace = game:GetService("Workspace")
 
-local CameraModule = {}
-CameraModule.__index = CameraModule
+local Global = require(ReplicatedStorage.Shared.Global)
+
+local DEFAULT_FOV = 100
+
+local DEBUG_CAM_SWITCH_KEY = Enum.KeyCode.P
+local USE_OCCLUSION = false
+
+local CAM_TYPES = {
+	FPCam = "Default",
+	ClassicCam = "Debug"
+}
 
 -- NOTICE: Player property names do not all match their StarterPlayer equivalents,
 local PLAYER_CAMERA_PROPERTIES = {
-	"CameraMinZoomDistance",
-	"CameraMaxZoomDistance",
-	"CameraMode",
-	"DevCameraOcclusionMode",
-	"DevComputerCameraMode",			-- Corresponds to StarterPlayer.DevComputerCameraMovementMode
-	"DevTouchCameraMode",				-- Corresponds to StarterPlayer.DevTouchCameraMovementMode
-
-	-- Character movement mode
-	"DevComputerMovementMode",
-	"DevTouchMovementMode",
 	"DevEnableMouseLock",				-- Not used at the moment, mouse lock enabled by default
 }
 
@@ -41,9 +41,9 @@ local USER_GAME_SETTINGS_PROPERTIES = {
 	"RotationType"
 }
 
-local CamUtils = require(script.CamUtils)
 local CamInput = require(script.CamInput)
 local ClassicCam = require(script.ClassicCam)
+local FPCam = require(script.FPCam)
 local Occlusion = require(script.Occlusion)
 local MouseLockController = require(script.MouseLockController)
 
@@ -57,6 +57,9 @@ do
 	PlayerScripts:registerComputerCameraMovementMode(Enum.ComputerCameraMovementMode.Default)
 end
 
+local CameraModule = {}
+CameraModule.__index = CameraModule
+
 function CameraModule.new()
 	local self = setmetatable({},CameraModule)
 
@@ -64,6 +67,7 @@ function CameraModule.new()
 	self.activeCameraController = nil
 	self.activeOcclusionModule = nil
 	self.activeMouseLockController = nil
+	self.debugCamSelected = false
 
 	-- Connections to events
 	self.cameraSubjectChangedConn = nil
@@ -89,8 +93,20 @@ function CameraModule.new()
 		end)
 	end
 
+	-- Switch to debug camera, if enabled
+	if (Global.GAME_PHYS_DEBUG) then
+		UserInputService.InputBegan:Connect(function(input, gpe)
+			if (input.KeyCode == DEBUG_CAM_SWITCH_KEY and not gpe) then
+				self.debugCamSelected = not self.debugCamSelected
+				self:activateCameraController()
+			end
+		end)
+	end
+
 	self:activateCameraController()
-	self:activateOcclusionModule()
+	if (USE_OCCLUSION) then
+		self:activateOcclusionModule()
+	end
 
 	self:onCurrentCameraChanged()
 	RunService:BindToRenderStep("cameraRenderUpdate", Enum.RenderPriority.Camera.Value, function(dt) self:update(dt) end)
@@ -102,11 +118,12 @@ function CameraModule.new()
 		end)
 	end
 
-	for _, propertyName in pairs(USER_GAME_SETTINGS_PROPERTIES) do
-		UserGameSettings:GetPropertyChangedSignal(propertyName):Connect(function()
-			self:onUserGameSettingsPropertyChanged(propertyName)
-		end)
-	end
+	-- for _, propertyName in pairs(USER_GAME_SETTINGS_PROPERTIES) do
+	-- 	UserGameSettings:GetPropertyChangedSignal(propertyName):Connect(function()
+	-- 		self:onUserGameSettingsPropertyChanged(propertyName)
+	-- 	end)
+	-- end
+
 	game.Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
 		self:onCurrentCameraChanged()
 	end)
@@ -114,30 +131,11 @@ function CameraModule.new()
 	return self
 end
 
-function CameraModule:getCameraMovementModeFromSettings()
-	local cameraMode = Players.LocalPlayer.CameraMode
-
-	-- Lock First Person trumps all other settings and forces ClassicCamera
-	if cameraMode == Enum.CameraMode.LockFirstPerson then
-		return CamUtils.convertCameraModeEnumToStandard(Enum.ComputerCameraMovementMode.Classic)
-	end
-
-	local devMode, userMode
-	if UserInputService.TouchEnabled then
-		devMode = CamUtils.convertCameraModeEnumToStandard(Players.LocalPlayer.DevTouchCameraMode)
-		userMode = CamUtils.convertCameraModeEnumToStandard(UserGameSettings.TouchCameraMovementMode)
-	else
-		devMode = CamUtils.convertCameraModeEnumToStandard(Players.LocalPlayer.DevComputerCameraMode)
-		userMode = CamUtils.convertCameraModeEnumToStandard(UserGameSettings.ComputerCameraMovementMode)
-	end
-
-	if devMode == Enum.DevComputerCameraMovementMode.UserChoice then
-		-- Developer is allowing user choice, so user setting is respected
-		return userMode
-	end
-
-	return devMode
-end
+-- function CameraModule:onUserGameSettingsPropertyChanged(propertyName: string)
+-- 	if propertyName == "ComputerCameraMovementMode" then
+-- 		self:activateCameraController()
+-- 	end
+-- end
 
 function CameraModule:activateOcclusionModule()
 	local newOccModule = Occlusion
@@ -176,8 +174,13 @@ function CameraModule:activateOcclusionModule()
 	end
 end
 
+-- Activates the FPCam by default
 function CameraModule:activateCameraController()
-	local newCameraCreator = ClassicCam
+	local newCameraCreator = FPCam
+
+	if (self.debugCamSelected) then
+		newCameraCreator = ClassicCam
+	end
 
 	-- Create the camera control module we need if it does not already exist in instantiatedCameraControllers
 	local newCameraController
@@ -242,9 +245,7 @@ function CameraModule:onLocalPlayerCameraPropertyChanged(propertyName: string)
 end
 
 --[[
-	Main RenderStep Update. The camera controller and occlusion module both have opportunities
-	to set and modify (respectively) the CFrame and Focus before it is set once on CurrentCamera.
-	The camera and occlusion modules should only return CFrames, not set the CFrame property of
+	The camera modules should only return CFrames, not set the CFrame property of
 	CurrentCamera directly.
 --]]
 
@@ -252,7 +253,7 @@ end
 -- Main RenderStep update
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-function CameraModule:update(dt)
+function CameraModule:update(dt: number)
 	if self.activeCameraController then
 		self.activeCameraController:updateMouseBehavior()
 
@@ -265,7 +266,7 @@ function CameraModule:update(dt)
 		local currentCamera = game.Workspace.CurrentCamera :: Camera
 		currentCamera.CFrame = newCameraCFrame
 		currentCamera.Focus = newCameraFocus
-		currentCamera.FieldOfView = 100
+		currentCamera.FieldOfView = DEFAULT_FOV
 
 		if CamInput.getInputEnabled() then
 			CamInput.resetInputForFrameEnd()
@@ -273,26 +274,29 @@ function CameraModule:update(dt)
 	end
 end
 
-function CameraModule:onCharacterAdded(char, player)
+function CameraModule:onCharacterAdded(char: Model, player: Player)
 	if self.activeOcclusionModule then
 		self.activeOcclusionModule:characterAdded(char, player)
 	end
 	if (player == Players.LocalPlayer) then
+		if (not char.PrimaryPart) then
+			error("Character does not have a PrimaryPart assigned")
+		end
 		Workspace.CurrentCamera.CameraSubject = char
 	end
 end
 
-function CameraModule:onCharacterRemoving(char, player)
+function CameraModule:onCharacterRemoving(char: Model, player: Player)
 	if self.activeOcclusionModule then
 		self.activeOcclusionModule:characterRemoving(char, player)
 	end
 end
 
-function CameraModule:onPlayerAdded(player)
-	player.CharacterAdded:Connect(function(char)
+function CameraModule:onPlayerAdded(player: Player)
+	player.CharacterAdded:Connect(function(char: Model)
 		self:onCharacterAdded(char, player)
 	end)
-	player.CharacterRemoving:Connect(function(char)
+	player.CharacterRemoving:Connect(function(char: Model)
 		self:onCharacterRemoving(char, player)
 	end)
 end

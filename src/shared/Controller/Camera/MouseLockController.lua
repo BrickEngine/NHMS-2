@@ -8,7 +8,9 @@ local CameraUtils = require(script.Parent.CamUtils)
 
 local CONTEXT_ACTION_NAME = "MouseLockSwitchAction"
 local MOUSELOCK_ACTION_PRIORITY = Enum.ContextActionPriority.Medium.Value
+
 local LOCK_KEY = Enum.KeyCode.Tab
+local MOUSE_LOCKED_DEFAULT = true
 
 --[[ The Module ]]--
 local MouseLockController = {}
@@ -45,6 +47,11 @@ function MouseLockController.new()
     end)
 
 	self:updateMouseLockAvailability()
+
+	-- Configures the mouse on initialization
+	if (MOUSE_LOCKED_DEFAULT) then
+		self:onMouseLockToggled()
+	end
 
 	return self
 end
