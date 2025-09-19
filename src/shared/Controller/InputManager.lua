@@ -113,11 +113,11 @@ function InputManager:getIsJumping(): boolean
     return self.activeInputController:getIsJumping()
 end
 
-function InputManager:getIsRunning(): boolean
+function InputManager:getIsDashing(): boolean
     if (not self.activeInputController) then
         return false
     end
-    return self.activeInputController:getIsRunning()
+    return self.activeInputController:getIsDashing()
 end
 
 function InputManager:getActiveInputController(): ({}?)
@@ -192,7 +192,7 @@ function InputManager:updateActiveControlModuleEnabled()
 	end
 
 	-- GuiService.TouchControlsEnabled == false and the active controller is a touch controller,
-	-- disable controls
+	-- Disable controls
 	if (not GuiService.TouchControlsEnabled
         and UserInputService.TouchEnabled
         and self.activeInputController == self.inputControllers[MoveTouch]
@@ -200,7 +200,7 @@ function InputManager:updateActiveControlModuleEnabled()
 		disable(); return
 	end
 
-	-- no settings prevent enabling controls
+	-- No settings prevent enabling controls
 	enable()
 end
 

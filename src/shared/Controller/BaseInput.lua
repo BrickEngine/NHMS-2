@@ -14,7 +14,7 @@ export type BaseInputType  = {
 
     enabled: boolean,
     isJumping: boolean,
-    isRunning: boolean,
+    isDashing: boolean,
     moveVec: Vector3,
 
     [string]: any
@@ -32,7 +32,7 @@ function BaseMoveInput.new()
 
     self.enabled = false
     self.isJumping = false
-    self.isRunning = false
+    self.isDashing = false
     self.moveVec = VEC3_ZERO
 
     return self
@@ -46,8 +46,8 @@ function BaseMoveInput:getIsJumping(): boolean
     return self.isJumping
 end
 
-function BaseMoveInput:getIsRunning(): boolean
-    return self.isRunning
+function BaseMoveInput:getIsDashing(): boolean
+    return self.isDashing
 end
 
 function BaseMoveInput:enable(enable: boolean): boolean

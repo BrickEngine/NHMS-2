@@ -11,9 +11,10 @@ local simStates = script.Parent.SimStates
 local BaseState = require(simStates.BaseState)
 local Ground = require(simStates.Ground) :: BaseState.BaseStateType
 local Water = require(simStates.Water) :: BaseState.BaseStateType
-local Air = require(simStates.Air) :: BaseState.BaseStateType
 
--- local vars
+local Global = require(ReplicatedStorage.Shared.Global)
+
+-- Local vars
 local primaryPartListener: RBXScriptConnection
 local state_free = true
 
@@ -154,6 +155,14 @@ function Simulation:onCharAdded(character: Model)
     primaryPartListener = self.character.PrimaryPart.Changed:Connect(function()
         self:onRootPartChanged()
     end)
+
+    if (not Global.GAME_CHAR_DEBUG) then
+        for _, p: Instance in pairs(self.character:GetDescendants()) do
+            if p:IsA("BasePart") then
+                p.Transparency = 1
+            end
+        end
+    end
 
     for _, s: Instance in pairs(StarterPlayer.StarterCharacterScripts:GetChildren()) do
         if (s.ClassName ~= ("LocalScript" or "Script" or "ModuleScript")) then

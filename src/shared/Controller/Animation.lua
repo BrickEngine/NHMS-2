@@ -10,17 +10,13 @@ Animation.__index = Animation
 
 Animation.states = {
 	-- idle (0)
-	Idle = {id = "rbxassetid://86097848386875", prio = 0},
-	Crouch = {id = "rbxassetid://91356839033018", prio = 0},
+	Idle = {id = "http://www.roblox.com/asset/?id=180435571", prio = 0},
 	-- movement (1)
-    Sneak = {id = "rbxassetid://82906371497519", prio = 1},
-    Walk = {id = "rbxassetid://103722766186620", prio = 1},
-    Trot = {id = "rbxassetid://84407680772559", prio = 1},
-    Run = {id = "rbxassetid://101495361702146", prio = 1},
+    Walk = {id = "http://www.roblox.com/asset/?id=180426354", prio = 1},
 	--SWIM = "",
 	--FALL = "",
 	-- actions (2-5)
-    Sit = {id = "rbxassetid://86378703965993", prio = 2},
+    --Sit = {id = "rbxassetid://86378703965993", prio = 2},
 }
 
 export type AnimationStateType = {

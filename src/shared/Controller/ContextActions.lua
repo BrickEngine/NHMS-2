@@ -6,11 +6,9 @@ local Actions = {
     MOVE_B = "moveBackwardAction",
     MOVE_THUMBSTICK = "moveThumbstickAction",
     JUMP = "jumpAction",
+    DASH = "runAction",
     JUMP_BUTTON = "jumpButtonAction",
-    RUN = "runAction",
-    RUN_BUTTON = "runButtonAction",
-    SPEED_U = "speedUpAction",
-    SPEED_D = "speedDownAction",
+    DASH_BUTTON = "dashButtonAction",
     SHIFT_BUTTON = "shiftButtonAction",
     -- camera
     CAM_L = "camRotateLeftAction",

@@ -10,14 +10,16 @@ local ContextActions = require(script.Parent.ContextActions)
 
 local VEC3_ZERO = Vector3.zero
 local VEC2_JUMP_BTN_RECT_OFFS = Vector2.new(1, 146)
-local VEC2_RUN_BTN_RECT_OFFS = Vector2.zero
-local VEC2_DEFAULT_BTN_RECT_SIZE = Vector2.new(144, 144)
+local VEC2_DASH_BTN_RECT_OFFS = Vector2.new(1, 146)
+local VEC2_DEFAULT_JUMP_BTN_RECT_SIZE = Vector2.new(144, 144)
+local VEC2_DEFAULT_DASH_BTN_RECT_SIZE = Vector2.new(144, 144)
 
 local TOUCH_CONTROLS_SHEET = "rbxasset://textures/ui/Input/TouchControlsSheetV2.png"
+local DASH_CONTROLS_SHEET = "rbxassetid://120773441316603"
 
 local DYNAMIC_THUMBSTICK_ACTION_NAME = ContextActions.MOVE_THUMBSTICK
 local JUMP_BUTTON_ACTION_NAME = ContextActions.JUMP_BUTTON
-local RUN_BUTTON_ACTION_NAME = ContextActions.RUN_BUTTON
+local DASH_BUTTON_ACTION_NAME = ContextActions.DASH_BUTTON
 local MENU_OPEN_ACTION_NAME = ContextActions.MENU
 local BTN_ACTION_PRIO = Enum.ContextActionPriority.High.Value
 
@@ -61,7 +63,7 @@ function MoveTouch.new()
 	self.isFirstTouch = true
 	self.thumbstickFrame = nil
     self.jumpButton = nil
-    self.runButton = nil
+    self.dashButton = nil
 
 	self.onRenderSteppedConn = nil
 
@@ -79,26 +81,26 @@ end
 function MoveTouch:enable(enable: boolean?, uiParentFrame): boolean?
     if (enable == self.enabled) then
         self:resetJump()
-        self:resetRun()
+        self:resetDash()
         return true
     end
 
-    self.jumpInp, self.runInp = false, false
+    self.jumpInp, self.dashInp = false, false
     self.moveVec = VEC3_ZERO
     self.isJumping = false
-    self.isRunning = false
+    self.isDashing = false
 
 	if enable then
 		if (not (self.thumbstickFrame or self.jumpButton)) then
 			self:create(uiParentFrame)
 		end
         self.jumpButton.Visible = true
-        self.runButton.Visible = true
+        self.dashButton.Visible = true
 
 		self:BindContextActions()
 	else
         if (self.jumpButton) then self.jumpButton.Visible = false end
-        if (self.runButton) then self.runButton.Visible = false end
+        if (self.dashButton) then self.dashButton.Visible = false end
 		self:unbindContextActions()
 		self:onInputEnded()
 	end
@@ -108,7 +110,7 @@ function MoveTouch:enable(enable: boolean?, uiParentFrame): boolean?
 	return true
 end
 
--- jump button must be held down
+-- Jump button must be held down
 function MoveTouch:resetJump()
     self.jumpInp = false
     self.jumpTouchObj = nil
@@ -118,20 +120,21 @@ function MoveTouch:resetJump()
     self:updateJump()
 end
 
--- run button should act like a toggle
-function MoveTouch:resetRun()
-    self.runTouchObj = nil
-    self:updateRun()
+function MoveTouch:resetDash()
+    self.dashInp = false
+    self.dashTouchObj = nil
+    if (self.dashButton) then
+        self.dashButton.ImageRectOffset = VEC2_DASH_BTN_RECT_OFFS
+    end
+    self:updateDash()
 end
 
 function MoveTouch:updateJump()
 	self.isJumping = self.jumpInp
 end
 
---local runToggle = false
-function MoveTouch:updateRun()
-    print(self.isRunning)
-    self.isRunning = self.runInp
+function MoveTouch:updateDash()
+    self.isDashing = self.dashInp
 end
 
 
@@ -388,7 +391,7 @@ function MoveTouch:BindContextActions()
     end)
 
     ----------------------------------------------------------------------------------------------------------------------------------------
-    -- run and jump buttons:
+    -- Dash and jump buttons:
 
     self._connectionUtil:trackConnection(
         JUMP_BUTTON_ACTION_NAME,
@@ -400,10 +403,10 @@ function MoveTouch:BindContextActions()
     )
 
     self._connectionUtil:trackConnection(
-        RUN_BUTTON_ACTION_NAME,
-        self.runButton.InputEnded:Connect(function(inputObj)
-            if (inputObj == self.runTouchObj) then
-                self:resetRun()
+        DASH_BUTTON_ACTION_NAME,
+        self.dashButton.InputEnded:Connect(function(inputObj)
+            if (inputObj == self.dashTouchObj) then
+                self:resetDash()
             end
         end)
     )
@@ -414,8 +417,8 @@ function MoveTouch:BindContextActions()
             if (inputObj == self.jumpTouchObj) then
                 self:resetJump()
             end
-            if (inputObj == self.runTouchObj) then
-                self:resetRun()
+            if (inputObj == self.dashTouchObj) then
+                self:resetDash()
             end
         end)
     )
@@ -429,7 +432,7 @@ function MoveTouch:unbindContextActions()
 	end
 
     self._connectionUtil:disconnect(JUMP_BUTTON_ACTION_NAME)
-    self._connectionUtil:disconnect(RUN_BUTTON_ACTION_NAME)
+    self._connectionUtil:disconnect(DASH_BUTTON_ACTION_NAME)
     self._connectionUtil:disconnect(MENU_OPEN_ACTION_NAME)
 end
 
@@ -483,7 +486,7 @@ function MoveTouch:create(parentFrame: GuiBase2d)
         self.startImage.BackgroundTransparency = 1
         self.startImage.Image = TOUCH_CONTROLS_SHEET
         self.startImage.ImageRectOffset = Vector2.new(1,1)
-        self.startImage.ImageRectSize = VEC2_DEFAULT_BTN_RECT_SIZE
+        self.startImage.ImageRectSize = VEC2_DEFAULT_JUMP_BTN_RECT_SIZE
         self.startImage.ImageColor3 = Color3.new(0, 0, 0)
         self.startImage.AnchorPoint = Vector2.new(0.5, 0.5)
         self.startImage.ZIndex = 10
@@ -495,7 +498,7 @@ function MoveTouch:create(parentFrame: GuiBase2d)
         self.endImage.BackgroundTransparency = 1
         self.endImage.Image = TOUCH_CONTROLS_SHEET
         self.endImage.ImageRectOffset = Vector2.new(1,1)
-        self.endImage.ImageRectSize =  VEC2_DEFAULT_BTN_RECT_SIZE
+        self.endImage.ImageRectSize =  VEC2_DEFAULT_JUMP_BTN_RECT_SIZE
         self.endImage.AnchorPoint = Vector2.new(0.5, 0.5)
         self.endImage.ZIndex = 10
         self.endImage.Parent = self.thumbstickFrame
@@ -507,7 +510,7 @@ function MoveTouch:create(parentFrame: GuiBase2d)
             self.middleImages[i].BackgroundTransparency = 1
             self.middleImages[i].Image = TOUCH_CONTROLS_SHEET
             self.middleImages[i].ImageRectOffset = Vector2.new(1,1)
-            self.middleImages[i].ImageRectSize = VEC2_DEFAULT_BTN_RECT_SIZE
+            self.middleImages[i].ImageRectSize = VEC2_DEFAULT_JUMP_BTN_RECT_SIZE
             self.middleImages[i].ImageTransparency = MIDDLE_TRANSPARENCIES[i]
             self.middleImages[i].AnchorPoint = Vector2.new(0.5, 0.5)
             self.middleImages[i].ZIndex = 9
@@ -651,7 +654,7 @@ function MoveTouch:create(parentFrame: GuiBase2d)
     end
 
     ----------------------------------------------------------------------------------------------------------------------------------------
-    -- setup jump button
+    -- Setup jump button
     local resizeJumpBtn do
         if self.jumpButton then
             self.jumpButton:Destroy()
@@ -664,7 +667,7 @@ function MoveTouch:create(parentFrame: GuiBase2d)
         self.jumpButton.BackgroundTransparency = 1
         self.jumpButton.Image = TOUCH_CONTROLS_SHEET
         self.jumpButton.ImageRectOffset = VEC2_JUMP_BTN_RECT_OFFS
-        self.jumpButton.ImageRectSize = VEC2_DEFAULT_BTN_RECT_SIZE
+        self.jumpButton.ImageRectSize = VEC2_DEFAULT_JUMP_BTN_RECT_SIZE
 
         function resizeJumpBtn()
             local minAxis = math.min(parentFrame.AbsoluteSize.X, parentFrame.AbsoluteSize.Y)
@@ -696,58 +699,55 @@ function MoveTouch:create(parentFrame: GuiBase2d)
     end
 
     ----------------------------------------------------------------------------------------------------------------------------------------
-    -- setup run button
-    local resizeRunBtn do
-        if (self.runButton) then
-            self.runButton:Destroy()
-            self.runButton = nil
+    -- Setup dash button
+    local resizeDashBtn do
+        if (self.dashButton) then
+            self.dashButton:Destroy()
+            self.dashButton = nil
         end
 
-        self.runButton = Instance.new("ImageButton")
-        self.runButton.Name = "RunButton"
-        self.runButton.Visible = false
-        self.runButton.BackgroundTransparency = 1
-        self.runButton.Image = "http://www.roblox.com/asset/?id=1249020613"
+        self.dashButton = Instance.new("ImageButton")
+        self.dashButton.Name = "DashButton"
+        self.dashButton.Visible = false
+        self.dashButton.BackgroundTransparency = 1
+        self.dashButton.Image = DASH_CONTROLS_SHEET --"rbxassetid://112624558407685"
+        self.dashButton.ImageRectOffset = VEC2_DASH_BTN_RECT_OFFS
+        self.dashButton.ImageRectSize = VEC2_DEFAULT_DASH_BTN_RECT_SIZE
 
-        function resizeRunBtn()
+        function resizeDashBtn()
             local minAxis = math.min(parentFrame.AbsoluteSize.X, parentFrame.AbsoluteSize.Y)
             local isSmallScreen = minAxis <= 500
-            local runButtonSize = isSmallScreen and 70 or 120
+            local dashBtnSize = isSmallScreen and 70 or 120
 
-            self.runButton.Size = UDim2.new(0, runButtonSize, 0, runButtonSize)
-            self.runButton.Position = isSmallScreen and
-                UDim2.new(1, -(runButtonSize*1.5-12), 1, -runButtonSize - 100) or
-                UDim2.new(1, -(runButtonSize*1.5-12), 1, -runButtonSize * 3)
+            self.dashButton.Size = UDim2.new(0, dashBtnSize, 0, dashBtnSize)
+            self.dashButton.Position = isSmallScreen and
+                UDim2.new(1, -(dashBtnSize*1.5-12), 1, -dashBtnSize - 100) or
+                UDim2.new(1, -(dashBtnSize*1.5-12), 1, -dashBtnSize * 3)
         end
-        resizeRunBtn()
+        resizeDashBtn()
 
-        self.runTouchObj = nil
-        self.runButton.InputBegan:Connect(function(inputObject)
-            if (self.runTouchObj or inputObject.UserInputType ~= Enum.UserInputType.Touch
+        self.dashTouchObj = nil
+        self.dashButton.InputBegan:Connect(function(inputObject)
+            if (self.dashTouchObj or inputObject.UserInputType ~= Enum.UserInputType.Touch
                 or inputObject.UserInputState ~= Enum.UserInputState.Begin) then
                 return
             end
+            print(self.dashButton.visible)
+            self.dashTouchObj = inputObject
+            self.dashButton.ImageRectOffset = Vector2.new(146, 146)
+            self.dashInp = true
 
-            self.runTouchObj = inputObject
-            self.runInp = not self.runInp
-
-            if (self.runInp) then
-                self.runButton.Image = "http://www.roblox.com/asset/?id=11677094284"
-            else
-                self.runButton.Image = "http://www.roblox.com/asset/?id=1249020613"
-            end
-
-            self:updateRun()
+            self:updateDash()
         end)
 
-        self.runButton.Parent = parentFrame
+        self.dashButton.Parent = parentFrame
     end
 
     -- screen size changed connection
     local function resizeControlUI()
         resizeThumbstick()
         resizeJumpBtn()
-        resizeRunBtn()
+        resizeDashBtn()
     end
     self.absoluteSizeChangedConn = parentFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(resizeControlUI)
 end

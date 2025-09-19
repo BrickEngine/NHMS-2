@@ -8,7 +8,7 @@ local BaseCam = require(script.Parent.BaseCam)
 
 local INITIAL_CAMERA_ANGLE = CFrame.fromOrientation(math.rad(-15), 0, 0)
 local CAM_OFFSET = Vector3.new(0, 2.5, 0)
-local CAM_SENS = 12
+local CAM_SENS = 34
 local BANK_DAMP = 0.05
 local MIN_Y = -89
 local MAX_Y = 89
@@ -65,7 +65,7 @@ function FPCam:update(dt)
     -- Calculate camera CFrame
 	if (subjCFrame and player and cam) then
         local adjInputVec = rotateInput * CAM_SENS
-        local x = camAngVec.X - adjInputVec.Y
+        local x = (camAngVec.X - adjInputVec.Y)
 
         local rot_x = (x >= MAX_Y and MAX_Y) or (x <= MIN_Y and MIN_Y) or x
         local rot_y = (camAngVec.Y - adjInputVec.X) % 360

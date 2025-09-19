@@ -15,7 +15,7 @@ local KEY_A = Enum.KeyCode.A
 local KEY_D = Enum.KeyCode.D
 local KEY_UP = Enum.KeyCode.Up
 local KEY_DOWN = Enum.KeyCode.Down
-local KEY_RUN = Enum.KeyCode.LeftShift
+local KEY_DASH = Enum.KeyCode.LeftShift
 local KEY_JUMP = Enum.KeyCode.Space
 
 local MoveKeyboard = setmetatable({}, BaseInput)
@@ -35,10 +35,10 @@ function MoveKeyboard:enable(enable: boolean)
     end
 
     self.f_val, self.b_val, self.l_val, self.r_val = 0, 0, 0, 0
-	self.jumpInp, self.runInp = false, false
+	self.jumpInp, self.dashInp = false, false
     self.moveVec = VEC3_ZERO
 	self.isJumping = false
-	self.isRunning = false
+	self.isDashing = false
 
 	if (enable) then
 		self:bindActions()
@@ -51,8 +51,8 @@ function MoveKeyboard:enable(enable: boolean)
     return true
 end
 
-function MoveKeyboard:updateRun()
-	self.isRunning = self.runInp
+function MoveKeyboard:updateDash()
+	self.isDashing = self.dashInp
 end
 
 function MoveKeyboard:updateJump()
@@ -93,9 +93,9 @@ function MoveKeyboard:bindActions()
 		self:updateJump()
 		return Enum.ContextActionResult.Pass
 	end
-	local handleRunAction = function(inputObject)
-		self.runInp = UserInputService:IsKeyDown(inputObject)
-		self:updateRun()
+	local handleDashAction = function(inputObject)
+		self.dashInp = UserInputService:IsKeyDown(inputObject)
+		self:updateDash()
 	end
 
 	ContextActionService:BindActionAtPriority(ContextActions.MOVE_F, handleMoveForward, false, self.CONTROL_PRIORITY, KEY_W, KEY_UP)
@@ -104,7 +104,7 @@ function MoveKeyboard:bindActions()
 	ContextActionService:BindActionAtPriority(ContextActions.MOVE_R, handleMoveRight, false, self.CONTROL_PRIORITY, KEY_D)
 	ContextActionService:BindActionAtPriority(ContextActions.JUMP, handleJumpAction, false, self.CONTROL_PRIORITY, KEY_JUMP)
 	--ContextActionService:BindActionAtPriority(ContextActions.RUN, handleRunAction, false, self.CONTROL_PRIORITY, KEY_RUN)
-	RunService:BindToRenderStep(ContextActions.RUN, self.CONTROL_PRIORITY, function() handleRunAction(KEY_RUN) end)
+	RunService:BindToRenderStep(ContextActions.DASH, self.CONTROL_PRIORITY, function() handleDashAction(KEY_DASH) end)
 
 	self._connectionUtil:trackBoundFunction(ContextActions.MOVE_F, function() ContextActionService:UnbindAction(ContextActions.MOVE_F) end)
 	self._connectionUtil:trackBoundFunction(ContextActions.MOVE_B, function() ContextActionService:UnbindAction(ContextActions.MOVE_B) end)
@@ -112,26 +112,26 @@ function MoveKeyboard:bindActions()
 	self._connectionUtil:trackBoundFunction(ContextActions.MOVE_R, function() ContextActionService:UnbindAction(ContextActions.MOVE_R) end)
 	self._connectionUtil:trackBoundFunction(ContextActions.JUMP, function() ContextActionService:UnbindAction(ContextActions.JUMP) end)
 	--self._connectionUtil:trackBoundFunction(ContextActions.RUN, function() ContextActionService:UnbindAction(ContextActions.RUN) end)
-	self._connectionUtil:trackBoundFunction(ContextActions.RUN, function() RunService:UnbindFromRenderStep(ContextActions.RUN) end)
+	self._connectionUtil:trackBoundFunction(ContextActions.DASH, function() RunService:UnbindFromRenderStep(ContextActions.DASH) end)
 end
 
 function MoveKeyboard:connectFocusEventListeners()
 	local function onFocusReleased()
 		self.moveVector = VEC3_ZERO
 		self.f_val, self.b_val, self.l_val, self.r_val = 0, 0, 0, 0
-		self.jumpInp, self.runInp = false, false
+		self.jumpInp, self.dashInp = false, false
 
 		self:updateJump()
-		self:updateRun()
+		self:updateDash()
 	end
 
 	local function onTextFocusGained(textboxFocused)
 		self.moveVector = VEC3_ZERO
 		self.f_val, self.b_val, self.l_val, self.r_val = 0, 0, 0, 0
-		self.jumpInp, self.runInp = false, false
+		self.jumpInp, self.dashInp = false, false
 
 		self:updateJump()
-		self:updateRun()
+		self:updateDash()
 	end
 
 	self._connectionUtil:trackConnection("textBoxFocusReleased", UserInputService.TextBoxFocusReleased:Connect(onFocusReleased))

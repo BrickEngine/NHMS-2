@@ -36,7 +36,7 @@ local PARAMS = {
         0, 0, 1
     ),
     PLAYERMODEL_OFFSET_CF = CFrame.new(
-        0, 0, 0,
+        0, 1, 0,
         1, 0, 0,
         0, 1, 0,
         0, 0, 1
@@ -106,12 +106,12 @@ local function createCharacter(playerModel: Model?): Model
     character.PrimaryPart = rootPart
     createParentedAttachment("Root", rootPart)
 
-    if (Gobal.GAME_PHYS_DEBUG) then
+    if (Gobal.GAME_CHAR_DEBUG) then
         setMdlTransparency(character, 0.5)
         mainColl.Color = DEBUG_COLL_COLOR3
     end
 
-    -- add playermodel
+    -- Playermodels with assigned PrimaryPart are required
     if (not playerModel) then
         error("No PlayerModel found", 2)
     end
@@ -122,9 +122,11 @@ local function createCharacter(playerModel: Model?): Model
     local plrMdlClone = playerModel:Clone()
     local plrMdlPrimPart = plrMdlClone.PrimaryPart
 
-    for _, inst: Instance in pairs(plrMdlClone:GetChildren()) do
+    for _, inst: Instance in pairs(plrMdlClone:GetDescendants()) do
         if (inst:IsA("BasePart")) then
             inst.Parent = character
+            inst.CanCollide = false
+
             if (not PLAYERMDL_MASS_ENABLED) then
                 inst.Massless = true
             end
@@ -145,7 +147,7 @@ local function createCharacter(playerModel: Model?): Model
     local buoySens = Instance.new("BuoyancySensor", plrMdlPrimPart)
     buoySens.UpdateType = Enum.SensorUpdateType.OnRead
 
-    -- setup instance streaming
+    -- Player characters should never be streamed out for other clients
     if (Workspace.StreamingEnabled) then
         character.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
     end
