@@ -1,34 +1,27 @@
 local PhysicsService = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
 local Global = require(ReplicatedStorage.Shared.Global)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
-local CollisionGroups = require(ReplicatedStorage.Shared.CollisionGroups)
-local NetApiDef = require(ReplicatedStorage.Shared.NetworkApiDef)
-local ServApi = require(script.ServApi)
-
-local PLAYERS_FOLD_NAME = Global.PLAYERS_FOLD_NAME
+local Network = require(ReplicatedStorage.Shared.Network)
+local ServApi = require(script.ServNetApi)
 
 ------------------------------------------------------------------------------------------------------
 -- Initialize Workspace
 do
-    -- create ReplicatedStorage network folder
-    if (not ReplicatedStorage:FindFirstChild(NetApiDef.FOLD_NAME)) then
-        local netFold = Instance.new("Folder", ReplicatedStorage)
-        netFold.Name = NetApiDef.FOLD_NAME
-    end
-
     -- Create Workspace folder for runtime player characters
-    if (not Workspace:FindFirstChild(PLAYERS_FOLD_NAME)) then
-        local plrFold = Instance.new("Folder", Workspace)
-        plrFold.Name = PLAYERS_FOLD_NAME
+    if (not Workspace:FindFirstChild(Global.PLAYERS_INST_FOLDER_NAME)) then
+        Instance.new(
+            "Folder", Workspace
+        ).Name = Global.PLAYERS_INST_FOLDER_NAME
     end
 
     -- Check if all collision groups are registered
-    for _, groupName in pairs(CollisionGroups) do
+    for _, groupName in pairs(Global.COLL_GROUPS) do
         if (not PhysicsService:IsCollisionGroupRegistered(groupName)) then
             warn("unregistered collision group: " .. groupName)
         end
@@ -41,25 +34,25 @@ local function removePlayerCharacter(plr: Player)
 	if (plr.Character) then plr.Character:Destroy() end
 end
 
-local function setPlrReplicationFocus(plr: Player)
-    if (not Players[plr.Name]) then
-        error("player does not exist", 2)
-    end
+-- local function setPlrReplicationFocus(plr: Player)
+--     if (not Players[plr.Name]) then
+--         error("player does not exist", 2)
+--     end
 
-    local repPart: BasePart
-    local basePlate = Workspace:FindFirstChild("Baseplate")
+--     local repPart: BasePart
+--     local basePlate = Workspace:FindFirstChild("Baseplate")
 
-    if (basePlate) then
-        repPart = basePlate
-    else
-        repPart = Instance.new("Part", Workspace)
-        repPart.Anchored = true
-        repPart.CFrame = CFrame.identity
-        repPart.CanCollide, repPart.CanQuery, repPart.CanTouch = false, false, false
-        repPart.Transparency = 1
-    end
-    plr.ReplicationFocus = repPart
-end
+--     if (basePlate) then
+--         repPart = basePlate
+--     else
+--         repPart = Instance.new("Part", Workspace)
+--         repPart.Anchored = true
+--         repPart.CFrame = CFrame.identity
+--         repPart.CanCollide, repPart.CanQuery, repPart.CanTouch = false, false, false
+--         repPart.Transparency = 1
+--     end
+--     plr.ReplicationFocus = repPart
+-- end
 
 local function spawnAndSetPlrChar(plr: Player)
     -- TODO: proper PlayerModel selection
@@ -71,11 +64,11 @@ local function spawnAndSetPlrChar(plr: Player)
 	local spawnPos : Vector3 = (tmpSpawn.CFrame.Position + Vector3.new(0,2,0)) or Vector3.new(0, 50, 0)  --spawns[math.random(1, #spawns)]
     do
         newCharacter.Name = tostring(plr.UserId)
-        newCharacter.Parent = Workspace.ActivePlayers
+        newCharacter.Parent = Workspace:FindFirstChild(Global.PLAYERS_INST_FOLDER_NAME)
         newCharacter:MoveTo(spawnPos)
 
-        newCharacter.PrimaryPart:SetNetworkOwner(plr)
         plr.Character = newCharacter
+        newCharacter.PrimaryPart:SetNetworkOwner(plr)
     end
 
     if (Workspace.StreamingEnabled) then
@@ -94,22 +87,23 @@ local function onPlayerRemoving(plr: Player)
     removePlayerCharacter(plr)
 end
 
+-- Network events management
 local remEventFunctions = {
-    [NetApiDef.clientEvents.requestSpawn] = function(plr: Player)
+    [Network.clientEvents.requestSpawn] = function(plr: Player)
         if (plr.Character) then
             warn(plr.Name.." attempted to spawn with active character")
             plr.Character = nil
         end
         spawnAndSetPlrChar(plr)
     end,
-    [NetApiDef.clientEvents.requestDespawn] = function(plr: Player)
+    [Network.clientEvents.requestDespawn] = function(plr: Player)
         removePlayerCharacter(plr)
         -- TODO
     end
 }
 
 local fastRemEventFunctions = {
-    [NetApiDef.clientFastEvents.cJointsDataSend] = function(plr: Player)
+    [Network.clientFastEvents.cJointsDataSend] = function(plr: Player)
         -- TODO
     end
 }

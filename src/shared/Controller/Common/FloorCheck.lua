@@ -1,16 +1,14 @@
-local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local CollisionGroups = require(ReplicatedStorage.Shared.CollisionGroups)
 
 local DebugVisualize = require(script.Parent.DebugVisualize)
 
 local NUM_RAYS = 32
 local RADIUS_OFFSET = 0.05
 local RAY_Y_OFFSET = 0.1
-local PHI = 1.61803398875
+local TARGET_CLOSEST = true -- If true, picks highest point as target position
+local MAX_INCLINE_ANGLE = math.rad(70) -- Convert to rad, angle at which a hit will not be registered
 
+local PHI = 1.61803398875
 local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1 ,0)
 local VEC3_FARDOWN = -Vector3.new(999999, 999999, 999999)
@@ -80,6 +78,27 @@ local function avgPlaneFromPoints(ptsArr: {Vector3}) : {centroid: Vector3, norma
 	}
 end
 
+local function avgVecFromVecs(vecArr: {Vector3}): Vector3
+	local n = #vecArr
+	-- If there is no data, default to a horizontal plane
+	if (n < 1) then
+		return VEC3_UP
+	end
+	if (n == 1) then
+		return vecArr[1]
+	end
+
+	local vecSum = VEC3_ZERO
+	for _,v in ipairs(vecArr) do
+		vecSum += v
+	end
+	vecSum *= 1/n
+
+	return vecSum
+end
+
+---------------------------------------------------------------------------------------------------------
+
 local Phys = {}
 
 export type physData = {
@@ -103,7 +122,7 @@ function Phys.colliderCast(
 	local closestDist = math.huge
 	local targetPos = VEC3_FARDOWN
     local targetNorm = VEC3_UP
-    local pNormAngle = 0
+    local targetNormAngle = 0
 	local numHits = 0
 	local adjHipHeight = hipHeight + RAY_Y_OFFSET
 
@@ -133,14 +152,19 @@ function Phys.colliderCast(
 			local debug_gnd_hit = false
 
 			if (ray.Distance <= adjHipHeight + gndClearDist) then
-				numHits += 1
-				hitPointsArr[numHits] = ray.Position
-				hitNormalsArr[numHits] = ray.Normal
-				debug_gnd_hit = true
-			end
-			if (ray.Distance < closestDist) then
-				closestDist = ray.Distance
-				closestPos = ray.Position
+
+				local hitNormAng = math.asin((VEC3_UP:Cross(ray.Normal)).Magnitude)
+				if (hitNormAng < MAX_INCLINE_ANGLE) then
+					numHits += 1
+					hitPointsArr[numHits] = ray.Position
+					hitNormalsArr[numHits] = ray.Normal
+
+					if (ray.Distance < closestDist) then
+						closestDist = ray.Distance
+						closestPos = ray.Position
+					end
+					debug_gnd_hit = true
+				end
 			end
 
 			-- DEBUG
@@ -158,24 +182,35 @@ function Phys.colliderCast(
 
 	grounded = true
 
-	if (numHits > 2) then
-		local planeData = avgPlaneFromPoints(hitPointsArr, hitNormalsArr)
-		targetPos = planeData.centroid
-		targetNorm = planeData.normal
-		pNormAngle = math.deg(math.acos(targetNorm:Dot(VEC3_UP)))
-	elseif (numHits == 2) then
-		local p1, p2 = hitPointsArr[1], hitPointsArr[2]
-		local n1, n2 = hitNormalsArr[1], hitNormalsArr[2]
-		targetPos = (p1 + p2)*0.5
-		targetNorm = (n1 + n2)*0.5
-	elseif (numHits == 1) then
-		targetPos = hitPointsArr[1]
-		targetNorm = hitNormalsArr[1]
+	if (TARGET_CLOSEST) then
+		if (numHits > 0) then
+			targetPos = closestPos
+			targetNorm = avgVecFromVecs(hitNormalsArr)
+		else
+			grounded = false
+		end
+
 	else
-		grounded = false
+		if (numHits > 2) then
+			local planeData = avgPlaneFromPoints(hitPointsArr)
+			targetPos = planeData.centroid
+			targetNorm = planeData.normal
+			--pNormAngle = math.deg(math.acos(targetNorm:Dot(VEC3_UP)))
+		elseif (numHits == 2) then
+			local p1, p2 = hitPointsArr[1], hitPointsArr[2]
+			local n1, n2 = hitNormalsArr[1], hitNormalsArr[2]
+			targetPos = (p1 + p2)*0.5
+			targetNorm = (n1 + n2)*0.5
+		elseif (numHits == 1) then
+			targetPos = hitPointsArr[1]
+			targetNorm = hitNormalsArr[1]
+		else
+			grounded = false
+		end
 	end
 
-	pNormAngle = math.asin((VEC3_UP:Cross(targetNorm)).Magnitude) --math.deg(math.acos(targetNorm:Dot(VEC3_UP)))
+	targetNormAngle = math.asin((VEC3_UP:Cross(targetNorm)).Magnitude)
+	--math.deg(math.acos(targetNorm:Dot(VEC3_UP)))
 
 	DebugVisualize.normalPart(targetPos, targetNorm, Vector3.new(0.1, 0.1, 2))
 
@@ -185,7 +220,7 @@ function Phys.colliderCast(
 		closestPos = closestPos,
 		normal = targetNorm.Unit,
         gndHeight = targetPos.Y,
-        normalAngle = pNormAngle
+        normalAngle = targetNormAngle
     } :: physData
 end
 

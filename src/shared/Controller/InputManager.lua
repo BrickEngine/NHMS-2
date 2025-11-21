@@ -12,7 +12,7 @@ local ACTION_PRIO = 100
 local NORMALIZE_INPUT = true
 local VEC3_ZERO = Vector3.zero
 
-local MOVEMENT_MODE_MAP = {
+local MOVEMENT_MODE_MAP = table.freeze({
 	[Enum.TouchMovementMode.DPad] = MoveTouch,
 	[Enum.DevTouchMovementMode.DPad] = MoveTouch,
 	[Enum.TouchMovementMode.Thumbpad] = MoveTouch,
@@ -26,18 +26,18 @@ local MOVEMENT_MODE_MAP = {
 	[Enum.ComputerMovementMode.KeyboardMouse] = MoveKeyboard,
 	[Enum.DevComputerMovementMode.KeyboardMouse] = MoveKeyboard,
 	[Enum.DevComputerMovementMode.Scriptable] = nil
-}
-local PC_INPUT_TYPE_MAP = {
+})
+local PC_INPUT_TYPE_MAP = table.freeze({
 	[Enum.UserInputType.Keyboard] = MoveKeyboard,
 	[Enum.UserInputType.MouseButton1] = MoveKeyboard,
 	[Enum.UserInputType.MouseButton2] = MoveKeyboard,
 	[Enum.UserInputType.MouseButton3] = MoveKeyboard,
 	[Enum.UserInputType.MouseWheel] = MoveKeyboard,
 	[Enum.UserInputType.MouseMovement] = MoveKeyboard,
-}
-local TOUCH_INPUT_TYPE_MAP = {
+})
+local TOUCH_INPUT_TYPE_MAP = table.freeze({
     [Enum.UserInputType.Touch] = MoveTouch
-}
+})
 
 local InputManager = {}
 InputManager.__index = InputManager
@@ -204,7 +204,6 @@ function InputManager:updateActiveControlModuleEnabled()
 	enable()
 end
 
--- TODO: implement touch control switch
 function InputManager:onLastInputTypeChanged(newlastInpType: Enum.UserInputType)
     if (lastInpType == newlastInpType) then
         warn("LastInputTypeChanged listener called with current input type")

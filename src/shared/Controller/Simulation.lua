@@ -9,8 +9,8 @@ local DebugVisualize = require(script.Parent.Common.DebugVisualize)
 
 local simStates = script.Parent.SimStates
 local BaseState = require(simStates.BaseState)
-local Ground = require(simStates.Ground) :: BaseState.BaseStateType
-local Water = require(simStates.Water) :: BaseState.BaseStateType
+local Ground = require(simStates.Ground) :: BaseState.BaseState
+local Water = require(simStates.Water) :: BaseState.BaseState
 
 local Global = require(ReplicatedStorage.Shared.Global)
 
@@ -20,6 +20,8 @@ local state_free = true
 
 local Simulation = {}
 Simulation.__index = Simulation
+
+export type Simulation = typeof(Simulation)
 
 function Simulation.new()
     local self = setmetatable({}, Simulation) :: any
@@ -36,8 +38,6 @@ function Simulation.new()
     if Players.LocalPlayer.Character then
 		self:onCharAdded(Players.LocalPlayer.Character)
 	end
-
-    print("Simulation initialized")
 
     return self
 end
@@ -58,7 +58,7 @@ function Simulation:update(dt: number)
     DebugVisualize.step()
 end
 
-function Simulation:transitionState(newState: BaseState.BaseStateType)
+function Simulation:transitionState(newState: BaseState.BaseState)
     state_free = false
 
     if (not newState) then
@@ -103,7 +103,7 @@ function Simulation:resetSimulation()
 
     self.animation = Animation.new(self)
 
-    if (self.states :: {[string]: BaseState.BaseStateType}) then
+    if (self.states :: {[string]: BaseState.BaseState}) then
         for name: string, _ in pairs(self.states) do
             self.states[name]:destroy()
             self.states[name] = nil

@@ -1,14 +1,16 @@
-local GLOBAL_VARS = {
-    -- Debug
+return table.freeze({
+
     GAME_PHYS_DEBUG = true,
     GAME_CHAR_DEBUG = false,
     GAME_UI_DEBUG = false,
 
-    -- Reference Names
-    PLAYERS_FOLD_NAME = "ActivePlayers",
-    NET_FOLD_NAME = "Network"
-}
+    PLAYERS_INST_FOLDER_NAME = "PlayerInstContainer",
 
-table.freeze(GLOBAL_VARS)
+    COLL_GROUPS = {
+        DEFAULT = "Default",
+        TRIGGER = "Trigger",
+        PLAYER = "Player",
+        WATER = "Water",
+    },
 
-return GLOBAL_VARS
+})

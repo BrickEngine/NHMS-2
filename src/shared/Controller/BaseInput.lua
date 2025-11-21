@@ -3,22 +3,17 @@
 
 local ConnectionUtil = require(script.Parent.Common.ConnectionUtil)
 
-export type BaseInputType  = {
-    new: () -> BaseInputType,
-    getMoveVec: (BaseInputType) -> Vector3,
-    getIsJumping: (BaseInputType) -> boolean,
-    getIsRunning: (BaseInputType) -> boolean,
-    enable: (BaseInputType, enable: boolean) -> boolean,
+-- export type BaseInputType  = {
+--     new: () -> BaseInputType,
+--     getMoveVec: (BaseInputType) -> Vector3,
+--     getIsJumping: (BaseInputType) -> boolean,
+--     getIsDashing: (BaseInputType) -> boolean,
+--     enable: (BaseInputType, enable: boolean) -> boolean,
 
-    _connectionUtil: any,
+--     _connectionUtil: any,
 
-    enabled: boolean,
-    isJumping: boolean,
-    isDashing: boolean,
-    moveVec: Vector3,
-
-    [string]: any
-}
+--     [string]: any
+-- }
 
 local VEC3_ZERO = Vector3.zero
 
@@ -26,7 +21,7 @@ local BaseMoveInput = {}
 BaseMoveInput.__index = BaseMoveInput
 
 function BaseMoveInput.new()
-    local self = setmetatable({}, BaseMoveInput) :: BaseInputType
+    local self = setmetatable({}, BaseMoveInput) :: any
 
     self._connectionUtil = ConnectionUtil.new()
 
@@ -34,6 +29,8 @@ function BaseMoveInput.new()
     self.isJumping = false
     self.isDashing = false
     self.moveVec = VEC3_ZERO
+
+    export type BaseInput = typeof(self)
 
     return self
 end

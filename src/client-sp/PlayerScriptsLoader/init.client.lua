@@ -1,13 +1,16 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local playerScripts = script.Parent
+-- Init character controller
+require(ReplicatedStorage.Shared.Controller)
 
-local Controller = require(ReplicatedStorage.Shared.Controller)
-local NetApiDef = require(ReplicatedStorage.Shared.NetworkApiDef)
-local CliApi = require(script.CliApi)
+local Network = require(ReplicatedStorage.Shared.Network)
+local CliApi = require(ReplicatedStorage.Shared.Network.CliNetApi)
+local GameClient = require(ReplicatedStorage.Shared.GameClient)
 
-local clientEvents = NetApiDef.clientEvents
+GameClient:reset()
+
+local clientEvents = Network.clientEvents
 
 -- TODO:
 -- request streaming position with RequestStreamAroundAsync(), which is returned from

@@ -98,21 +98,32 @@ function MoveKeyboard:bindActions()
 		self:updateDash()
 	end
 
-	ContextActionService:BindActionAtPriority(ContextActions.MOVE_F, handleMoveForward, false, self.CONTROL_PRIORITY, KEY_W, KEY_UP)
-	ContextActionService:BindActionAtPriority(ContextActions.MOVE_B, handleMoveBackward, false, self.CONTROL_PRIORITY, KEY_S, KEY_DOWN)
-	ContextActionService:BindActionAtPriority(ContextActions.MOVE_L, handleMoveLeft, false, self.CONTROL_PRIORITY, KEY_A)
-	ContextActionService:BindActionAtPriority(ContextActions.MOVE_R, handleMoveRight, false, self.CONTROL_PRIORITY, KEY_D)
-	ContextActionService:BindActionAtPriority(ContextActions.JUMP, handleJumpAction, false, self.CONTROL_PRIORITY, KEY_JUMP)
+	ContextActionService:BindActionAtPriority(
+		ContextActions.MOVE_F, handleMoveForward, false, self.CONTROL_PRIORITY, KEY_W, KEY_UP)
+	ContextActionService:BindActionAtPriority(
+		ContextActions.MOVE_B, handleMoveBackward, false, self.CONTROL_PRIORITY, KEY_S, KEY_DOWN)
+	ContextActionService:BindActionAtPriority(
+		ContextActions.MOVE_L, handleMoveLeft, false, self.CONTROL_PRIORITY, KEY_A)
+	ContextActionService:BindActionAtPriority(
+		ContextActions.MOVE_R, handleMoveRight, false, self.CONTROL_PRIORITY, KEY_D)
+	ContextActionService:BindActionAtPriority(
+		ContextActions.JUMP, handleJumpAction, false, self.CONTROL_PRIORITY, KEY_JUMP)
 	--ContextActionService:BindActionAtPriority(ContextActions.RUN, handleRunAction, false, self.CONTROL_PRIORITY, KEY_RUN)
 	RunService:BindToRenderStep(ContextActions.DASH, self.CONTROL_PRIORITY, function() handleDashAction(KEY_DASH) end)
 
-	self._connectionUtil:trackBoundFunction(ContextActions.MOVE_F, function() ContextActionService:UnbindAction(ContextActions.MOVE_F) end)
-	self._connectionUtil:trackBoundFunction(ContextActions.MOVE_B, function() ContextActionService:UnbindAction(ContextActions.MOVE_B) end)
-	self._connectionUtil:trackBoundFunction(ContextActions.MOVE_L, function() ContextActionService:UnbindAction(ContextActions.MOVE_L) end)
-	self._connectionUtil:trackBoundFunction(ContextActions.MOVE_R, function() ContextActionService:UnbindAction(ContextActions.MOVE_R) end)
-	self._connectionUtil:trackBoundFunction(ContextActions.JUMP, function() ContextActionService:UnbindAction(ContextActions.JUMP) end)
+	self._connectionUtil:trackBoundFunction(
+		ContextActions.MOVE_F, function() ContextActionService:UnbindAction(ContextActions.MOVE_F) end)
+	self._connectionUtil:trackBoundFunction(
+		ContextActions.MOVE_B, function() ContextActionService:UnbindAction(ContextActions.MOVE_B) end)
+	self._connectionUtil:trackBoundFunction(
+		ContextActions.MOVE_L, function() ContextActionService:UnbindAction(ContextActions.MOVE_L) end)
+	self._connectionUtil:trackBoundFunction(
+		ContextActions.MOVE_R, function() ContextActionService:UnbindAction(ContextActions.MOVE_R) end)
+	self._connectionUtil:trackBoundFunction(
+		ContextActions.JUMP, function() ContextActionService:UnbindAction(ContextActions.JUMP) end)
 	--self._connectionUtil:trackBoundFunction(ContextActions.RUN, function() ContextActionService:UnbindAction(ContextActions.RUN) end)
-	self._connectionUtil:trackBoundFunction(ContextActions.DASH, function() RunService:UnbindFromRenderStep(ContextActions.DASH) end)
+	self._connectionUtil:trackBoundFunction(
+		ContextActions.DASH, function() RunService:UnbindFromRenderStep(ContextActions.DASH) end)
 end
 
 function MoveKeyboard:connectFocusEventListeners()
@@ -134,9 +145,12 @@ function MoveKeyboard:connectFocusEventListeners()
 		self:updateDash()
 	end
 
-	self._connectionUtil:trackConnection("textBoxFocusReleased", UserInputService.TextBoxFocusReleased:Connect(onFocusReleased))
-	self._connectionUtil:trackConnection("textBoxFocused", UserInputService.TextBoxFocused:Connect(onTextFocusGained))
-	self._connectionUtil:trackConnection("windowFocusReleased", UserInputService.WindowFocused:Connect(onFocusReleased))
+	self._connectionUtil:trackConnection(
+		"textBoxFocusReleased", UserInputService.TextBoxFocusReleased:Connect(onFocusReleased))
+	self._connectionUtil:trackConnection(
+		"textBoxFocused", UserInputService.TextBoxFocused:Connect(onTextFocusGained))
+	self._connectionUtil:trackConnection(
+		"windowFocusReleased", UserInputService.WindowFocused:Connect(onFocusReleased))
 end
 
 return MoveKeyboard

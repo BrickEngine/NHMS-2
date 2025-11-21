@@ -2,35 +2,27 @@
 
 -- Abstract class for defining a simulation controlled state
 
-local Controller = script.Parent.Parent
+-- export type BaseState = {
+--     new: (_simulation: any) -> BaseState,
+--     stateLeave: (BaseState) -> (),
+--     stateEnter: (BaseState) -> (),
+--     damagePlayer: (BaseState) -> (),
+--     update: (BaseState, dt: number) -> (),
+--     destroy: (BaseState) -> (),
 
-export type SimulationType = {
-    transitionState: (newState: BaseStateType) -> (),
+--     _simulation: any,
+--     id: number,
 
-    states: {[string]: BaseStateType},
-    currentstate: BaseStateType,
-
-    [string]: any
-}
-
-export type BaseStateType = {
-    new: (_simulation: SimulationType) -> BaseStateType,
-    stateLeave: (BaseStateType) -> (),
-    stateEnter: (BaseStateType) -> (),
-    update: (BaseStateType, dt: number) -> (),
-    destroy: (BaseStateType) -> (),
-
-    _simulation: SimulationType,
-    id: number,
-
-    [string]: any
-}
+--     [string]: any
+-- }
 
 local BaseState = {}
 BaseState.__index = BaseState
 
+export type BaseState = typeof(setmetatable({}, BaseState))
+
 function BaseState.new(_simulation)
-    local self = setmetatable({}, BaseState) :: BaseStateType
+    local self = setmetatable({}, BaseState)
 
     self._simulation = _simulation
     self.id = -1
@@ -44,6 +36,10 @@ end
 
 function BaseState:stateLeave()
     return false
+end
+
+function BaseState:damagePlayer(p: Player)
+    print(p)
 end
 
 function BaseState:update(dt: number)

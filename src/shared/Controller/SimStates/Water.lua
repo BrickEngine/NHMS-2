@@ -3,7 +3,7 @@ local Workspace = game:GetService("Workspace")
 
 
 local controller = script.Parent.Parent
-local CollisionGroups = require(ReplicatedStorage.Shared.CollisionGroups)
+local Global = require(ReplicatedStorage.Shared.Global)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(controller.InputManager)
 local BaseState = require(controller.SimStates.BaseState)
@@ -19,13 +19,13 @@ local ANIM_SPEED_FAC_SWIM = 1
 
 -- local vars
 local ray_params_gnd = RaycastParams.new()
-ray_params_gnd.CollisionGroup = CollisionGroups.PLAYER
+ray_params_gnd.CollisionGroup = Global.COLL_GROUPS.PLAYER
 ray_params_gnd.FilterType = Enum.RaycastFilterType.Exclude
 ray_params_gnd.IgnoreWater = true
 ray_params_gnd.RespectCanCollide = true
 
 local ray_params_wtr = RaycastParams.new()
-ray_params_wtr.CollisionGroup = CollisionGroups.WATER
+ray_params_wtr.CollisionGroup = Global.COLL_GROUPS.WATER
 ray_params_wtr.FilterType =Enum.RaycastFilterType.Include
 ray_params_wtr.IgnoreWater = false
 
@@ -76,11 +76,11 @@ local Water = setmetatable({}, BaseState)
 Water.__index = Water
 
 function Water.new(...)
-    local self = setmetatable(BaseState.new(...) :: BaseState.BaseStateType, Water)
+    local self = setmetatable(BaseState.new(...) :: BaseState.BaseState, Water)
 
     self.id = STATE_ID
 
-    return self :: BaseState.BaseStateType
+    return self :: BaseState.BaseState
 end
 
 function Water:stateEnter()

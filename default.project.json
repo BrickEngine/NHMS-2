@@ -37,6 +37,7 @@
       "$properties": {
         "StreamingEnabled": true,
         "SignalBehavior": "Deferred",
+        "PhysicsSteppingMethod": "Fixed",
         "RejectCharacterDeletions": "Enabled"
       }
     },

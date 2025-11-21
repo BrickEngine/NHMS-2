@@ -3,8 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local Gobal = require(ReplicatedStorage.Shared.Global)
-local CollisionGroups = require(ReplicatedStorage.Shared.CollisionGroups)
+local Global = require(ReplicatedStorage.Shared.Global)
 
 local DEBUG_COLL_COLOR3 = Color3.fromRGB(0, 0, 255)
 
@@ -51,7 +50,7 @@ local PARAMS = {
 local function setCollGroup(mdl: Model)
     for _, v: BasePart in pairs(mdl:GetDescendants()) do
         if (v:IsA("BasePart")) then
-            v.CollisionGroup = CollisionGroups.PLAYER
+            v.CollisionGroup = Global.COLL_GROUPS.PLAYER
         end
     end
 end
@@ -106,7 +105,7 @@ local function createCharacter(playerModel: Model?): Model
     character.PrimaryPart = rootPart
     createParentedAttachment("Root", rootPart)
 
-    if (Gobal.GAME_CHAR_DEBUG) then
+    if (Global.GAME_CHAR_DEBUG) then
         setMdlTransparency(character, 0.5)
         mainColl.Color = DEBUG_COLL_COLOR3
     end

@@ -9,9 +9,22 @@ local BaseCam = require(script.Parent.BaseCam)
 local INITIAL_CAMERA_ANGLE = CFrame.fromOrientation(math.rad(-15), 0, 0)
 local CAM_OFFSET = Vector3.new(0, 2.5, 0)
 local CAM_SENS = 34
-local BANK_DAMP = 0.05
+local CAM_MAX_TILT = 6
+local CAM_TILT_DT = 0.2
 local MIN_Y = -89
 local MAX_Y = 89
+
+local function lerp(v0: number, v1: number, dt: number): number
+	return (1 - dt) * v0 + dt * v1
+end
+
+local function easeOutQuad(v0: number, v1: number, dt: number): number
+  return -(v1 - v0) * dt * (dt - 2) + v0
+end
+
+--------------------------------------------------------------------------------------------------
+-- Module
+--------------------------------------------------------------------------------------------------
 
 local FPCam = setmetatable({}, BaseCam)
 FPCam.__index = FPCam
@@ -27,8 +40,8 @@ end
 --------------------------------------------------------------------------------------------------
 -- FPCam RenderStepped update
 --------------------------------------------------------------------------------------------------
-
 local camAngVec = Vector3.zero
+local lastRotInp = 0
 
 function FPCam:update(dt)
 	local now = tick()
@@ -71,9 +84,17 @@ function FPCam:update(dt)
         local rot_y = (camAngVec.Y - adjInputVec.X) % 360
 
         local planeVelVec = Vector3.new(subjVel.X, 0, subjVel.Z)
-        local rot_z = math.clamp(
-            planeVelVec:Dot(subjCFrame.RightVector) * BANK_DAMP, -2.2, 2.2
-        )
+
+		-- this used to be "Quake" style (velocity linked) camera tilting
+        -- local rot_z = math.clamp(
+        --     planeVelVec:Dot(subjCFrame.RightVector) * BANK_DAMP, -2.2, 2.2
+        -- )
+
+		-- Mouse movement linked camera tilting
+		local limitedRotX = math.clamp(rotateInput.X * 45, -CAM_MAX_TILT, CAM_MAX_TILT)
+		local rot_z = lerp(lastRotInp, limitedRotX, CAM_TILT_DT) --dt*30
+		lastRotInp = rot_z
+
         camAngVec = Vector3.new(rot_x, rot_y, rot_z)
 
         newCamCFrame = CFrame.new(newCamFocus.Position + CAM_OFFSET)

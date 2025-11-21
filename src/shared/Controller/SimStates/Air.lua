@@ -1,23 +1,19 @@
---!strict
-
-local Workspace = game:GetService("Workspace")
-
 local BaseState = require(script.Parent.BaseState)
 
 local Air = setmetatable({}, BaseState)
 Air.__index = Air
 
 function Air.new(...)
-    local self = setmetatable(BaseState.new(...) :: BaseState.BaseStateType, Air)
+    local self = setmetatable(BaseState.new(...) :: BaseState.BaseState, Air)
 
-    return self :: BaseState.BaseStateType
+    return self :: BaseState.BaseState
 end
 
-function Air:enterState()
+function Air:stateEnter()
     return
 end
 
-function Air:leaveState()
+function Air:stateLeave()
     return
 end
 
