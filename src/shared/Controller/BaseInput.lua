@@ -39,11 +39,11 @@ function BaseMoveInput:getMoveVec(): Vector3
     return self.moveVec
 end
 
-function BaseMoveInput:getIsJumping(): boolean
+function BaseMoveInput:getJumpKeyDown(): boolean
     return self.isJumping
 end
 
-function BaseMoveInput:getIsDashing(): boolean
+function BaseMoveInput:getDashKeyDown(): boolean
     return self.isDashing
 end
 

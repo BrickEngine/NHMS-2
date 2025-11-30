@@ -3,7 +3,7 @@ local Workspace = game:GetService("Workspace")
 local DebugVisualize = require(script.Parent.DebugVisualize)
 
 local NUM_RAYS = 32
-local RADIUS_OFFSET = 0.05
+local RADIUS_OFFSET = 0.08
 local RAY_Y_OFFSET = 0.1
 local TARGET_CLOSEST = true -- If true, picks highest point as target position
 local MAX_INCLINE_ANGLE = math.rad(70) -- Convert to rad, angle at which a hit will not be registered
@@ -81,10 +81,9 @@ end
 local function avgVecFromVecs(vecArr: {Vector3}): Vector3
 	local n = #vecArr
 	-- If there is no data, default to a horizontal plane
-	if (n < 1) then
+	if (n == 0) then
 		return VEC3_UP
-	end
-	if (n == 1) then
+	elseif (n == 1) then
 		return vecArr[1]
 	end
 
@@ -124,11 +123,12 @@ function Phys.colliderCast(
     local targetNorm = VEC3_UP
     local targetNormAngle = 0
 	local numHits = 0
+	local numTotalHits = 0
 	local adjHipHeight = hipHeight + RAY_Y_OFFSET
 
 	-- Cylinder cast checks with sunflower distribution
 	local hitPointsArr = {} :: {Vector3}
-	local hitNormalsArr = {} :: {Vector3}
+	local normalsArr = {} :: {Vector3}
 
 	-- TODO: return a hit BasePart, which is closest to the RootPart
 	--local hitObjectArr = {} :: {BasePart}
@@ -151,13 +151,15 @@ function Phys.colliderCast(
 		if (ray :: RaycastResult) then
 			local debug_gnd_hit = false
 
+			numTotalHits += 1
+			normalsArr[numTotalHits] = ray.Normal
+
 			if (ray.Distance <= adjHipHeight + gndClearDist) then
 
 				local hitNormAng = math.asin((VEC3_UP:Cross(ray.Normal)).Magnitude)
 				if (hitNormAng < MAX_INCLINE_ANGLE) then
 					numHits += 1
 					hitPointsArr[numHits] = ray.Position
-					hitNormalsArr[numHits] = ray.Normal
 
 					if (ray.Distance < closestDist) then
 						closestDist = ray.Distance
@@ -185,25 +187,20 @@ function Phys.colliderCast(
 	if (TARGET_CLOSEST) then
 		if (numHits > 0) then
 			targetPos = closestPos
-			targetNorm = avgVecFromVecs(hitNormalsArr)
 		else
 			grounded = false
 		end
+		targetNorm = avgVecFromVecs(normalsArr)
 
 	else
+		targetNorm = avgVecFromVecs(normalsArr)
 		if (numHits > 2) then
 			local planeData = avgPlaneFromPoints(hitPointsArr)
 			targetPos = planeData.centroid
 			targetNorm = planeData.normal
 			--pNormAngle = math.deg(math.acos(targetNorm:Dot(VEC3_UP)))
-		elseif (numHits == 2) then
-			local p1, p2 = hitPointsArr[1], hitPointsArr[2]
-			local n1, n2 = hitNormalsArr[1], hitNormalsArr[2]
-			targetPos = (p1 + p2)*0.5
-			targetNorm = (n1 + n2)*0.5
-		elseif (numHits == 1) then
-			targetPos = hitPointsArr[1]
-			targetNorm = hitNormalsArr[1]
+		elseif (numHits == 2 or numHits == 1) then
+			targetPos = avgVecFromVecs(hitPointsArr)
 		else
 			grounded = false
 		end

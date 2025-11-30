@@ -9,7 +9,7 @@ local RunService = game:GetService("RunService")
 
 local InputManager = require(ReplicatedStorage.Shared.Controller.InputManager)
 
-local DASH_TIME = 4 --seconds
+local DASH_TIME = 2 --seconds
 local DASH_COOLDOWN_TIME = 1 --seconds
 local DEFAULT_HEALTH = 100
 
@@ -23,16 +23,15 @@ type Counter = {
 ------------------------------------------------------------------------------------------------------------------------
 -- Module
 ------------------------------------------------------------------------------------------------------------------------
-
 local GameClient = {
-    -- resetable
     gameTime = 0,
-    dash = {t = 0, coolDown = 0} :: Counter,
     currentInvSlot = 0,
     health = 0,
     armor = 0,
 
-    -- not resetable
+    dash = {t = 0, coolDown = 0} :: Counter,
+    isDashing = false,
+
     kills = 0,
     score = 0,
 }
@@ -43,21 +42,39 @@ function GameClient:updateGameTime(dt: number, override: number?)
     self.gameTime += dt
 end
 
+function GameClient:getIsDashing()
+    return self.isDashing
+end
+
+local inpReleased = false
 function GameClient:updateDash(dt: number)
+    local input = InputManager:getDashKeyDown()
+
     if (self.dash.t > 0) then
-        if (InputManager:getIsDashing()) then
-            self.dash = {
-                t = math.max(self.dash.t - dt, 0),
-                coolDown = DASH_COOLDOWN_TIME
-            }
+        if (input) then
+            self.dash.t = math.max(self.dash.t - dt, 0)
+            if (self.dash.t <= 0) then
+                self.dash.coolDown = DASH_COOLDOWN_TIME
+                inpReleased = false
+            end
         end
-    else
+    elseif (self.dash.coolDown > 0) then
         self.dash.coolDown = math.max(self.dash.coolDown - dt, 0)
+        if (self.dash.coolDown <= 0) then
+            self.dash.t = DASH_TIME
+        end
     end
 
-    if (self.dash.coolDown <= 0) then
-        self.dash.t = math.min(self.dash.t + dt, DASH_TIME)
+    if (not input and self.dash.coolDown <= 0) then
+        inpReleased = true
     end
+
+    if (self.dash.coolDown <= 0 and inpReleased and input) then
+        self.isDashing = true
+        return
+    end
+
+    self.isDashing = false
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -71,10 +88,12 @@ end
 -- Sets player data default values and stops execution
 function GameClient:reset()
     self.gameTime = 0
-    self.dash = {t = DASH_TIME, coolDown = 0} :: Counter
     self.currentInvSlot = 0
     self.health = DEFAULT_HEALTH
     self.armor = 0
+
+    self.dash = {t = DASH_TIME, coolDown = 0} :: Counter
+    self.isDashing = false
 
     if (updateConn) then
         (updateConn :: RBXScriptConnection):Disconnect()

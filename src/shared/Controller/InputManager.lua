@@ -106,18 +106,18 @@ function InputManager:getMoveVec(): Vector3
     end
 end
 
-function InputManager:getIsJumping(): boolean
+function InputManager:getJumpKeyDown(): boolean
     if (not self.activeInputController) then
         return false
     end
-    return self.activeInputController:getIsJumping()
+    return self.activeInputController:getJumpKeyDown()
 end
 
-function InputManager:getIsDashing(): boolean
+function InputManager:getDashKeyDown(): boolean
     if (not self.activeInputController) then
         return false
     end
-    return self.activeInputController:getIsDashing()
+    return self.activeInputController:getDashKeyDown()
 end
 
 function InputManager:getActiveInputController(): ({}?)

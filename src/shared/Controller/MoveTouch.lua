@@ -167,25 +167,37 @@ function MoveTouch:fadeThumbstick(visible: boolean?)
 	end
 
 	if visible then
-		self.startImageFadeTween = TweenService:Create(self.startImage, ThumbstickFadeTweenInfo, { ImageTransparency = 0 })
+		self.startImageFadeTween = TweenService:Create(
+            self.startImage, ThumbstickFadeTweenInfo, { ImageTransparency = 0 }
+        )
 		self.startImageFadeTween:Play()
 
-		self.endImageFadeTween = TweenService:Create(self.endImage, ThumbstickFadeTweenInfo, { ImageTransparency = 0.2 })
+		self.endImageFadeTween = TweenService:Create(
+            self.endImage, ThumbstickFadeTweenInfo, { ImageTransparency = 0.2 }
+        )
 		self.endImageFadeTween:Play()
 
 		for i = 1, #self.middleImages do
-			self.middleImageFadeTweens[i] = TweenService:Create(self.middleImages[i], ThumbstickFadeTweenInfo, { ImageTransparency = MIDDLE_TRANSPARENCIES[i] })
+			self.middleImageFadeTweens[i] = TweenService:Create(
+                self.middleImages[i], ThumbstickFadeTweenInfo, { ImageTransparency = MIDDLE_TRANSPARENCIES[i] }
+            )
 			self.middleImageFadeTweens[i]:Play()
 		end
 	else
-		self.startImageFadeTween = TweenService:Create(self.startImage, ThumbstickFadeTweenInfo, { ImageTransparency = 1 })
+		self.startImageFadeTween = TweenService:Create(
+            self.startImage, ThumbstickFadeTweenInfo, { ImageTransparency = 1 }
+        )
 		self.startImageFadeTween:Play()
 
-		self.endImageFadeTween = TweenService:Create(self.endImage, ThumbstickFadeTweenInfo, { ImageTransparency = 1 })
+		self.endImageFadeTween = TweenService:Create(
+            self.endImage, ThumbstickFadeTweenInfo, { ImageTransparency = 1 }
+        )
 		self.endImageFadeTween:Play()
 
 		for i = 1, #self.middleImages do
-			self.middleImageFadeTweens[i] = TweenService:Create(self.middleImages[i], ThumbstickFadeTweenInfo, { ImageTransparency = 1 })
+			self.middleImageFadeTweens[i] = TweenService:Create(
+                self.middleImages[i], ThumbstickFadeTweenInfo, { ImageTransparency = 1 }
+            )
 			self.middleImageFadeTweens[i]:Play()
 		end
 	end
@@ -386,11 +398,13 @@ function MoveTouch:BindContextActions()
 		Enum.UserInputType.Touch
     )
 
-    self.TouchMovedCon = UserInputService.TouchMoved:Connect(function(inputObject: InputObject, _gameProcessedEvent: boolean)
+    self.TouchMovedCon = UserInputService.TouchMoved:Connect(
+            function(inputObject: InputObject, _gameProcessedEvent: boolean
+        )
         inputChanged(inputObject)
     end)
 
-    ----------------------------------------------------------------------------------------------------------------------------------------
+    --------------------------------------------------------------------------------------------------------------------
     -- Dash and jump buttons:
 
     self._connectionUtil:trackConnection(
@@ -436,8 +450,8 @@ function MoveTouch:unbindContextActions()
     self._connectionUtil:disconnect(MENU_OPEN_ACTION_NAME)
 end
 
-----------------------------------------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
 
 function MoveTouch:create(parentFrame: GuiBase2d)
     if (not parentFrame) then
@@ -449,7 +463,7 @@ function MoveTouch:create(parentFrame: GuiBase2d)
         self.absoluteSizeChangedConn = nil
     end
 
-    ----------------------------------------------------------------------------------------------------------------------------------------
+    --------------------------------------------------------------------------------------------------------------------
     -- setup dynamic thumbstick
     local resizeThumbstick do
         if self.thumbstickFrame then

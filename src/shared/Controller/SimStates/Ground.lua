@@ -19,15 +19,14 @@ local FloorCheck = require(controller.Common.FloorCheck)
 local STATE_ID = 0
 
 -- General physics config
-local MOVE_SPEED = 2.5
-local DASH_SPEED = 5
+local MOVE_SPEED = 1.75
+local DASH_SPEED = 30.2
 local GND_CLEAR_DIST = 0.45 -- 0.2
-local MAX_INCLINE = math.rad(70) -- degrees
+local MAX_INCLINE = math.rad(70) -- radiants
 local JUMP_HEIGHT = 6
-local JUMP_DELAY = 0.3
+local JUMP_DELAY = 0.28
 local MOVE_DAMP = 0.4 -- lower value ~ more rigid movement
-local WALK_DT = 0.05 -- time delta for walk acceleration
-local DASH_DT = 0.05 -- time delta for dash acceleration
+local MOVE_DT = 0.05 -- time delta for move accel
 
 local FORCE_STEPUP = false -- whether the player will be forced up steep inclines, if too low to the ground
 local GND_FORCE_DIST = 0.1 -- height at which player will be forced up, if FORCE_STEUP is true
@@ -101,13 +100,6 @@ local function getCFrameRelMoveVec(camCFrame: CFrame, relativeVec: Vector3): Vec
             camCFrame.LookVector.X, 0, camCFrame.LookVector.Z
         ).Unit
     ):VectorToWorldSpace(relativeVec)
-end
-
-local function calcWalkAccel(
-    moveVec: Vector3, rootPos: Vector3, currVel: Vector3, dt: number
-): Vector3
-    local target = rootPos - moveVec * MOVE_SPEED
-    return 2*((target - rootPos) - currVel*dt)/(dt*MOVE_DAMP)
 end
 
 local function projectOnPlaneVec3(v: Vector3, norm: Vector3)
@@ -193,10 +185,10 @@ local j_Delay = 0
 local lastYPos = 0
 local jumped = false
 
-function Ground:updateJump(dt: number)
-
+function Ground:updateJump(dt: number, overwrite: boolean?)
+    -- Manages input cooldown for the jump action
     local function updateJumpTime()
-        if (InputManager:getIsJumping()) then
+        if (InputManager:getJumpKeyDown()) then
             if (not j_lastDown and j_Delay <= 0) then
                 j_lastDown = true
                 j_Delay = JUMP_DELAY
@@ -207,11 +199,7 @@ function Ground:updateJump(dt: number)
             j_lastDown = false
         end
 
-        j_Delay -= dt
-        if (j_Delay < 0) then
-            j_Delay = 0
-        end
-
+        j_Delay = math.max(j_Delay - dt, 0)
         self.jumpSignal = false
     end
 
@@ -228,7 +216,8 @@ function Ground:updateJump(dt: number)
             jumped = false
         end
 
-        if (self.jumpSignal) then
+        -- execute jump
+        if (self.jumpSignal or overwrite) then
             if (DO_QUAKE_JUMP_SOUND) then
                 local s = Instance.new("Sound")
                 s.SoundId = "rbxassetid://5466166437"
@@ -249,33 +238,29 @@ function Ground:updateJump(dt: number)
 end
 
 -- Updates horizontal movement force
-function Ground:updateMove(dt: number)
+function Ground:updateMove(dt: number, normal: Vector3, normAngle: number)
     local primaryPart: BasePart = self.character.PrimaryPart
     local camCFrame = Workspace.CurrentCamera.CFrame
     local currVel = primaryPart.AssemblyLinearVelocity
     local currPos = primaryPart.CFrame.Position
     local mass = primaryPart.AssemblyMass
     local currHoriVel = Vector3.new(currVel.X, 0, currVel.Z)
-    local t = 0.05
 
-    local accelVec, target, moveDirVec
-    if (self.dashActive) then
+    local accelVec, moveDirVec, target
+    if (self.dashActive and not (normAngle > MAX_INCLINE)) then
         moveDirVec = -projectOnPlaneVec3(
             camCFrame.LookVector, VEC3_UP
         ).Unit
         target = currPos - moveDirVec * DASH_SPEED
-        accelVec = 2 * ((target - currPos) - currHoriVel * t)/(t * t)
+        accelVec = 2 * ((target - currPos) - currHoriVel * MOVE_DT)/(MOVE_DT * MOVE_DT)
     else
         moveDirVec = getCFrameRelMoveVec(camCFrame, InputManager:getMoveVec())
         target = currPos - moveDirVec * MOVE_SPEED
-        accelVec = 2 * ((target - currPos) - currHoriVel * t)/(t * MOVE_DAMP)
+        accelVec = 2 * ((target - currPos) - currHoriVel * MOVE_DT)/(MOVE_DT * MOVE_DAMP)
     end
-
     self.forces.moveForce.Force = accelVec * mass
 
-    if (self.dashActive) then
-
-    elseif (not self.grounded) then
+    if (not self.grounded and not self.dashActive) then
         self.forces.moveForce.Force *= 0.1
     end
 end
@@ -298,25 +283,11 @@ function Ground:update(dt: number)
     )
     self.grounded = gndPhysData.grounded
     self.inWater = gndPhysData.inWater
-    self.dashActive = GameClient.dash.t > 0 and InputManager:getIsDashing()
+    self.dashActive = GameClient:getIsDashing()
 
     -- State transitions
     if (self.inWater) then
         self._simulation:transitionState(self._simulation.states.Water)
-    end
-
-    --local moveDirVec = getCFrameRelMoveVec(camCFrame)
-    -- local accelVec = calcWalkAccel(
-    --     moveDirVec, currPos, currHoriVel, DASH_DT
-    -- )
-
-    -- Update animation
-    if (currHoriVel.Magnitude >= ANIM_THRESHHOLD) then
-        self.animation:setState("Walk")
-        self.animation:adjustSpeed(currHoriVel.Magnitude * ANIM_SPEED_FAC)
-    else
-        self.animation:setState("Idle")
-        self.animation:adjustSpeed(1)
     end
 
     if (self.grounded) then
@@ -325,8 +296,6 @@ function Ground:update(dt: number)
         -- Scale force with cubed vertical velocity to compensate for high falls
         self.forces.posForce.MaxAxesForce = VEC3_UP * mass * (g * 20 + currVel.Y * currVel.Y)
         self.forces.posForce.Position = Vector3.new(0, targetPosY, 0)
-
-        --self.forces.moveForce.Force = accelVec * mass
 
         -- Force character to get more ground distance, if too close to ground
         if (FORCE_STEPUP) then
@@ -356,31 +325,7 @@ function Ground:update(dt: number)
                 end
             end
         end
-
-        -- Handle jumping
-        -- do
-        --     if (j_Delay <= 0 or (jumped and currPos.Y < lastYPos)) then
-        --         self.forces.posForce.Enabled = true
-        --         jumped = false
-        --     end
-
-        --     if (self.jumpSignal) then
-        --         if (DO_QUAKE_JUMP_SOUND) then
-        --             local s = Instance.new("Sound")
-        --             s.SoundId = "rbxassetid://5466166437"
-        --             SoundService:PlayLocalSound(s)
-        --             s:Destroy()
-        --         end
-
-        --         self.forces.posForce.Enabled = false
-
-        --         local jumpInitVel: number = math.sqrt(Workspace.Gravity * 2 * JUMP_HEIGHT)
-        --         primaryPart:ApplyImpulse(VEC3_UP * (jumpInitVel - currVel.Y) * mass)
-        --         jumped = true
-        --     end
-        -- end
     else
-        --self.forces.moveForce.Force = accelVec * mass * 0.1
         self.forces.posForce.Enabled = false
     end
 
@@ -388,9 +333,18 @@ function Ground:update(dt: number)
     self:updateJump(dt)
 
     -- Update dashing and movement
-    self:updateMove(dt)
+    self:updateMove(dt, gndPhysData.normal, gndPhysData.normalAngle)
 
+    -- Update animation
+    if (currHoriVel.Magnitude >= ANIM_THRESHHOLD) then
+        self.animation:setState("Walk")
+        self.animation:adjustSpeed(currHoriVel.Magnitude * ANIM_SPEED_FAC)
+    else
+        self.animation:setState("Idle")
+        self.animation:adjustSpeed(1)
+    end
 
+    -- Update model rotation
     primaryPart.CFrame = CFrame.lookAlong(
         primaryPart.CFrame.Position, Vector3.new(
             camCFrame.LookVector.X, 0, camCFrame.LookVector.Z
