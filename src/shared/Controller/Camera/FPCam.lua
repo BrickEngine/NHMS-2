@@ -7,6 +7,7 @@ local Workspace = game:GetService("Workspace")
 local CamInput = require(script.Parent.CamInput)
 local BaseCam = require(script.Parent.BaseCam)
 local GameClient = require(ReplicatedStorage.Shared.GameClient)
+local MathUtil = require(ReplicatedStorage.Shared.MathUtil)
 
 local INITIAL_CAM_ANG = CFrame.fromOrientation(math.rad(-15), 0, 0)
 local ROOT_OFFSET = Vector3.new(0, 2.5, 0)
@@ -18,33 +19,6 @@ local ROT_MIN_Y = -89 -- deg
 local ROT_MAX_Y = 89 -- deg
 
 local VEC3_ZERO = Vector3.zero
-
-local function lerp(v0: number, v1: number, dt: number): number
-	if (math.abs(v1 - v0) < 0.1) then
-		return v1
-	end 
-	return v0 + (v1 - v0) * dt --(1 - dt) * v0 + dt * v1
-end
-
-local function easeOutQuad(v0: number, v1: number, dt: number): number
-  return -(v1 - v0) * dt * (dt - 2) + v0
-end
-
-local function vec3Lerp(vec0: Vector3, vec1: Vector3, dt:number): Vector3
-	return Vector3.new(
-		lerp(vec0.X, vec1.X, dt),
-		lerp(vec0.Y, vec1.Y, dt),
-		lerp(vec0.Z, vec1.Z, dt)
-	)
-end
-
-local function vec3Clamp(vec: Vector3, vMin: Vector3, vMax: Vector3): Vector3
-	return Vector3.new(
-		math.clamp(vec.X, vMin.X, vMax.X),
-		math.clamp(vec.Y, vMin.Y, vMax.Y),
-		math.clamp(vec.Z, vMin.Z, vMax.Z)
-	)
-end
 
 --------------------------------------------------------------------------------------------------
 -- Module
@@ -110,15 +84,15 @@ function FPCam:update(dt)
         local rot_y = (camAngVec.Y - adjInputVec.X) % 360
 
 		local effCamOffset = (GameClient:getIsDashing()) and DASH_OFFSET or VEC3_ZERO
-		lastCamOffs = vec3Clamp(
-			vec3Lerp(lastCamOffs, effCamOffset, dt * 20), DASH_OFFSET, VEC3_ZERO
+		lastCamOffs = MathUtil.vec3Clamp(
+			MathUtil.vec3Flerp(lastCamOffs, effCamOffset, dt * 20), DASH_OFFSET, VEC3_ZERO
 		)
 		-- local effCFOffset = lastCFCamOffs:Lerp(CFrame.new(effCamOffset), 0.05)
 		-- lastCFCamOffs = effCFOffset
 
 		-- Mouse movement linked camera tilting
 		local limitedRotX = math.clamp(rotateInput.X * 45, -TILT_ANG, TILT_ANG)
-		local rot_z = lerp(lastRotInp, limitedRotX, TILT_DT)
+		local rot_z = MathUtil.flerp(lastRotInp, limitedRotX, TILT_DT)
 		lastRotInp = rot_z
 
         camAngVec = Vector3.new(rot_x, rot_y, rot_z)
