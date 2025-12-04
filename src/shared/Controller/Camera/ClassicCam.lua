@@ -1,6 +1,7 @@
 -- Modified default Roblox 3rd person camera
 
 local PlayersService = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CamInput = require(script.Parent.CamInput)
 local BaseCam = require(script.Parent.BaseCam)

@@ -24,11 +24,6 @@ ray_params_gnd.FilterType = Enum.RaycastFilterType.Exclude
 ray_params_gnd.IgnoreWater = true
 ray_params_gnd.RespectCanCollide = true
 
-local ray_params_wtr = RaycastParams.new()
-ray_params_wtr.CollisionGroup = Global.COLL_GROUPS.WATER
-ray_params_wtr.FilterType =Enum.RaycastFilterType.Include
-ray_params_wtr.IgnoreWater = false
-
 local function createForces(mdl: Model): {[string]: Instance}
     local att = Instance.new("Attachment")
     att.Name = "Ground"

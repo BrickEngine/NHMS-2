@@ -9,8 +9,8 @@ local RunService = game:GetService("RunService")
 
 local InputManager = require(ReplicatedStorage.Shared.Controller.InputManager)
 
-local DASH_TIME = 2 --seconds
-local DASH_COOLDOWN_TIME = 1 --seconds
+local DASH_TIME = 1.6 --seconds
+local DASH_COOLDOWN_TIME = 0.8 --seconds
 local DEFAULT_HEALTH = 100
 
 local updateConn = nil
@@ -46,35 +46,38 @@ function GameClient:getIsDashing()
     return self.isDashing
 end
 
-local inpReleased = false
+local lastDashInput = false
+local dashImpulse = false
 function GameClient:updateDash(dt: number)
     local input = InputManager:getDashKeyDown()
 
-    if (self.dash.t > 0) then
-        if (input) then
-            self.dash.t = math.max(self.dash.t - dt, 0)
-            if (self.dash.t <= 0) then
-                self.dash.coolDown = DASH_COOLDOWN_TIME
-                inpReleased = false
-            end
-        end
-    elseif (self.dash.coolDown > 0) then
-        self.dash.coolDown = math.max(self.dash.coolDown - dt, 0)
-        if (self.dash.coolDown <= 0) then
-            self.dash.t = DASH_TIME
+    if (self.dash.coolDown <= 0) then
+        dashImpulse = (input and not lastDashInput) and true or false
+
+        if (self.isDashing and not input) then
+            self.dash.t = 0
+            self.dash.coolDown = DASH_COOLDOWN_TIME
+            self.isDashing = false
         end
     end
 
-    if (not input and self.dash.coolDown <= 0) then
-        inpReleased = true
-    end
-
-    if (self.dash.coolDown <= 0 and inpReleased and input) then
+    if (dashImpulse) then
+        self.dash.t = DASH_TIME
         self.isDashing = true
-        return
+    end
+    if (self.dash.t <= 0) then
+        self.isDashing = false
     end
 
-    self.isDashing = false
+    self.dash.coolDown = math.max(self.dash.coolDown - dt, 0)
+    if (self.isDashing) then
+        self.dash.t = math.max(self.dash.t - dt, 0)
+    end
+
+    print(self.dash.coolDown, self.dash.t)
+
+    lastDashInput = input
+    dashImpulse = false
 end
 
 ------------------------------------------------------------------------------------------------------------------------

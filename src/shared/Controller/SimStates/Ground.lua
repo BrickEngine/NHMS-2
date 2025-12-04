@@ -20,12 +20,13 @@ local STATE_ID = 0
 
 -- General physics config
 local MOVE_SPEED = 1.75
-local DASH_SPEED = 30.2
+local DASH_SPEED = 3.2
 local GND_CLEAR_DIST = 0.45 -- 0.2
 local MAX_INCLINE = math.rad(70) -- radiants
 local JUMP_HEIGHT = 6
 local JUMP_DELAY = 0.28
-local MOVE_DAMP = 0.4 -- lower value ~ more rigid movement
+local MOVE_DAMP = 0.4 -- lower value ~ more rigid movement (do not set too low; breaks at low framerates)
+local DASH_DAMP = 0.1 -- equivalent to MOVE_DAMP
 local MOVE_DT = 0.05 -- time delta for move accel
 
 local FORCE_STEPUP = false -- whether the player will be forced up steep inclines, if too low to the ground
@@ -114,27 +115,6 @@ local function projectOnPlaneVec3(v: Vector3, norm: Vector3)
         v.Z - norm.Z * dot / sqrMag
     )
 end
-
--- local function angleAbs(angle: number): number
--- 	while angle < 0 do
--- 		angle += PI2
--- 	end
--- 	while angle > PI2 do
--- 		angle  -= PI2
--- 	end
--- 	return angle
--- end
-
--- local function angleShortest(a0: number, a1: number): number
--- 	local d1 = angleAbs(a1 - a0)
--- 	local d2 = -angleAbs(a0 - a1)
--- 	return math.abs(d1) > math.abs(d2) and d2 or d1
--- end
-
--- local function lerpAngle(a0: number, a1: number, t: number): number
--- 	return a0 + angleShortest(a0, a1)*t
--- end
-
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Module
@@ -248,11 +228,13 @@ function Ground:updateMove(dt: number, normal: Vector3, normAngle: number)
 
     local accelVec, moveDirVec, target
     if (self.dashActive and not (normAngle > MAX_INCLINE)) then
-        moveDirVec = -projectOnPlaneVec3(
-            camCFrame.LookVector, VEC3_UP
-        ).Unit
+        -- projectOnPlace breaks here for low framerates
+        -- moveDirVec = -projectOnPlaneVec3(
+        --     camCFrame.LookVector, VEC3_UP
+        -- ).Unit
+        moveDirVec = getCFrameRelMoveVec(camCFrame, Vector3.zAxis)
         target = currPos - moveDirVec * DASH_SPEED
-        accelVec = 2 * ((target - currPos) - currHoriVel * MOVE_DT)/(MOVE_DT * MOVE_DT)
+        accelVec = 2 * ((target - currPos) - currHoriVel * MOVE_DT)/(MOVE_DT * DASH_DAMP)
     else
         moveDirVec = getCFrameRelMoveVec(camCFrame, InputManager:getMoveVec())
         target = currPos - moveDirVec * MOVE_SPEED
@@ -344,7 +326,7 @@ function Ground:update(dt: number)
         self.animation:adjustSpeed(1)
     end
 
-    -- Update model rotation
+    -- Update playermodel rotation
     primaryPart.CFrame = CFrame.lookAlong(
         primaryPart.CFrame.Position, Vector3.new(
             camCFrame.LookVector.X, 0, camCFrame.LookVector.Z

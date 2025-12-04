@@ -1,25 +1,49 @@
 -- Default first person camera
 
 local PlayersService = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local CamInput = require(script.Parent.CamInput)
 local BaseCam = require(script.Parent.BaseCam)
+local GameClient = require(ReplicatedStorage.Shared.GameClient)
 
-local INITIAL_CAMERA_ANGLE = CFrame.fromOrientation(math.rad(-15), 0, 0)
-local CAM_OFFSET = Vector3.new(0, 2.5, 0)
-local CAM_SENS = 34
-local CAM_MAX_TILT = 6
-local CAM_TILT_DT = 0.2
-local MIN_Y = -89
-local MAX_Y = 89
+local INITIAL_CAM_ANG = CFrame.fromOrientation(math.rad(-15), 0, 0)
+local ROOT_OFFSET = Vector3.new(0, 2.5, 0)
+local DASH_OFFSET = Vector3.new(0, -2, 0)
+local INP_SENS_FAC = 34	-- input sensitivity factor
+local TILT_ANG = 6 -- max cam tilt angle in deg
+local TILT_DT = 0.2	-- constant time delta for camera tilt lerp
+local ROT_MIN_Y = -89 -- deg
+local ROT_MAX_Y = 89 -- deg
+
+local VEC3_ZERO = Vector3.zero
 
 local function lerp(v0: number, v1: number, dt: number): number
-	return (1 - dt) * v0 + dt * v1
+	if (math.abs(v1 - v0) < 0.1) then
+		return v1
+	end 
+	return v0 + (v1 - v0) * dt --(1 - dt) * v0 + dt * v1
 end
 
 local function easeOutQuad(v0: number, v1: number, dt: number): number
   return -(v1 - v0) * dt * (dt - 2) + v0
+end
+
+local function vec3Lerp(vec0: Vector3, vec1: Vector3, dt:number): Vector3
+	return Vector3.new(
+		lerp(vec0.X, vec1.X, dt),
+		lerp(vec0.Y, vec1.Y, dt),
+		lerp(vec0.Z, vec1.Z, dt)
+	)
+end
+
+local function vec3Clamp(vec: Vector3, vMin: Vector3, vMax: Vector3): Vector3
+	return Vector3.new(
+		math.clamp(vec.X, vMin.X, vMax.X),
+		math.clamp(vec.Y, vMin.Y, vMax.Y),
+		math.clamp(vec.Z, vMin.Z, vMax.Z)
+	)
 end
 
 --------------------------------------------------------------------------------------------------
@@ -40,7 +64,9 @@ end
 --------------------------------------------------------------------------------------------------
 -- FPCam RenderStepped update
 --------------------------------------------------------------------------------------------------
-local camAngVec = Vector3.zero
+local camAngVec = VEC3_ZERO
+local lastCamOffs = VEC3_ZERO
+local lastCFCamOffs = CFrame.identity
 local lastRotInp = 0
 
 function FPCam:update(dt)
@@ -53,9 +79,9 @@ function FPCam:update(dt)
 	if self.resetCameraAngle then
 		local rootPart: BasePart = self:getRootPart()
 		if rootPart then
-			overrideCameraLookVector = (rootPart.CFrame * INITIAL_CAMERA_ANGLE).LookVector
+			overrideCameraLookVector = (rootPart.CFrame * INITIAL_CAM_ANG).LookVector
 		else
-			overrideCameraLookVector = INITIAL_CAMERA_ANGLE.LookVector
+			overrideCameraLookVector = INITIAL_CAM_ANG.LookVector
 		end
 		self.resetCameraAngle = false
 	end
@@ -77,31 +103,30 @@ function FPCam:update(dt)
 
     -- Calculate camera CFrame
 	if (subjCFrame and player and cam) then
-        local adjInputVec = rotateInput * CAM_SENS
+        local adjInputVec = rotateInput * INP_SENS_FAC
         local x = (camAngVec.X - adjInputVec.Y)
 
-        local rot_x = (x >= MAX_Y and MAX_Y) or (x <= MIN_Y and MIN_Y) or x
+        local rot_x = (x >= ROT_MAX_Y and ROT_MAX_Y) or (x <= ROT_MIN_Y and ROT_MIN_Y) or x
         local rot_y = (camAngVec.Y - adjInputVec.X) % 360
 
-        local planeVelVec = Vector3.new(subjVel.X, 0, subjVel.Z)
-
-		-- this used to be "Quake" style (velocity linked) camera tilting
-        -- local rot_z = math.clamp(
-        --     planeVelVec:Dot(subjCFrame.RightVector) * BANK_DAMP, -2.2, 2.2
-        -- )
+		local effCamOffset = (GameClient:getIsDashing()) and DASH_OFFSET or VEC3_ZERO
+		lastCamOffs = vec3Clamp(
+			vec3Lerp(lastCamOffs, effCamOffset, dt * 20), DASH_OFFSET, VEC3_ZERO
+		)
+		-- local effCFOffset = lastCFCamOffs:Lerp(CFrame.new(effCamOffset), 0.05)
+		-- lastCFCamOffs = effCFOffset
 
 		-- Mouse movement linked camera tilting
-		local limitedRotX = math.clamp(rotateInput.X * 45, -CAM_MAX_TILT, CAM_MAX_TILT)
-		local rot_z = lerp(lastRotInp, limitedRotX, CAM_TILT_DT) --dt*30
+		local limitedRotX = math.clamp(rotateInput.X * 45, -TILT_ANG, TILT_ANG)
+		local rot_z = lerp(lastRotInp, limitedRotX, TILT_DT)
 		lastRotInp = rot_z
 
         camAngVec = Vector3.new(rot_x, rot_y, rot_z)
-
-        newCamCFrame = CFrame.new(newCamFocus.Position + CAM_OFFSET)
+        newCamCFrame = CFrame.new(newCamFocus.Position + (ROOT_OFFSET + lastCamOffs))
             * CFrame.fromEulerAnglesXYZ(0, math.rad(camAngVec.Y), 0)
             * CFrame.fromEulerAnglesXYZ(math.rad(camAngVec.X), 0, 0)
             * CFrame.fromEulerAnglesXYZ(0, 0, math.rad(-camAngVec.Z))
-
+		
 		-- local newLookVec = self:calculateNewLookVectorFromArg(overrideCameraLookVector, rotateInput)
 		-- newCamCFrame = CFrame.lookAlong(newCamFocus.Position + CAM_OFFSET, newLookVec)
 

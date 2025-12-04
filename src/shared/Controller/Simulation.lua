@@ -11,6 +11,7 @@ local simStates = script.Parent.SimStates
 local BaseState = require(simStates.BaseState)
 local Ground = require(simStates.Ground) :: BaseState.BaseState
 local Water = require(simStates.Water) :: BaseState.BaseState
+local Wall = require(simStates.Wall) :: BaseState.BaseState
 
 local Global = require(ReplicatedStorage.Shared.Global)
 
@@ -112,7 +113,8 @@ function Simulation:resetSimulation()
 
     self.states = {
         Ground = Ground.new(self),
-        Water = Water.new(self)
+        Water = Water.new(self),
+        Wall = Wall.new(self)
     }
     self.currentState = self.states.Ground
     self.currentState:stateEnter()

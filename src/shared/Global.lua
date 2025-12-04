@@ -1,6 +1,6 @@
 return table.freeze({
 
-    GAME_PHYS_DEBUG = true,
+    GAME_PHYS_DEBUG = false,
     GAME_CHAR_DEBUG = false,
     GAME_UI_DEBUG = false,
 
@@ -10,7 +10,7 @@ return table.freeze({
         DEFAULT = "Default",
         TRIGGER = "Trigger",
         PLAYER = "Player",
-        WATER = "Water",
+        WALL = "Wall"
     },
 
 })
