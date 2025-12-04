@@ -295,7 +295,7 @@ do
 				if #unsunkTouches == 1 then
 					if touches[input] == false then
 						local delta = input.Delta
-						touchState.Move += Vector2.new(delta.X, delta.Y) -- total touch pan movement (reset at end of frame)
+						touchState.Move += Vector2.new(delta.X, delta.Y) -- total touch pan (reset at end of frame)
 					end
 				end
 
@@ -483,7 +483,9 @@ do
 
 		rmbUpConnection = rmbUp:Connect(function()
 			holdPan = false
-			if tick() - lastRmbDown < MB_TAP_LENGTH and (togglePan or UserInputService:GetMouseDelta().Magnitude < 0.1) then --2
+			if ((tick() - lastRmbDown < MB_TAP_LENGTH) and
+				(togglePan or UserInputService:GetMouseDelta().Magnitude < 0.1)
+			) then
 				togglePan = not togglePan
 			end
 		end)

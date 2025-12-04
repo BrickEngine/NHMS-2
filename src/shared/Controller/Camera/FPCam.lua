@@ -10,7 +10,7 @@ local GameClient = require(ReplicatedStorage.Shared.GameClient)
 
 local INITIAL_CAM_ANG = CFrame.fromOrientation(math.rad(-15), 0, 0)
 local ROOT_OFFSET = Vector3.new(0, 2.5, 0)
-local DASH_OFFSET = Vector3.new(0, -2, 0)
+local DASH_OFFSET = Vector3.new(0, -1.8, 0)
 local INP_SENS_FAC = 34	-- input sensitivity factor
 local TILT_ANG = 6 -- max cam tilt angle in deg
 local TILT_DT = 0.2	-- constant time delta for camera tilt lerp
@@ -66,10 +66,10 @@ end
 --------------------------------------------------------------------------------------------------
 local camAngVec = VEC3_ZERO
 local lastCamOffs = VEC3_ZERO
-local lastCFCamOffs = CFrame.identity
 local lastRotInp = 0
 
 function FPCam:update(dt)
+	self.resetCameraAngle = true
 	local now = tick()
 	local cam = Workspace.CurrentCamera
 	local newCamCFrame = cam.CFrame

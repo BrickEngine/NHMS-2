@@ -17,7 +17,7 @@ local updateConn = nil
 
 type Counter = {
     t: number,
-    coolDown: number
+    cooldown: number
 }
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -29,7 +29,7 @@ local GameClient = {
     health = 0,
     armor = 0,
 
-    dash = {t = 0, coolDown = 0} :: Counter,
+    dash = {t = 0, cooldown = 0} :: Counter,
     isDashing = false,
 
     kills = 0,
@@ -47,16 +47,16 @@ function GameClient:getIsDashing()
 end
 
 local lastDashInput = false
-local dashImpulse = false
 function GameClient:updateDash(dt: number)
     local input = InputManager:getDashKeyDown()
+    local dashImpulse = false
 
-    if (self.dash.coolDown <= 0) then
-        dashImpulse = (input and not lastDashInput) and true or false
+    if (self.dash.cooldown <= 0) then
+        dashImpulse = input and not lastDashInput
 
-        if (self.isDashing and not input) then
+        if (self.isDashing and (not input or self.dash.t <= 0)) then
             self.dash.t = 0
-            self.dash.coolDown = DASH_COOLDOWN_TIME
+            self.dash.cooldown = DASH_COOLDOWN_TIME
             self.isDashing = false
         end
     end
@@ -65,19 +65,13 @@ function GameClient:updateDash(dt: number)
         self.dash.t = DASH_TIME
         self.isDashing = true
     end
-    if (self.dash.t <= 0) then
-        self.isDashing = false
-    end
 
-    self.dash.coolDown = math.max(self.dash.coolDown - dt, 0)
+    self.dash.cooldown = math.max(self.dash.cooldown - dt, 0)
     if (self.isDashing) then
         self.dash.t = math.max(self.dash.t - dt, 0)
     end
 
-    print(self.dash.coolDown, self.dash.t)
-
     lastDashInput = input
-    dashImpulse = false
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -95,7 +89,7 @@ function GameClient:reset()
     self.health = DEFAULT_HEALTH
     self.armor = 0
 
-    self.dash = {t = DASH_TIME, coolDown = 0} :: Counter
+    self.dash = {t = DASH_TIME, cooldown = 0} :: Counter
     self.isDashing = false
 
     if (updateConn) then

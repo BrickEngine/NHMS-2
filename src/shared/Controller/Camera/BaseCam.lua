@@ -396,14 +396,17 @@ end
 
 function BaseCamera:setCameraToSubjectDistance(desiredSubjectDistance: number): number
 	local lastSubjectDistance = self.currentSubjectDistance
-	local newSubjectDistance = math.clamp(desiredSubjectDistance, player.CameraMinZoomDistance, player.CameraMaxZoomDistance)
+	local newSubjectDistance =
+		math.clamp(desiredSubjectDistance, player.CameraMinZoomDistance, player.CameraMaxZoomDistance)
 
 	if newSubjectDistance < ZOOM_MIN then
 		self.currentSubjectDistance = ZOOM_MIN
 	else
 		self.currentSubjectDistance = newSubjectDistance
 	end
-	ZoomController.setZoomParameters(self.currentSubjectDistance, math.sign(desiredSubjectDistance - lastSubjectDistance))
+	ZoomController.setZoomParameters(
+		self.currentSubjectDistance, math.sign(desiredSubjectDistance - lastSubjectDistance)
+	)
 
 	return self.currentSubjectDistance
 end
@@ -431,7 +434,7 @@ end
 
 -- Actual measured distance to the camera Focus point, which may be needed in special circumstances, but should
 -- never be used as the starting point for updating the nominal camera-to-subject distance (self.currentSubjectDistance)
--- since that is a desired target value set only by mouse wheel (or equivalent) input, PopperCam, and clamped to min max camera distance
+-- since that is a desired target value set only by mouse wheel (or equivalent) input
 function BaseCamera:getMeasuredDistanceToFocus(): number?
 	local camera = game.Workspace.CurrentCamera
 	if camera then
@@ -457,7 +460,8 @@ function BaseCamera:calculateNewLookCFrameFromArg(suppliedLookVector: Vector3?, 
 	local yTheta = math.clamp(rotateInput.Y, -DEFAULT_MAX_Y + currPitchAngle, -DEFAULT_MIN_Y + currPitchAngle)
 	local constrainedRotateInput = Vector2.new(rotateInput.X, yTheta)
 	local startCFrame = CFrame.new(VEC3_ZERO, currLookVector)
-	local newLookCFrame = CFrame.Angles(0, -constrainedRotateInput.X, 0) * startCFrame * CFrame.Angles(-constrainedRotateInput.Y,0,0)
+	local newLookCFrame =
+		CFrame.Angles(0, -constrainedRotateInput.X, 0) * startCFrame * CFrame.Angles(-constrainedRotateInput.Y,0,0)
 	return newLookCFrame
 end
 
@@ -472,7 +476,8 @@ function BaseCamera:calculateNewLookVectorVRFromArg(rotateInput: Vector2): Vecto
 	local currLookVector: Vector3 = (vecToSubject * X1_Y0_Z1).Unit
 	local vrRotateInput: Vector2 = Vector2.new(rotateInput.X, 0)
 	local startCFrame: CFrame = CFrame.new(VEC3_ZERO, currLookVector)
-	local yawRotatedVector: Vector3 = (CFrame.Angles(0, -vrRotateInput.X, 0) * startCFrame * CFrame.Angles(-vrRotateInput.Y,0,0)).LookVector
+	local yawRotatedVector: Vector3 =
+		(CFrame.Angles(0, -vrRotateInput.X, 0) * startCFrame * CFrame.Angles(-vrRotateInput.Y,0,0)).LookVector
 	return (yawRotatedVector * X1_Y0_Z1).Unit
 end
 
