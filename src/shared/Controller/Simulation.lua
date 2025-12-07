@@ -158,14 +158,14 @@ function Simulation:onCharAdded(character: Model)
         self:onRootPartChanged()
     end)
 
-    if (not Global.GAME_CHAR_DEBUG) then
-        for _, p: Instance in pairs(self.character:GetDescendants()) do
-            if p:IsA("BasePart") then
-                p.Transparency = 1
-            end
+    -- Make playermodel invisible
+    for _, p: Instance in pairs(self.character:GetDescendants()) do
+        if p:IsA("BasePart") then
+            p.Transparency = 1
         end
     end
 
+    -- Copy over Instances from StarterCharacterScripts
     for _, s: Instance in pairs(StarterPlayer.StarterCharacterScripts:GetChildren()) do
         if (s.ClassName ~= ("LocalScript" or "Script" or "ModuleScript")) then
             warn("instance within StarterCharacterScripts is not a script")

@@ -82,7 +82,7 @@ local function createForces(mdl: Model): {[string]: Instance}
     posForce.Mode = Enum.PositionAlignmentMode.OneAttachment
     posForce.ForceLimitMode = Enum.ForceLimitMode.PerAxis
     posForce.MaxAxesForce = Vector3.zero
-    posForce.MaxVelocity = 100000
+    posForce.MaxVelocity = 300--100000
     posForce.Responsiveness = 200
     posForce.ForceRelativeTo = Enum.ActuatorRelativeTo.World
     posForce.Position = mdl.PrimaryPart.CFrame.Position
@@ -101,19 +101,6 @@ local function getCFrameRelMoveVec(camCFrame: CFrame, relativeVec: Vector3): Vec
             camCFrame.LookVector.X, 0, camCFrame.LookVector.Z
         ).Unit
     ):VectorToWorldSpace(relativeVec)
-end
-
-local function projectOnPlaneVec3(v: Vector3, norm: Vector3)
-    local sqrMag = norm:Dot(norm)
-    if (sqrMag < 0.01) then
-        return v
-    end
-    local dot = v:Dot(norm)
-    return Vector3.new(
-        v.X - norm.X * dot / sqrMag,
-        v.Y - norm.Y * dot / sqrMag,
-        v.Z - norm.Z * dot / sqrMag
-    )
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -136,7 +123,7 @@ function Ground.new(...)
 
     self.animation = self._simulation.animation
 
-    ray_params_gnd.FilterDescendantsInstances = self.character:GetChildren()
+    --ray_params_gnd.FilterDescendantsInstances = self.character:GetChildren()
 
     return self
 end

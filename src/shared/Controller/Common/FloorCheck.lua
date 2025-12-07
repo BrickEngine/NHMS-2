@@ -2,11 +2,11 @@ local Workspace = game:GetService("Workspace")
 
 local DebugVisualize = require(script.Parent.DebugVisualize)
 
-local NUM_RAYS = 32
+local NUM_RAYS = 64
 local RADIUS_OFFSET = 0.08
 local RAY_Y_OFFSET = 0.1
-local TARGET_CLOSEST = true -- If true, picks highest point as target position
-local MAX_INCLINE_ANGLE = math.rad(70) -- Convert to rad, angle at which a hit will not be registered
+local TARGET_CLOSEST = true -- if true, picks highest point as target position
+local MAX_INCLINE_ANGLE = math.rad(70) -- convert to rad, angle at which a hit will not be registered
 
 local PHI = 1.61803398875
 local VEC3_ZERO = Vector3.zero
@@ -109,7 +109,7 @@ export type physData = {
 	normalAngle: number
 }
 
-function Phys.colliderCast(
+return function (
 	rootPos: Vector3,
 	maxRadius: number,
 	hipHeight: number,
@@ -220,5 +220,3 @@ function Phys.colliderCast(
         normalAngle = targetNormAngle
     } :: physData
 end
-
-return Phys.colliderCast

@@ -94,11 +94,29 @@ function CameraModule.new()
 	end
 
 	-- Switch to debug camera, if enabled
-	if (Global.GAME_PHYS_DEBUG) then
+	if (Global.GAME_CHAR_DEBUG) then
 		UserInputService.InputBegan:Connect(function(input, gpe)
+
+			local function setCharTransparency(char: Instance, val: number)
+				for _,v: Instance in pairs(char:GetChildren()) do
+					if (v:IsA("BasePart") and v:HasTag(Global.PLAYER_CHARACTER_TAG_NAME)) then
+						v.Transparency = val
+					end
+				end
+			end
+
 			if (input.KeyCode == DEBUG_CAM_SWITCH_KEY and not gpe) then
 				self.debugCamSelected = not self.debugCamSelected
 				self:activateCameraController()
+			end
+
+			local camSubject = Workspace.CurrentCamera.CameraSubject
+			if (camSubject and camSubject.PrimaryPart) then
+				if (self.debugCamSelected) then
+					setCharTransparency(camSubject, 0)
+				else
+					setCharTransparency(camSubject, 1)
+				end
 			end
 		end)
 	end
@@ -184,7 +202,7 @@ function CameraModule:activateCameraController()
 
 	-- Create the camera control module we need if it does not already exist in instantiatedCameraControllers
 	local newCameraController
-	if not instantiatedCameraControllers[newCameraCreator] then
+	if (not instantiatedCameraControllers[newCameraCreator]) then
 		newCameraController = newCameraCreator.new()
 		instantiatedCameraControllers[newCameraCreator] = newCameraController
 	else
@@ -196,14 +214,14 @@ function CameraModule:activateCameraController()
 
 	if self.activeCameraController then
 		-- deactivate the old controller and activate the new one
-		if self.activeCameraController ~= newCameraController then
+		if (self.activeCameraController ~= newCameraController) then
 			self.activeCameraController:enable(false)
 			self.activeCameraController = newCameraController
 			self.activeCameraController:enable(true)
-		elseif not self.activeCameraController:getEnabled() then
+		elseif (not self.activeCameraController:getEnabled()) then
 			self.activeCameraController:enable(true)
 		end
-	elseif newCameraController ~= nil then
+	elseif (newCameraController ~= nil) then
 		-- only activate the new controller
 		self.activeCameraController = newCameraController
 		self.activeCameraController:enable(true)

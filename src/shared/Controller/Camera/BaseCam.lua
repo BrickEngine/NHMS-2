@@ -67,34 +67,6 @@ function BaseCamera.new()
 		self:onCharacterAdded(char)
 	end)
 
-	-- if self.playerCameraModeChangeConn then self.playerCameraModeChangeConn:Disconnect() end
-	-- self.playerCameraModeChangeConn = player:GetPropertyChangedSignal("CameraMode"):Connect(function()
-	-- 	self:onPlayerCameraPropertyChange()
-	-- end)
-
-	-- if self.minDistanceChangeConn then self.minDistanceChangeConn:Disconnect() end
-	-- self.minDistanceChangeConn = player:GetPropertyChangedSignal("CameraMinZoomDistance"):Connect(function()
-	-- 	self:onPlayerCameraPropertyChange()
-	-- end)
-
-	-- if self.maxDistanceChangeConn then self.maxDistanceChangeConn:Disconnect() end
-	-- self.maxDistanceChangeConn = player:GetPropertyChangedSignal("CameraMaxZoomDistance"):Connect(function()
-	-- 	self:onPlayerCameraPropertyChange()
-	-- end)
-
-	-- if self.playerDevTouchMoveModeChangeConn then self.playerDevTouchMoveModeChangeConn:Disconnect() end
-	-- self.playerDevTouchMoveModeChangeConn = player:GetPropertyChangedSignal("DevTouchMovementMode"):Connect(function()
-	-- 	self:onDevTouchMovementModeChanged()
-	-- end)
-	-- self:onDevTouchMovementModeChanged() -- Init
-
-	-- if self.gameSettingsTouchMoveMoveChangeConn then self.gameSettingsTouchMoveMoveChangeConn:Disconnect() end
-	-- self.gameSettingsTouchMoveMoveChangeConn = UserGameSettings:GetPropertyChangedSignal("TouchMovementMode"):Connect(function()
-	-- 	self:onGameSettingsTouchMovementModeChanged()
-	-- end)
-
-	-- self:onGameSettingsTouchMovementModeChanged() -- Init
-
 	UserGameSettings:setCameraYInvertVisible()
 	UserGameSettings:setGamepadCameraSensitivityVisible()
 
@@ -301,30 +273,6 @@ end
 function BaseCamera:onDynamicThumbstickDisabled()
 	self.isDynamicThumbstickEnabled = false
 end
-
--- function BaseCamera:onGameSettingsTouchMovementModeChanged()
--- 	if player.DevTouchMovementMode == Enum.DevTouchMovementMode.UserChoice then
--- 		if (UserGameSettings.TouchMovementMode == Enum.TouchMovementMode.DynamicThumbstick
--- 			or UserGameSettings.TouchMovementMode == Enum.TouchMovementMode.Default) then
--- 			self:onDynamicThumbstickEnabled()
--- 		else
--- 			self:onDynamicThumbstickDisabled()
--- 		end
--- 	end
--- end
-
--- function BaseCamera:onDevTouchMovementModeChanged()
--- 	if player.DevTouchMovementMode == Enum.DevTouchMovementMode.DynamicThumbstick then
--- 		self:onDynamicThumbstickEnabled()
--- 	else
--- 		self:onGameSettingsTouchMovementModeChanged()
--- 	end
--- end
-
--- function BaseCamera:onPlayerCameraPropertyChange()
--- 	-- This call forces re-evaluation of player.CameraMode and clamping to min/max distance which may have changed
--- 	self:setCameraToSubjectDistance(self.currentSubjectDistance)
--- end
 
 function BaseCamera:inputTranslationToCameraAngleChange(translationVector, sensitivity)
 	return translationVector * sensitivity

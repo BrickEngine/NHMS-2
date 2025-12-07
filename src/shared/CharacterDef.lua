@@ -10,10 +10,10 @@ local DEBUG_COLL_COLOR3 = Color3.fromRGB(0, 0, 255)
 local PLAYERMDL_MASS_ENABLED = false
 local MAIN_ROOT_PRIO = 100
 
------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
 -- character phys model parameters
 
-local PARAMS = {
+local PARAMS = table.freeze({
     ROOT_ATT_NAME = "Root",
     ROOTPART_SIZE = Vector3.new(1, 1, 1),
     MAINCOLL_SIZE = Vector3.new(3, 3, 3),
@@ -43,9 +43,9 @@ local PARAMS = {
     PHYS_PROPERTIES = PhysicalProperties.new(
         1, 0, 0, 100, 100
     )
-}
+})
 
------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
 
 local function setCollGroup(mdl: Model)
     for _, v: BasePart in pairs(mdl:GetDescendants()) do
@@ -67,7 +67,8 @@ end
 
 local function createPart(name: string, size: Vector3, cFrame: CFrame, shape: Enum.PartType): BasePart
     local part = Instance.new("Part")
-    part.Name = name; part.Size = size; part.CFrame = cFrame; part.Shape = shape; part.Transparency = 1; part.Anchored = false
+    part.Name = name; part.Size = size; part.CFrame = cFrame
+    part.Shape = shape; part.Transparency = 1; part.Anchored = false
     part.CustomPhysicalProperties = PARAMS.PHYS_PROPERTIES
     return part
 end
@@ -105,12 +106,12 @@ local function createCharacter(playerModel: Model?): Model
     character.PrimaryPart = rootPart
     createParentedAttachment("Root", rootPart)
 
-    if (Global.GAME_CHAR_DEBUG) then
-        setMdlTransparency(character, 0.5)
-        mainColl.Color = DEBUG_COLL_COLOR3
-    end
+    -- if (Global.GAME_CHAR_DEBUG) then
+    --     setMdlTransparency(character, 0.5)
+    --     mainColl.Color = DEBUG_COLL_COLOR3
+    -- end
 
-    -- Playermodels with assigned PrimaryPart are required
+    -- Playermodel with assigned PrimaryPart is required
     if (not playerModel) then
         error("No PlayerModel found", 2)
     end
@@ -125,6 +126,7 @@ local function createCharacter(playerModel: Model?): Model
         if (inst:IsA("BasePart")) then
             inst.Parent = character
             inst.CanCollide = false
+            inst:AddTag(Global.PLAYER_CHARACTER_TAG_NAME)
 
             if (not PLAYERMDL_MASS_ENABLED) then
                 inst.Massless = true
@@ -136,13 +138,19 @@ local function createCharacter(playerModel: Model?): Model
     end
     plrMdlPrimPart.CFrame = rootPart.CFrame * PARAMS.PLAYERMODEL_OFFSET_CF
     createParentedWeld(rootPart, plrMdlPrimPart)
+
+    -- Discard playermodel with remaining unused components
+    if (#(plrMdlClone:GetDescendants()) > 0) then
+        warn("Playermodel included unused components, which were discarded:")
+        warn(plrMdlClone:GetDescendants())
+    end
     plrMdlClone:Destroy()
 
-    -- create Animator and AnimationController
+    -- Create Animator and AnimationController
     local animController = Instance.new("AnimationController", character)
     Instance.new("Animator", animController)
 
-    -- create universal BuoyancySensor
+    -- Create universal BuoyancySensor
     local buoySens = Instance.new("BuoyancySensor", plrMdlPrimPart)
     buoySens.UpdateType = Enum.SensorUpdateType.OnRead
 
@@ -154,7 +162,7 @@ local function createCharacter(playerModel: Model?): Model
     return character
 end
 
------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
 
 local CharacterDef = {}
 CharacterDef.__index = CharacterDef
@@ -162,12 +170,12 @@ CharacterDef.__index = CharacterDef
 function CharacterDef.new()
     local self = setmetatable({}, CharacterDef)
 
-    self.PARAMS = table.freeze(PARAMS)
+    self.PARAMS = PARAMS
 
     return self
 end
 
--- must be called on the server
+-- Can only be called on the server
 function CharacterDef.createCharacter(playerModel: Model): Model
     if (not RunService:IsServer()) then
         error("character should be created from server")

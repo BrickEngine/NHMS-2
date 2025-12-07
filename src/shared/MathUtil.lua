@@ -56,4 +56,18 @@ function MathUtil.vec3Clamp(vec: Vector3, vMin: Vector3, vMax: Vector3): Vector3
 	)
 end
 
+-- Project a Vector onto a plane with given normal
+function MathUtil.projectOnPlaneVec3(v: Vector3, norm: Vector3): Vector3
+    local sqrMag = norm:Dot(norm)
+    if (sqrMag < 0.01) then
+        return v
+    end
+    local dot = v:Dot(norm)
+    return Vector3.new(
+        v.X - norm.X * dot / sqrMag,
+        v.Y - norm.Y * dot / sqrMag,
+        v.Z - norm.Z * dot / sqrMag
+    )
+end
+
 return MathUtil
