@@ -18,7 +18,7 @@ local DebugVisualize = {
 	enabled = Global.GAME_PHYS_DEBUG,
 }
 
-function DebugVisualize.point(position, color)
+function DebugVisualize.point(position: Vector3, color: Color3?)
 	if not DebugVisualize.enabled then
 		return
 	end
@@ -36,12 +36,14 @@ function DebugVisualize.point(position, color)
 	end
 
 	instance.CFrame = CFrame.new(position)
-	instance.Color3 = color
+	if (color) then
+		instance.Color3 = color
+	end
 
 	table.insert(usedPoints, instance)
 end
 
-function DebugVisualize.vector(position, direction, color)
+function DebugVisualize.vector(position: Vector3, direction: Vector3, color: Color3)
 	if (not DebugVisualize.enabled) then
 		return
 	end
@@ -76,6 +78,7 @@ function DebugVisualize.normalPart(pos: Vector3, norm: Vector3, size: Vector3?)
 		part = Instance.new("Part", workspace)
 		part.Anchored = true
 		part.CanCollide = false
+		part.CollisionGroup = Global.COLL_GROUPS.NOCOLL
 		if (size) then
 			part.Size = size
 		else

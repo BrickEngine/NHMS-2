@@ -3,7 +3,6 @@
     Logic for ground and air movement, jumping and related abilities.
 ]]
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 local Workspace = game:GetService("Workspace")
@@ -14,13 +13,14 @@ local Global = require(ReplicatedStorage.Shared.Global)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(controller.InputManager)
 local BaseState = require(controller.SimStates.BaseState)
-local FloorCheck = require(controller.Common.FloorCheck)
+local PhysCheck = require(controller.Common.PhysCheck)
 
 local STATE_ID = 0
 
 -- General physics config
 local MOVE_SPEED = 1.75
 local DASH_SPEED = 3.2
+local MIN_WALL_MOUNT_SPEED = 2 -- studs/s
 local GND_CLEAR_DIST = 0.45 -- 0.2
 local MAX_INCLINE = math.rad(70) -- radiants
 local JUMP_HEIGHT = 6
@@ -45,12 +45,14 @@ local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1, 0)
 local PI2 = math.pi*2
 
--- Ground ray parameters
+-- Local vars
 local ray_params_gnd = RaycastParams.new()
 ray_params_gnd.CollisionGroup = Global.COLL_GROUPS.PLAYER
 ray_params_gnd.FilterType = Enum.RaycastFilterType.Exclude
 ray_params_gnd.IgnoreWater = true
 ray_params_gnd.RespectCanCollide = true
+
+local wasGroundedOnce = false
 
 -- Create required physics
 local function createForces(mdl: Model): {[string]: Instance}
@@ -106,7 +108,6 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Module
 ------------------------------------------------------------------------------------------------------------------------
-
 local Ground = setmetatable({}, BaseState)
 Ground.__index = Ground
 
@@ -118,8 +119,6 @@ function Ground.new(...)
     self.forces = createForces(self.character)
     self.jumpSignal = false
     self.dashActive = false
-    self.grounded = false
-    self.inWater = false
 
     self.animation = self._simulation.animation
 
@@ -135,6 +134,7 @@ function Ground:stateEnter()
     for _, f in self.forces do
         f.Enabled = true
     end
+
     self.animation:setState("Idle")
 end
 
@@ -142,9 +142,11 @@ function Ground:stateLeave()
     if (not self.forces) then
         return
     end
-    for _, f in self.forces :: {AlignOrientation | AlignPosition | VectorForce} do
+    for _, f in self.forces do
         f.Enabled = false
     end
+
+    wasGroundedOnce = false
 end
 
 local j_lastDown = false
@@ -247,20 +249,18 @@ function Ground:update(dt: number)
     local mass = primaryPart.AssemblyMass
 
     -- Do physics checks
-    local gndPhysData: FloorCheck.physData = FloorCheck(
+    local groundData: PhysCheck.groundData = PhysCheck.checkFloor(
         currPos, PHYS_RADIUS, HIP_HEIGHT, GND_CLEAR_DIST, ray_params_gnd
     )
-    self.grounded = gndPhysData.grounded
-    self.inWater = gndPhysData.inWater
+    local wallData: PhysCheck.wallData = PhysCheck.checkWall(
+        currPos, currHoriVel, PHYS_RADIUS, HIP_HEIGHT
+    )
+    self.grounded = groundData.grounded
+    self.nearWall = wallData.nearWall
     self.dashActive = GameClient:getIsDashing()
 
-    -- State transitions
-    if (self.inWater) then
-        self._simulation:transitionState(self._simulation.states.Water)
-    end
-
     if (self.grounded) then
-        local targetPosY = gndPhysData.gndHeight + HIP_HEIGHT
+        local targetPosY = groundData.gndHeight + HIP_HEIGHT
 
         -- Scale force with cubed vertical velocity to compensate for high falls
         self.forces.posForce.MaxAxesForce = VEC3_UP * mass * (g * 20 + currVel.Y * currVel.Y)
@@ -268,18 +268,18 @@ function Ground:update(dt: number)
 
         -- Force character to get more ground distance, if too close to ground
         if (FORCE_STEPUP) then
-            local closestPosDiff = math.abs(gndPhysData.closestPos.Y - primaryPart.CFrame.Position.Y)
+            local closestPosDiff = math.abs(groundData.closestPos.Y - primaryPart.CFrame.Position.Y)
 
             if (closestPosDiff < GND_FORCE_DIST) then
                 local isSteep = false
 
                 -- Step-up only possible, if there is no low ceiling and no steep slope
                 local upRay = Workspace:Raycast(
-                    gndPhysData.closestPos, VEC3_UP * (HIP_HEIGHT + COLL_HEIGHT + 0.05), ray_params_gnd
+                    groundData.closestPos, VEC3_UP * (HIP_HEIGHT + COLL_HEIGHT + 0.05), ray_params_gnd
                 ) :: RaycastResult
                 -- TODO: get normal from gndPhysData returned part directly
                 local downRay = Workspace:Raycast(
-                    gndPhysData.closestPos + VEC3_UP * 0.1, -VEC3_UP, ray_params_gnd
+                    groundData.closestPos + VEC3_UP * 0.1, -VEC3_UP, ray_params_gnd
                 ) :: RaycastResult
 
                 if (downRay and downRay.Normal) then
@@ -294,6 +294,8 @@ function Ground:update(dt: number)
                 end
             end
         end
+
+        wasGroundedOnce = true
     else
         self.forces.posForce.Enabled = false
     end
@@ -302,7 +304,7 @@ function Ground:update(dt: number)
     self:updateJump(dt)
 
     -- Update dashing and movement
-    self:updateMove(dt, gndPhysData.normal, gndPhysData.normalAngle)
+    self:updateMove(dt, groundData.normal, groundData.normalAngle)
 
     -- Update animation
     if (currHoriVel.Magnitude >= ANIM_THRESHHOLD) then
@@ -320,11 +322,20 @@ function Ground:update(dt: number)
         )
     )
     primaryPart.AssemblyAngularVelocity = VEC3_ZERO
+
+    -- State transitions
+    local wallConditions = not self.grounded and wasGroundedOnce and currHoriVel.Magnitude >= MIN_WALL_MOUNT_SPEED
+
+    if (self.inWater) then
+        self._simulation:transitionState(self._simulation.states.Water)
+    elseif (self.nearWall and wallConditions) then
+        self._simulation:transitionState(self._simulation.states.Wall)
+    end
 end
 
 function Ground:destroy()
     if (self.forces) then
-        for i, force in pairs(self.forces) do
+        for i, _ in pairs(self.forces) do
             (self.forces[i] :: Instance):Destroy()
         end
     end

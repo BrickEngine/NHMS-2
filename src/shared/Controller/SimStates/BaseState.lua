@@ -25,6 +25,9 @@ function BaseState.new(_simulation)
     local self = setmetatable({}, BaseState)
 
     self._simulation = _simulation
+    self.grounded = false
+    self.nearWall = false
+    self.inWater = false
     self.id = -1
 
     return self
@@ -38,14 +41,16 @@ function BaseState:stateLeave()
     return false
 end
 
-function BaseState:damagePlayer(p: Player)
-    print(p)
+function BaseState:dealDamage()
+end
+
+function BaseState:stun(impulse: Vector3?)
 end
 
 function BaseState:update(dt: number)
     error("cannot call update of abstract BaseState", 2)
 end
-
+ 
 function BaseState:destroy()
     error("cannot call destroy of abstract BaseState", 2)
 end

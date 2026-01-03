@@ -7,7 +7,7 @@ local Global = require(ReplicatedStorage.Shared.Global)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(controller.InputManager)
 local BaseState = require(controller.SimStates.BaseState)
-local FloorCheck = require(controller.Common.FloorCheck)
+local PhysCheck = require(controller.Common.PhysCheck)
 
 local STATE_ID = 1
 

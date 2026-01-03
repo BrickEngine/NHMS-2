@@ -1,4 +1,6 @@
+local controller = script.Parent.Parent
 local BaseState = require(script.Parent.BaseState)
+local PhysCheck = require(controller.Common.PhysCheck)
 
 local STATE_ID = 2
 

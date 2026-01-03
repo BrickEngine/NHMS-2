@@ -1,18 +1,36 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local DebugVisualize = require(script.Parent.DebugVisualize)
+local Global = require(ReplicatedStorage.Shared.Global)
 
-local NUM_RAYS = 64
+local NUM_GND_RAYS = 64
+local NUM_WALL_RAYS = 12
+local LEG_OFFSET = 1
+local WALL_RANGE = 3
 local RADIUS_OFFSET = 0.08
 local RAY_Y_OFFSET = 0.1
 local TARGET_CLOSEST = true -- if true, picks highest point as target position
-local MAX_INCLINE_ANGLE = math.rad(70) -- convert to rad, angle at which a hit will not be registered
+local USE_WALL_COLL_GROUP = false -- determines which coll group to use for wall detection (false = default)
+local MAX_INCLINE_ANGLE = math.rad(70) -- in rad, angle at which a hit will not be registered
 
 local PHI = 1.61803398875
 local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1 ,0)
-local VEC3_FARDOWN = -Vector3.new(999999, 999999, 999999)
-local BOUND_POINTS = math.round(2 * math.sqrt(NUM_RAYS))
+local VEC3_FARDOWN = -999999999 * VEC3_UP --Vector3.new(999999, 999999, 999999)
+local BOUND_POINTS = math.round(2 * math.sqrt(NUM_GND_RAYS))
+
+local floorRayParams = RaycastParams.new()
+floorRayParams.CollisionGroup = Global.COLL_GROUPS.DEFAULT
+floorRayParams.FilterType = Enum.RaycastFilterType.Exclude
+floorRayParams.IgnoreWater = true
+
+local wallRayParams = RaycastParams.new()
+wallRayParams.CollisionGroup = Global.COLL_GROUPS.PLAYER
+wallRayParams.FilterType = Enum.RaycastFilterType.Exclude
+wallRayParams.IgnoreWater = true
+
+------------------------------------------------------------------------------------------------------------------------
 
 local function radiusDist(k: number, n: number, b: number)
 	if (k > n-b) then
@@ -96,11 +114,16 @@ local function avgVecFromVecs(vecArr: {Vector3}): Vector3
 	return vecSum
 end
 
----------------------------------------------------------------------------------------------------------
+local function lineDist(radius: number, point: number, n: number): number
+	return (radius / n) * (1 + 2 * point)
+end
 
-local Phys = {}
+------------------------------------------------------------------------------------------------------------------------
+-- Module
+------------------------------------------------------------------------------------------------------------------------
+local PhysCheck = {}
 
-export type physData = {
+export type groundData = {
 	grounded: boolean,
 	pos: Vector3,
 	closestPos: Vector3,
@@ -109,7 +132,13 @@ export type physData = {
 	normalAngle: number
 }
 
-return function (
+export type wallData = {
+	nearWall: boolean,
+	normal: Vector3,
+	wallBankAngle: number
+}
+
+function PhysCheck.checkFloor(
 	rootPos: Vector3,
 	maxRadius: number,
 	hipHeight: number,
@@ -133,8 +162,8 @@ return function (
 	-- TODO: return a hit BasePart, which is closest to the RootPart
 	--local hitObjectArr = {} :: {BasePart}
 
-	for i=1, NUM_RAYS, 1 do
-		local r = radiusDist(i, NUM_RAYS, BOUND_POINTS) * (maxRadius - RADIUS_OFFSET)
+	for i=1, NUM_GND_RAYS, 1 do
+		local r = radiusDist(i, NUM_GND_RAYS, BOUND_POINTS) * (maxRadius - RADIUS_OFFSET)
 		local theta = i * 360 * PHI
 		local offsetX = r * math.cos(theta)
 		local offsetZ = r * math.sin(theta)
@@ -218,5 +247,76 @@ return function (
 		normal = targetNorm.Unit,
         gndHeight = targetPos.Y,
         normalAngle = targetNormAngle
-    } :: physData
+    } :: groundData
 end
+
+------------------------------------------------------------------------------------------------------------------------
+
+function PhysCheck.checkWall(
+	rootPos: Vector3,
+	direction: Vector3,
+	maxRadius: number,
+	hipHeight: number
+)
+	assert(direction.Y == 0, "Directional vector must be on the XZ plane")
+	if (direction.Magnitude <= 0.1) then
+		return {
+			nearWall = false,
+			normal = VEC3_ZERO,
+			wallBankAngle = 0
+		} :: wallData
+	end
+
+	local nearWall = false
+	local normal = VEC3_ZERO
+	local wallBankAngle = 0
+
+	local unitDir = direction.Unit
+	local lineDir = unitDir:Cross(VEC3_UP)
+	local lineStart = (rootPos + VEC3_UP * (LEG_OFFSET - hipHeight)) - lineDir * maxRadius
+	local hitWallsSet = {} :: {[BasePart]: boolean}
+	local hitWallsArr = {} :: {BasePart}
+	local hitNormalsArr = {} :: {Vector3}
+
+	for i=0, NUM_WALL_RAYS - 1, 1 do
+		local currPos =  lineStart + lineDir * lineDist(maxRadius, i, NUM_WALL_RAYS)
+		local ray = Workspace:Raycast(currPos, unitDir * WALL_RANGE, wallRayParams) :: RaycastResult
+		if (ray and ray.Instance and ray.Instance:IsA("BasePart")) then
+			local hitPart = ray.Instance :: BasePart
+
+			if (
+				hitPart.CollisionGroup ==
+				(USE_WALL_COLL_GROUP and Global.COLL_GROUPS.WALL or Global.COLL_GROUPS.DEFAULT)
+			) then
+				if (not hitWallsSet[ray.Instance]) then
+					hitWallsSet[ray.Instance] = true
+					hitWallsArr[#hitWallsArr + 1] = ray.Instance
+				end
+				hitNormalsArr[#hitWallsArr] = ray.Normal
+
+				if (DebugVisualize.enabled) then
+					DebugVisualize.point(ray.Position, Color3.new(1, 0.835294, 0))
+				end
+			end
+		end
+
+		-- DEBUG
+		if (DebugVisualize.enabled) then
+			DebugVisualize.point(currPos, Color3.new(0, 0.282352, 1))
+		end
+	end
+
+	if (#hitWallsArr >= 1) then
+		normal = avgVecFromVecs(hitNormalsArr)
+		wallBankAngle = math.acos(normal:Dot(VEC3_UP))
+		nearWall = true
+	end
+
+	return {
+		nearWall = nearWall,
+		normal = normal,
+		wallBankAngle = wallBankAngle
+	} :: wallData
+end
+
+return PhysCheck

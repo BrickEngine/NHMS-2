@@ -1,5 +1,4 @@
 return table.freeze({
-
     GAME_PHYS_DEBUG = true,
     GAME_CHAR_DEBUG = true,
     GAME_UI_DEBUG = false,
@@ -10,9 +9,10 @@ return table.freeze({
 
     COLL_GROUPS = {
         DEFAULT = "Default",
-        TRIGGER = "Trigger",
+        NOCOLL = "NoCollide",
         PLAYER = "Player",
+        TRIGGER = "Trigger",
+        WATER = "Water",
         WALL = "Wall"
     },
-
 })
