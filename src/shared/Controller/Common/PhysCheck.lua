@@ -109,9 +109,8 @@ local function avgVecFromVecs(vecArr: {Vector3}): Vector3
 	for _,v in ipairs(vecArr) do
 		vecSum += v
 	end
-	vecSum *= 1/n
 
-	return vecSum
+	return (vecSum * 1/n)
 end
 
 local function lineDist(radius: number, point: number, n: number): number
@@ -138,13 +137,15 @@ export type wallData = {
 	wallBankAngle: number
 }
 
+-- Cylindrical raycast operation for detailed ground proximity data
 function PhysCheck.checkFloor(
 	rootPos: Vector3,
 	maxRadius: number,
 	hipHeight: number,
 	gndClearDist: number,
 	rayParams: RaycastParams
-)
+) : groundData
+
 	local grounded = false
 	local closestPos = VEC3_FARDOWN
 	local closestDist = math.huge
@@ -250,26 +251,25 @@ function PhysCheck.checkFloor(
     } :: groundData
 end
 
-------------------------------------------------------------------------------------------------------------------------
+-- To be used by the state machine modules when other checks require wall detection to be ignored
+function PhysCheck.defaultWallData() : wallData
+	return {
+		nearWall = false,
+		normal = VEC3_ZERO,
+		wallBankAngle = 0
+	}
+end
 
+-- Line based raycast checks for walls in a given direction
 function PhysCheck.checkWall(
 	rootPos: Vector3,
 	direction: Vector3,
 	maxRadius: number,
 	hipHeight: number
-)
-	assert(direction.Y == 0, "Directional vector must be on the XZ plane")
-	if (direction.Magnitude <= 0.1) then
-		return {
-			nearWall = false,
-			normal = VEC3_ZERO,
-			wallBankAngle = 0
-		} :: wallData
-	end
+) : wallData
 
-	local nearWall = false
-	local normal = VEC3_ZERO
-	local wallBankAngle = 0
+	assert(direction ~= VEC3_ZERO, "Direction vector must be non zero")
+	assert(direction.Y == 0, "Directional vector must be on the XZ plane")
 
 	local unitDir = direction.Unit
 	local lineDir = unitDir:Cross(VEC3_UP)
@@ -294,22 +294,30 @@ function PhysCheck.checkWall(
 				end
 				hitNormalsArr[#hitWallsArr] = ray.Normal
 
+				-- DEBUG
 				if (DebugVisualize.enabled) then
-					DebugVisualize.point(ray.Position, Color3.new(1, 0.835294, 0))
+					DebugVisualize.point(ray.Position, Color3.new(1, 0.5, 0))
 				end
 			end
 		end
 
 		-- DEBUG
 		if (DebugVisualize.enabled) then
-			DebugVisualize.point(currPos, Color3.new(0, 0.282352, 1))
+			DebugVisualize.point(currPos, Color3.new(0, 0, 1))
 		end
 	end
 
-	if (#hitWallsArr >= 1) then
-		normal = avgVecFromVecs(hitNormalsArr)
-		wallBankAngle = math.acos(normal:Dot(VEC3_UP))
-		nearWall = true
+	if (#hitWallsArr == 0) then
+		return PhysCheck.defaultWallData()
+	end
+
+	local normal = avgVecFromVecs(hitNormalsArr).Unit
+	local wallBankAngle = math.acos(normal:Dot(VEC3_UP))
+	local nearWall = true
+
+	-- Case: direction vector points away from wall (should rarely ever happen)
+	if ((normal:Dot(unitDir) > 0)) then
+		nearWall = false
 	end
 
 	return {

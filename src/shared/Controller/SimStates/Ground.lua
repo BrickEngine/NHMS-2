@@ -1,5 +1,5 @@
 --[[
-    Statemachine submodule.
+    State machine submodule.
     Logic for ground and air movement, jumping and related abilities.
 ]]
 
@@ -54,7 +54,7 @@ ray_params_gnd.RespectCanCollide = true
 
 local wasGroundedOnce = false
 
--- Create required physics
+-- Create required physics constraints
 local function createForces(mdl: Model): {[string]: Instance}
     local att = Instance.new("Attachment")
     att.WorldAxis = Vector3.new(0, 1, 0)
@@ -252,9 +252,13 @@ function Ground:update(dt: number)
     local groundData: PhysCheck.groundData = PhysCheck.checkFloor(
         currPos, PHYS_RADIUS, HIP_HEIGHT, GND_CLEAR_DIST, ray_params_gnd
     )
-    local wallData: PhysCheck.wallData = PhysCheck.checkWall(
-        currPos, currHoriVel, PHYS_RADIUS, HIP_HEIGHT
-    )
+    local wallData: PhysCheck.wallData
+    if (currHoriVel.Magnitude < 0.1) then
+        wallData = PhysCheck.defaultWallData()
+    else
+        wallData = PhysCheck.checkWall(currPos, currHoriVel, PHYS_RADIUS, HIP_HEIGHT)
+    end
+
     self.grounded = groundData.grounded
     self.nearWall = wallData.nearWall
     self.dashActive = GameClient:getIsDashing()
