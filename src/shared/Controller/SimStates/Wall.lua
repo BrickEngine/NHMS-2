@@ -25,6 +25,8 @@ local VEC3_UP = Vector3.new(0, 1, 0)
 
 -- Create required physics constraints
 local function createForces(mdl: Model): {[string]: Instance}
+    assert(mdl.PrimaryPart)
+
     local att = Instance.new("Attachment")
     att.WorldAxis = Vector3.new(0, 1, 0)
     att.Name = "Ground"
@@ -62,7 +64,7 @@ local function createForces(mdl: Model): {[string]: Instance}
         moveForce = moveForce,
         rotForce = rotForce,
         posForce = posForce,
-    } :: {AlignPosition | AlignOrientation | VectorForce}
+    } :: {[string]: Instance}
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -72,13 +74,13 @@ local Wall = setmetatable({}, BaseState)
 Wall.__index = Wall
 
 function Wall.new(...)
-    local self = setmetatable(BaseState.new(...) :: BaseState.BaseState, Wall)
+    local self = BaseState.new(...) :: BaseState.BaseState
 
     self.character = self._simulation.character :: Model
     self.forces = createForces(self.character)
     self.id = STATE_ID
 
-    return self :: BaseState.BaseState
+    return setmetatable(self, Wall)
 end
 
 function Wall:stateEnter()

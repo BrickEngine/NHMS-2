@@ -12,7 +12,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local UserGameSettings = UserSettings():GetService("UserGameSettings")
+-- local UserGameSettings = UserSettings():GetService("UserGameSettings")
 local Workspace = game:GetService("Workspace")
 
 local Global = require(ReplicatedStorage.Shared.Global)
@@ -22,24 +22,24 @@ local DEFAULT_FOV = 100
 local DEBUG_CAM_SWITCH_KEY = Enum.KeyCode.P
 local USE_OCCLUSION = false
 
-local CAM_TYPES = {
-	FPCam = "Default",
-	ClassicCam = "Debug"
-}
+-- local CAM_TYPES = {
+-- 	FPCam = "Default",
+-- 	ClassicCam = "Debug"
+-- }
 
 -- NOTICE: Player property names do not all match their StarterPlayer equivalents,
 local PLAYER_CAMERA_PROPERTIES = {
 	"DevEnableMouseLock",				-- Not used at the moment, mouse lock enabled by default
 }
 
-local USER_GAME_SETTINGS_PROPERTIES = {
-	"ComputerCameraMovementMode",
-	"ComputerMovementMode",
-	"ControlMode",
-	"GamepadCameraSensitivity",
-	"MouseSensitivity",
-	"RotationType"
-}
+-- local USER_GAME_SETTINGS_PROPERTIES = {
+-- 	"ComputerCameraMovementMode",
+-- 	"ComputerMovementMode",
+-- 	"ControlMode",
+-- 	"GamepadCameraSensitivity",
+-- 	"MouseSensitivity",
+-- 	"RotationType"
+-- }
 
 local CamInput = require(script.CamInput)
 local ClassicCam = require(script.ClassicCam)

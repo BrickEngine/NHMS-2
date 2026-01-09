@@ -1,11 +1,10 @@
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Global = require(ReplicatedStorage.Shared.Global)
 
-local DEBUG_COLL_COLOR3 = Color3.fromRGB(0, 0, 255)
+-- local DEBUG_COLL_COLOR3 = Color3.fromRGB(0, 0, 255)
 
 local PLAYERMDL_MASS_ENABLED = false
 local MAIN_ROOT_PRIO = 100
@@ -48,7 +47,7 @@ local PARAMS = table.freeze({
 ------------------------------------------------------------------------------------------------------------------------
 
 local function setCollGroup(mdl: Model)
-    for _, v: BasePart in pairs(mdl:GetDescendants()) do
+    for _, v: Instance in pairs(mdl:GetDescendants()) do
         if (v:IsA("BasePart")) then
             v.CollisionGroup = Global.COLL_GROUPS.PLAYER
         end
@@ -131,9 +130,8 @@ local function createCharacter(playerModel: Model?): Model
             if (not PLAYERMDL_MASS_ENABLED) then
                 inst.Massless = true
             end
-        end
-        if (inst:IsA("Folder") or inst:IsA("Model")) then
-            inst.Parent = character
+        elseif (inst:IsA("Model") or inst:IsA("Folder")) then
+            (inst :: Instance).Parent = character
         end
     end
     plrMdlPrimPart.CFrame = rootPart.CFrame * PARAMS.PLAYERMODEL_OFFSET_CF

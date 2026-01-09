@@ -1,6 +1,5 @@
 local PhysicsService = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -70,6 +69,8 @@ local function spawnAndSetPlrChar(plr: Player)
         plr.Character = newCharacter
         newCharacter.PrimaryPart:SetNetworkOwner(plr)
     end
+
+    assert(plr.Character and plr.Character.PrimaryPart, "Player character must exist and have a primary part")
 
     if (Workspace.StreamingEnabled) then
         plr.ReplicationFocus = plr.Character.PrimaryPart

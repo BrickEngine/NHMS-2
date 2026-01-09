@@ -43,7 +43,7 @@ local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
 local COLL_HEIGHT = CharacterDef.PARAMS.MAINCOLL_SIZE.X
 local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1, 0)
-local PI2 = math.pi*2
+-- local PI2 = math.pi*2
 
 -- Local vars
 local ray_params_gnd = RaycastParams.new()
@@ -56,6 +56,8 @@ local wasGroundedOnce = false
 
 -- Create required physics constraints
 local function createForces(mdl: Model): {[string]: Instance}
+    assert(mdl.PrimaryPart)
+
     local att = Instance.new("Attachment")
     att.WorldAxis = Vector3.new(0, 1, 0)
     att.Name = "Ground"
@@ -93,7 +95,7 @@ local function createForces(mdl: Model): {[string]: Instance}
         moveForce = moveForce,
         rotForce = rotForce,
         posForce = posForce,
-    } :: {AlignPosition | AlignOrientation | VectorForce}
+    } :: {[string]: Instance}
 end
 
 local function getCFrameRelMoveVec(camCFrame: CFrame, relativeVec: Vector3): Vector3
@@ -112,7 +114,7 @@ local Ground = setmetatable({}, BaseState)
 Ground.__index = Ground
 
 function Ground.new(...)
-    local self = setmetatable(BaseState.new(...) :: BaseState.BaseState, Ground)
+    local self = BaseState.new(...) :: BaseState.BaseState
     self.id = STATE_ID
 
     self.character = self._simulation.character :: Model
@@ -124,7 +126,7 @@ function Ground.new(...)
 
     --ray_params_gnd.FilterDescendantsInstances = self.character:GetChildren()
 
-    return self
+    return setmetatable(self, Ground)
 end
 
 function Ground:stateEnter()

@@ -21,10 +21,11 @@ end
 -- Framerate independent lerp function; slightly less efficient than lerp;
 -- v0: current, v1: target, r: rate (value between 0 and 1), dt: time delta
 function MathUtil.flerp(v0: number, v1: number, dt: number, r: number?): number
-    if (not r) then
-        r = DEFAULT_RATE
+	local _r = r
+    if (not _r) then
+        _r = DEFAULT_RATE
     end
-	return MathUtil.lerp(v0, v1, 1 - math.pow(r, dt))
+	return MathUtil.lerp(v0, v1, 1 - math.pow(_r, dt))
 end
 
 -- Standard lerp for each value of the Vector3;

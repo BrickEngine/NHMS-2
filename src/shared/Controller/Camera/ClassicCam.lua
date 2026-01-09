@@ -1,13 +1,11 @@
 -- Modified default Roblox 3rd person camera
 
 local PlayersService = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CamInput = require(script.Parent.CamInput)
 local BaseCam = require(script.Parent.BaseCam)
 
 local INITIAL_CAMERA_ANGLE = CFrame.fromOrientation(math.rad(-15), 0, 0)
-local SMOOTH_DELTA = 0.08
 
 local ClassicCamera = setmetatable({}, BaseCam)
 ClassicCamera.__index = ClassicCamera
@@ -22,8 +20,6 @@ end
 
 -- Movement mode standardized to Enum.ComputerCameraMovementMode values
 function ClassicCamera:setCameraMovementMode(cameraMovementMode: Enum.ComputerCameraMovementMode)
-	BaseCam.setCameraMovementMode(self, cameraMovementMode)
-
 	self.isFollowCamera = cameraMovementMode == Enum.ComputerCameraMovementMode.Follow
 	self.isCameraToggle = cameraMovementMode == Enum.ComputerCameraMovementMode.CameraToggle
 end

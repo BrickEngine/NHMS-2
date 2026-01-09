@@ -1,7 +1,6 @@
 local UserGameSettings = UserSettings():GetService("UserGameSettings")
 local ContextActionService = game:GetService("ContextActionService")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
@@ -95,10 +94,10 @@ local function isInDynamicThumbstickArea(pos: Vector3): boolean
 		pos.Y <= posBottomRight.Y
 end
 
-local worldDt = 1/60 -- remove with FFlagUserCameraInputDt
-RunService.Stepped:Connect(function(_, _worldDt)
-	worldDt = _worldDt
-end)
+-- local worldDt = 1/60 -- remove with FFlagUserCameraInputDt
+-- RunService.Stepped:Connect(function(_, _worldDt)
+-- 	worldDt = _worldDt
+-- end)
 
 local CameraInput = {}
 

@@ -1,9 +1,7 @@
-local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local CollisionGroups = require(ReplicatedStorage.Shared.CollisionGroups)
-
+local Global = require(ReplicatedStorage.Shared.Global)
 local DebugVisualize = require(script.Parent.DebugVisualize)
 
 local NUM_RAYS = 32
@@ -25,7 +23,7 @@ do
 	local function getWaterPartsInWorkspace(): {[number]:Instance}
 		local waterParts = {}
 		for _, v in pairs(Workspace:GetDescendants()) do
-			if (v:IsA("BasePart") and v.CollisionGroup == CollisionGroups.WATER) then
+			if (v:IsA("BasePart") and v.CollisionGroup == Global.COLL_GROUPS.WATER) then
 				v.CanCollide = false
 				table.insert(waterParts, v)
 			end
@@ -208,7 +206,7 @@ function Phys.colliderCast(
 	_grounded = true
 
 	if (numHits > 2) then
-		local planeData = avgPlaneFromPoints(hitPointsArr, hitNormalsArr)
+		local planeData = avgPlaneFromPoints(hitPointsArr)
 		targetPos = planeData.centroid
 		targetNorm = planeData.normal
 		pNormAngle = math.deg(math.acos(targetNorm:Dot(VEC3_UP)))

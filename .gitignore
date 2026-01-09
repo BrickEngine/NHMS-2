@@ -5,5 +5,10 @@
 /*.rbxlx.lock
 /*.rbxl.lock
 
+# VS Code
+/*.vscode
+
 **/init.meta.json
 **/idea.txt
+
+sourcemap.json

@@ -1,9 +1,8 @@
 local Players = game:GetService("Players")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
+--local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local Animation = require(script.Parent.Animation)
 local DebugVisualize = require(script.Parent.Common.DebugVisualize)
 
@@ -13,7 +12,7 @@ local Ground = require(simStates.Ground) :: BaseState.BaseState
 local Water = require(simStates.Water) :: BaseState.BaseState
 local Wall = require(simStates.Wall) :: BaseState.BaseState
 
-local Global = require(ReplicatedStorage.Shared.Global)
+--local Global = require(ReplicatedStorage.Shared.Global)
 
 -- Local vars
 local primaryPartListener: RBXScriptConnection
@@ -125,25 +124,25 @@ function Simulation:resetSimulation()
 end
 
 -- TESTING PURPOSES
-local function TEST_DESPAWNING()
-    print("TESTING RANDOM CHARACTER BREAKING")
-    task.spawn(function()
-        local pTbl = {}
-        local char = Players.LocalPlayer.Character
-        for i,v in pairs(char:GetChildren()) do
-            if (v:IsA("BasePart")) then
-                table.insert(pTbl, v)
-            end
-        end
-        while (#pTbl > 0) do
-            task.wait(0.001)
-            local rdm = math.random(1, #pTbl)
-            pTbl[rdm]:Destroy()
-            table.remove(pTbl, rdm)
-        end
-        --Players.LocalPlayer.Character:Destroy()
-    end)
-end
+-- local function TEST_DESPAWNING()
+--     print("TESTING RANDOM CHARACTER BREAKING")
+--     task.spawn(function()
+--         local pTbl = {}
+--         local char = Players.LocalPlayer.Character
+--         for i,v in pairs(char:GetChildren()) do
+--             if (v:IsA("BasePart")) then
+--                 table.insert(pTbl, v)
+--             end
+--         end
+--         while (#pTbl > 0) do
+--             task.wait(0.001)
+--             local rdm = math.random(1, #pTbl)
+--             pTbl[rdm]:Destroy()
+--             table.remove(pTbl, rdm)
+--         end
+--         --Players.LocalPlayer.Character:Destroy()
+--     end)
+-- end
 
 function Simulation:onCharAdded(character: Model)
     self.character = character

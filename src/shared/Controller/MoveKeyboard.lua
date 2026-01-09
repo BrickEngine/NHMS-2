@@ -1,4 +1,3 @@
-local Players = game:GetService("Players")
 -- Keyboard controls
 
 local ContextActionService = game:GetService("ContextActionService")

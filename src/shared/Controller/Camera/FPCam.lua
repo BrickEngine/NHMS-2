@@ -9,7 +9,7 @@ local BaseCam = require(script.Parent.BaseCam)
 local GameClient = require(ReplicatedStorage.Shared.GameClient)
 local MathUtil = require(ReplicatedStorage.Shared.MathUtil)
 
-local INITIAL_CAM_ANG = CFrame.fromOrientation(math.rad(-15), 0, 0)
+--local INITIAL_CAM_ANG = CFrame.fromOrientation(math.rad(-15), 0, 0)
 local ROOT_OFFSET = Vector3.new(0, 2.5, 0)
 local DASH_OFFSET = Vector3.new(0, -1.8, 0)
 local INP_SENS_FAC = 34	-- input sensitivity factor
@@ -49,16 +49,16 @@ function FPCam:update(dt)
 	local newCamCFrame = cam.CFrame
 	local newCamFocus = cam.Focus
 
-	local overrideCameraLookVector = nil
-	if self.resetCameraAngle then
-		local rootPart: BasePart = self:getRootPart()
-		if rootPart then
-			overrideCameraLookVector = (rootPart.CFrame * INITIAL_CAM_ANG).LookVector
-		else
-			overrideCameraLookVector = INITIAL_CAM_ANG.LookVector
-		end
-		self.resetCameraAngle = false
-	end
+	-- local overrideCameraLookVector
+	-- if self.resetCameraAngle then
+	-- 	local rootPart: BasePart = self:getRootPart()
+	-- 	if rootPart then
+	-- 		overrideCameraLookVector = (rootPart.CFrame * INITIAL_CAM_ANG).LookVector
+	-- 	else
+	-- 		overrideCameraLookVector = INITIAL_CAM_ANG.LookVector
+	-- 	end
+	-- 	self.resetCameraAngle = false
+	-- end
 
 	local player = PlayersService.LocalPlayer
 
@@ -67,7 +67,7 @@ function FPCam:update(dt)
 	end
 
 	local subjCFrame: CFrame = self:getSubjectCFrame()
-    local subjVel: Vector3 = self:getSubjectVelocity()
+    --local subjVel: Vector3 = self:getSubjectVelocity()
 
     -- Get rotation input
     local rotateInput = CamInput.getRotation(dt)

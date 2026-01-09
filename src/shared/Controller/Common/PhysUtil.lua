@@ -57,9 +57,9 @@ function PhysUtil.substepAccel(vel: number, pos: number, targetPos: number, down
     for i=1, numSteps-1, 1 do
         local stepNetAccel = stepAccel - downForce
 
-        local predVel: Vector3 = stepNetAccel*t
-        local predPosDisp: Vector3 = (vel*t) + (0.5*predVel*t)
-        local predAccel: Vector3 = downForce + 2*((targetPos - (stepPos + predPosDisp) - stepVel*t) / t*t)
+        local predVel: number = stepNetAccel*t
+        local predPosDisp: number = (vel*t) + (0.5*predVel*t)
+        local predAccel: number = downForce + 2*((targetPos - (stepPos + predPosDisp) - stepVel*t) / t*t)
 
         stepAccel = (accel + predAccel) * 0.5
         stepVel = (predVel + vel) * 0.5
@@ -81,29 +81,6 @@ function PhysUtil.stepperVec3(pos: Vector3, vel: Vector3, targetPos: Vector3, st
         return targetPos, 0
     end
     return stepPos, stepVel
-end
-
-function PhysUtil.subStepForceVec3(vel: Vector3, pos: Vector3, targetPos: Vector3, downForce: Vector3, mass: number, numSteps: number, dt: number)
-    local force = PhysUtil.forceFromDisplacementVec3((targetPos-pos), vel, downForce, mass, dt)
-
-    local stepForce = force
-    local stepVel = vel
-    local stepPos = pos
-    local t = dt / numSteps
-
-    for i=1, numSteps-1, 1 do
-        local stepNetForce = stepForce - downForce
-
-        local predVel: Vector3 = (stepNetForce / mass)*t
-        local predPosDisp: Vector3 = (vel*t) + (0.5*predVel*t)
-        local predForce: Vector3 = downForce + 2*((targetPos - (stepPos + predPosDisp) - stepVel*t) / t*t)*mass
-
-        stepForce = (force + predForce) * 0.5
-        stepVel = (predVel + vel) * 0.5
-        stepPos = (predPosDisp + pos) * 0.5
-    end
-
-    return stepForce, stepVel, stepPos
 end
 
 function PhysUtil.projectOnPlaneVec3(v: Vector3, norm: Vector3): Vector3

@@ -374,7 +374,7 @@ function MoveTouch:BindContextActions()
 		return Enum.ContextActionResult.Pass
 	end
 
-	local function handleInput(actionName, inputState, inputObject)
+	local function handleInput(actionName, inputState, inputObject): Enum.ContextActionResult
 		if inputState == Enum.UserInputState.Begin then
 			return inputBegan(inputObject)
 		elseif inputState == Enum.UserInputState.Change then
@@ -388,6 +388,7 @@ function MoveTouch:BindContextActions()
 		elseif inputState == Enum.UserInputState.Cancel then
 			self:onInputEnded()
 		end
+        return Enum.ContextActionResult.Pass
 	end
 
 	ContextActionService:BindActionAtPriority(

@@ -1,3 +1,5 @@
+-- Global constants
+
 return table.freeze({
     GAME_PHYS_DEBUG = true,
     GAME_CHAR_DEBUG = true,

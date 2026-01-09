@@ -1,69 +1,21 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
+-- local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- local Workspace = game:GetService("Workspace")
 
 
 local controller = script.Parent.Parent
-local Global = require(ReplicatedStorage.Shared.Global)
-local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
-local InputManager = require(controller.InputManager)
 local BaseState = require(controller.SimStates.BaseState)
-local PhysCheck = require(controller.Common.PhysCheck)
+-- local Global = require(ReplicatedStorage.Shared.Global)
+-- local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
+-- local InputManager = require(controller.InputManager)
+-- local PhysCheck = require(controller.Common.PhysCheck)
 
 local STATE_ID = 1
 
 -- physics
-local WATER_SURFACE_OFFS = 0.025
+--local WATER_SURFACE_OFFS = 0.025
 
 -- animation speeds / threshold
-local ANIM_SPEED_FAC_SWIM = 1
-
--- local vars
-local ray_params_gnd = RaycastParams.new()
-ray_params_gnd.CollisionGroup = Global.COLL_GROUPS.PLAYER
-ray_params_gnd.FilterType = Enum.RaycastFilterType.Exclude
-ray_params_gnd.IgnoreWater = true
-ray_params_gnd.RespectCanCollide = true
-
-local function createForces(mdl: Model): {[string]: Instance}
-    local att = Instance.new("Attachment")
-    att.Name = "Ground"
-    att.Parent = mdl.PrimaryPart
-
-    local moveForce = Instance.new("VectorForce")
-    moveForce.Enabled = false
-    moveForce.Attachment0 = att
-    moveForce.ApplyAtCenterOfMass = true
-    moveForce.RelativeTo = Enum.ActuatorRelativeTo.World
-    moveForce.Parent = mdl.PrimaryPart
-
-    local rotForce = Instance.new("AlignOrientation")
-    rotForce.Enabled = false
-    rotForce.Mode = Enum.OrientationAlignmentMode.OneAttachment
-    rotForce.Attachment0 = att
-    rotForce.AlignType = Enum.AlignType.AllAxes
-    rotForce.Responsiveness = 200
-    rotForce.MaxTorque = 200000000
-    rotForce.MaxAngularVelocity = math.huge
-    rotForce.Parent = mdl.PrimaryPart
-
-    local posForce = Instance.new("AlignPosition")
-    posForce.Enabled = false
-    posForce.Attachment0 = att
-    posForce.Mode = Enum.PositionAlignmentMode.OneAttachment
-    posForce.ForceLimitMode = Enum.ForceLimitMode.PerAxis
-    posForce.MaxAxesForce = Vector3.zero
-    posForce.MaxVelocity = 100000
-    posForce.Responsiveness = 200
-    posForce.ForceRelativeTo = Enum.ActuatorRelativeTo.World
-    posForce.Position = mdl.PrimaryPart.CFrame.Position
-    posForce.Parent = mdl.PrimaryPart
-
-    return {
-        moveForce = moveForce,
-        rotForce = rotForce,
-        posForce = posForce,
-    }
-end
+--local ANIM_SPEED_FAC_SWIM = 1
 
 ---------------------------------------------------------------------------------------
 
@@ -71,11 +23,11 @@ local Water = setmetatable({}, BaseState)
 Water.__index = Water
 
 function Water.new(...)
-    local self = setmetatable(BaseState.new(...) :: BaseState.BaseState, Water)
+    local self = BaseState.new(...) :: BaseState.BaseState
 
     self.id = STATE_ID
 
-    return self :: BaseState.BaseState
+    return setmetatable(self, Water)
 end
 
 function Water:stateEnter()

@@ -18,6 +18,15 @@ local DebugVisualize = {
 	enabled = Global.GAME_PHYS_DEBUG,
 }
 
+local function destroyTableInstances(tbl: {})
+	while (#tbl > 0) do
+		local inst = table.remove(tbl)
+		if (inst:IsA("Instance")) then
+			inst:Destroy()
+		end
+	end
+end
+
 function DebugVisualize.point(position: Vector3, color: Color3?)
 	if not DebugVisualize.enabled then
 		return
@@ -93,17 +102,9 @@ function DebugVisualize.normalPart(pos: Vector3, norm: Vector3, size: Vector3?)
 end
 
 function DebugVisualize.step()
-	while #unusedPoints > 0 do
-		table.remove(unusedPoints):Destroy()
-	end
-
-	while #unusedVectors > 0 do
-		table.remove(unusedVectors):Destroy()
-	end
-
-	while #unusedParts > 0 do
-		table.remove(unusedParts):Destroy()
-	end
+	destroyTableInstances(unusedParts)
+	destroyTableInstances(unusedPoints)
+	destroyTableInstances(unusedVectors)
 
 	usedPoints, unusedPoints = unusedPoints, usedPoints
 	usedVectors, unusedVectors = unusedVectors, usedVectors

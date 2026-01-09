@@ -1,9 +1,9 @@
 -- Main animation module. Instantiates all character dependent animation tracks
 
-local function resetTrackVals(track: AnimationTrack)
-	track:AdjustSpeed(1)
-	track:AdjustWeight(1)
-end
+-- local function resetTrackVals(track: AnimationTrack)
+-- 	track:AdjustSpeed(1)
+-- 	track:AdjustWeight(1)
+-- end
 
 local Animation = {}
 Animation.__index = Animation

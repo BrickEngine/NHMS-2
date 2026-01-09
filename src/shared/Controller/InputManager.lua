@@ -12,21 +12,21 @@ local ACTION_PRIO = 100
 local NORMALIZE_INPUT = true
 local VEC3_ZERO = Vector3.zero
 
-local MOVEMENT_MODE_MAP = table.freeze({
-	[Enum.TouchMovementMode.DPad] = MoveTouch,
-	[Enum.DevTouchMovementMode.DPad] = MoveTouch,
-	[Enum.TouchMovementMode.Thumbpad] = MoveTouch,
-	[Enum.DevTouchMovementMode.Thumbpad] = MoveTouch,
-	[Enum.TouchMovementMode.Thumbstick] = MoveTouch,
-	[Enum.DevTouchMovementMode.Thumbstick] = MoveTouch,
-	[Enum.TouchMovementMode.DynamicThumbstick] = MoveTouch,
-	[Enum.DevTouchMovementMode.DynamicThumbstick] = MoveTouch,
-	[Enum.TouchMovementMode.Default] = MoveTouch,
-	[Enum.ComputerMovementMode.Default] = MoveKeyboard,
-	[Enum.ComputerMovementMode.KeyboardMouse] = MoveKeyboard,
-	[Enum.DevComputerMovementMode.KeyboardMouse] = MoveKeyboard,
-	[Enum.DevComputerMovementMode.Scriptable] = nil
-})
+-- local MOVEMENT_MODE_MAP = table.freeze({
+-- 	[Enum.TouchMovementMode.DPad] = MoveTouch,
+-- 	[Enum.DevTouchMovementMode.DPad] = MoveTouch,
+-- 	[Enum.TouchMovementMode.Thumbpad] = MoveTouch,
+-- 	[Enum.DevTouchMovementMode.Thumbpad] = MoveTouch,
+-- 	[Enum.TouchMovementMode.Thumbstick] = MoveTouch,
+-- 	[Enum.DevTouchMovementMode.Thumbstick] = MoveTouch,
+-- 	[Enum.TouchMovementMode.DynamicThumbstick] = MoveTouch,
+-- 	[Enum.DevTouchMovementMode.DynamicThumbstick] = MoveTouch,
+-- 	[Enum.TouchMovementMode.Default] = MoveTouch,
+-- 	[Enum.ComputerMovementMode.Default] = MoveKeyboard,
+-- 	[Enum.ComputerMovementMode.KeyboardMouse] = MoveKeyboard,
+-- 	[Enum.DevComputerMovementMode.KeyboardMouse] = MoveKeyboard,
+-- 	[Enum.DevComputerMovementMode.Scriptable] = nil
+-- })
 local PC_INPUT_TYPE_MAP = table.freeze({
 	[Enum.UserInputType.Keyboard] = MoveKeyboard,
 	[Enum.UserInputType.MouseButton1] = MoveKeyboard,
@@ -145,7 +145,7 @@ function InputManager:createTouchGuiContainer()
 end
 
 -- diables the current input controller, if inpModule is nil
-function InputManager:switchInputController(inpModule: {}?)
+function InputManager:switchInputController(inpModule: any)
     if (not inpModule) then
         if (self.activeInputController) then
             self.activeInputController:enable(false)
