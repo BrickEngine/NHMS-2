@@ -21,7 +21,7 @@ local STATE_ID = 0
 local MOVE_SPEED = 1.75
 local DASH_SPEED = 3.2
 local MIN_WALL_MOUNT_SPEED = 2 -- studs/s
-local GND_CLEAR_DIST = 0.45 -- 0.2
+local GND_CLEAR_DIST = 0.45
 local MAX_INCLINE = math.rad(70) -- radiants
 local JUMP_HEIGHT = 6
 local JUMP_DELAY = 0.28
@@ -86,8 +86,8 @@ local function createForces(mdl: Model): {[string]: Instance}
     posForce.Mode = Enum.PositionAlignmentMode.OneAttachment
     posForce.ForceLimitMode = Enum.ForceLimitMode.PerAxis
     posForce.MaxAxesForce = Vector3.zero
-    posForce.MaxVelocity = 300--100000
-    posForce.Responsiveness = 200
+    posForce.MaxVelocity = 150--100000
+    posForce.Responsiveness = 195
     posForce.ForceRelativeTo = Enum.ActuatorRelativeTo.World
     posForce.Position = mdl.PrimaryPart.CFrame.Position
 
@@ -247,7 +247,7 @@ function Ground:update(dt: number)
     local currVel = primaryPart.AssemblyLinearVelocity
     local currPos = primaryPart.CFrame.Position
     local currHoriVel = Vector3.new(currVel.X, 0, currVel.Z)
-    local g = Workspace.Gravity
+    local grav = Workspace.Gravity
     local mass = primaryPart.AssemblyMass
 
     -- Do physics checks
@@ -269,7 +269,7 @@ function Ground:update(dt: number)
         local targetPosY = groundData.gndHeight + HIP_HEIGHT
 
         -- Scale force with cubed vertical velocity to compensate for high falls
-        self.forces.posForce.MaxAxesForce = VEC3_UP * mass * (g * 20 + currVel.Y * currVel.Y)
+        self.forces.posForce.MaxAxesForce = mass * (grav * 20 + currVel.Y * currVel.Y) * VEC3_UP
         self.forces.posForce.Position = Vector3.new(0, targetPosY, 0)
 
         -- Force character to get more ground distance, if too close to ground

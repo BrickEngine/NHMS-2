@@ -10,6 +10,10 @@ local LEG_OFFSET = 1
 local WALL_RANGE = 3
 local RADIUS_OFFSET = 0.08
 local RAY_Y_OFFSET = 0.1
+
+-- max distance between ordered hit points which, if exceeded, will force the target position to be
+-- evaluated differently for ground detection
+local MAX_GND_POINT_DIFF = 0.25
 local TARGET_CLOSEST = true -- if true, picks highest point as target position
 local USE_WALL_COLL_GROUP = false -- determines which coll group to use for wall detection (false = default)
 local MAX_INCLINE_ANGLE = math.rad(70) -- in rad, angle at which a hit will not be registered
@@ -40,7 +44,7 @@ local function radiusDist(k: number, n: number, b: number)
 	end
 end
 
--- Calculates a virtual plane normal from given points,
+-- Calculates a virtual plane normal from given points
 local function avgPlaneFromPoints(ptsArr: {Vector3}) : {centroid: Vector3, normal: Vector3}
 	local n = #ptsArr
 	local noPlane = {
@@ -113,6 +117,24 @@ local function avgVecFromVecs(vecArr: {Vector3}): Vector3
 	return (vecSum * 1/n)
 end
 
+-- Finds the biggest numerical difference between two adjacent numbers in an ordered array
+local function biggestOrderedDist(vecArr: {number}): number
+	local arr = vecArr
+	table.sort(vecArr, function(a0: number, a1: number): boolean 
+		return a0 < a1
+	end)
+
+	local i = 1
+	local max = 0
+	while (i < #arr) do
+		local dist = math.abs(arr[i] - arr[i + 1]) 
+		max = (dist > max) and dist or max
+		i += 1
+	end
+
+	return max
+end
+
 local function lineDist(radius: number, point: number, n: number): number
 	return (radius / n) * (1 + 2 * point)
 end
@@ -159,6 +181,7 @@ function PhysCheck.checkFloor(
 	-- Cylinder cast checks with sunflower distribution
 	local hitPointsArr = {} :: {Vector3}
 	local normalsArr = {} :: {Vector3}
+	local ptsHeightArr = {} :: {number}
 
 	-- TODO: return a hit BasePart, which is closest to the RootPart
 	--local hitObjectArr = {} :: {BasePart}
@@ -190,6 +213,7 @@ function PhysCheck.checkFloor(
 				if (hitNormAng < MAX_INCLINE_ANGLE) then
 					numHits += 1
 					hitPointsArr[numHits] = ray.Position
+					ptsHeightArr[numHits] = ray.Position.Y
 
 					if (ray.Distance < closestDist) then
 						closestDist = ray.Distance
@@ -216,6 +240,18 @@ function PhysCheck.checkFloor(
 
 	if (TARGET_CLOSEST) then
 		if (numHits > 0) then
+			
+			local biggestDist = biggestOrderedDist(ptsHeightArr)
+			if (biggestDist <= MAX_GND_POINT_DIFF) then
+				if (numHits > 2) then
+					targetPos = avgPlaneFromPoints(hitPointsArr).centroid
+				else
+					targetPos = avgVecFromVecs(hitPointsArr)
+				end
+			else
+				targetPos = closestPos
+			end
+
 			targetPos = closestPos
 		else
 			grounded = false
