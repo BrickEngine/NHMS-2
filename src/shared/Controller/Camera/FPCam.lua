@@ -4,9 +4,10 @@ local PlayersService = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local CamInput = require(script.Parent.CamInput)
 local BaseCam = require(script.Parent.BaseCam)
-local GameClient = require(ReplicatedStorage.Shared.GameClient)
+--local GameClient = require(ReplicatedStorage.Shared.GameClient)
 local MathUtil = require(ReplicatedStorage.Shared.MathUtil)
 
 --local INITIAL_CAM_ANG = CFrame.fromOrientation(math.rad(-15), 0, 0)
@@ -83,10 +84,12 @@ function FPCam:update(dt)
         local rot_x = (x >= ROT_MAX_Y and ROT_MAX_Y) or (x <= ROT_MIN_Y and ROT_MIN_Y) or x
         local rot_y = (camAngVec.Y - adjInputVec.X) % 360
 
-		local effCamOffset = (GameClient:getIsDashing()) and DASH_OFFSET or VEC3_ZERO
+		--TODO
+		local effCamOffset = (ClientRoot:getIsDashing()) and DASH_OFFSET or VEC3_ZERO
 		lastCamOffs = MathUtil.vec3Clamp(
 			MathUtil.vec3Flerp(lastCamOffs, effCamOffset, dt * 20), DASH_OFFSET, VEC3_ZERO
 		)
+
 		-- local effCFOffset = lastCFCamOffs:Lerp(CFrame.new(effCamOffset), 0.05)
 		-- lastCFCamOffs = effCFOffset
 

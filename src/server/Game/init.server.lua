@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
 local Global = require(ReplicatedStorage.Shared.Global)
+local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local Network = require(ReplicatedStorage.Shared.Network)
 local ServApi = require(script.ServNetApi)
@@ -20,7 +21,7 @@ do
     end
 
     -- Check if all collision groups are registered
-    for _, groupName in pairs(Global.COLL_GROUPS) do
+    for _, groupName in pairs(CollisionGroup) do
         if (not PhysicsService:IsCollisionGroupRegistered(groupName)) then
             warn("unregistered collision group: " .. groupName)
         end

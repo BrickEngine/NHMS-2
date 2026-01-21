@@ -2,7 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local DebugVisualize = require(script.Parent.DebugVisualize)
-local Global = require(ReplicatedStorage.Shared.Global)
+local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 
 local NUM_GND_RAYS = 64
 local NUM_WALL_RAYS = 12
@@ -25,12 +25,12 @@ local VEC3_FARDOWN = -999999999 * VEC3_UP --Vector3.new(999999, 999999, 999999)
 local BOUND_POINTS = math.round(2 * math.sqrt(NUM_GND_RAYS))
 
 local floorRayParams = RaycastParams.new()
-floorRayParams.CollisionGroup = Global.COLL_GROUPS.DEFAULT
+floorRayParams.CollisionGroup = CollisionGroup.DEFAULT
 floorRayParams.FilterType = Enum.RaycastFilterType.Exclude
 floorRayParams.IgnoreWater = true
 
 local wallRayParams = RaycastParams.new()
-wallRayParams.CollisionGroup = Global.COLL_GROUPS.PLAYER
+wallRayParams.CollisionGroup = CollisionGroup.PLAYER
 wallRayParams.FilterType = Enum.RaycastFilterType.Exclude
 wallRayParams.IgnoreWater = true
 
@@ -156,6 +156,7 @@ export type groundData = {
 export type wallData = {
 	nearWall: boolean,
 	normal: Vector3,
+	position: Vector3,
 	wallBankAngle: number
 }
 
@@ -292,6 +293,7 @@ function PhysCheck.defaultWallData() : wallData
 	return {
 		nearWall = false,
 		normal = VEC3_ZERO,
+		position = VEC3_ZERO,
 		wallBankAngle = 0
 	}
 end
@@ -313,6 +315,7 @@ function PhysCheck.checkWall(
 	local hitWallsSet = {} :: {[BasePart]: boolean}
 	local hitWallsArr = {} :: {BasePart}
 	local hitNormalsArr = {} :: {Vector3}
+	local posArr = {} :: {Vector3}
 
 	for i=0, NUM_WALL_RAYS - 1, 1 do
 		local currPos =  lineStart + lineDir * lineDist(maxRadius, i, NUM_WALL_RAYS)
@@ -322,13 +325,14 @@ function PhysCheck.checkWall(
 
 			if (
 				hitPart.CollisionGroup ==
-				(USE_WALL_COLL_GROUP and Global.COLL_GROUPS.WALL or Global.COLL_GROUPS.DEFAULT)
+				(USE_WALL_COLL_GROUP and CollisionGroup.WALL or CollisionGroup.DEFAULT)
 			) then
 				if (not hitWallsSet[ray.Instance]) then
 					hitWallsSet[ray.Instance] = true
 					hitWallsArr[#hitWallsArr + 1] = ray.Instance
 				end
 				hitNormalsArr[#hitWallsArr] = ray.Normal
+				posArr[#hitWallsArr] = ray.Position
 
 				-- DEBUG
 				if (DebugVisualize.enabled) then
@@ -348,6 +352,7 @@ function PhysCheck.checkWall(
 	end
 
 	local normal = avgVecFromVecs(hitNormalsArr).Unit
+	local position = avgVecFromVecs(posArr)
 	local wallBankAngle = math.acos(normal:Dot(VEC3_UP))
 	local nearWall = true
 
@@ -359,6 +364,7 @@ function PhysCheck.checkWall(
 	return {
 		nearWall = nearWall,
 		normal = normal,
+		position = position,
 		wallBankAngle = wallBankAngle
 	} :: wallData
 end

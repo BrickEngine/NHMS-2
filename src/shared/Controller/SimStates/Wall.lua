@@ -8,7 +8,6 @@ local SoundService = game:GetService("SoundService")
 local Workspace = game:GetService("Workspace")
 
 local controller = script.Parent.Parent
-local GameClient = require(ReplicatedStorage.Shared.GameClient)
 local Global = require(ReplicatedStorage.Shared.Global)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(controller.InputManager)

@@ -3,6 +3,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Global = require(ReplicatedStorage.Shared.Global)
+local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 
 -- local DEBUG_COLL_COLOR3 = Color3.fromRGB(0, 0, 255)
 
@@ -49,7 +50,7 @@ local PARAMS = table.freeze({
 local function setCollGroup(mdl: Model)
     for _, v: Instance in pairs(mdl:GetDescendants()) do
         if (v:IsA("BasePart")) then
-            v.CollisionGroup = Global.COLL_GROUPS.PLAYER
+            v.CollisionGroup = CollisionGroup.PLAYER
         end
     end
 end

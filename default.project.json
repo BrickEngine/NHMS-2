@@ -38,7 +38,8 @@
         "StreamingEnabled": true,
         "SignalBehavior": "Deferred",
         "PhysicsSteppingMethod": "Fixed",
-        "RejectCharacterDeletions": "Enabled"
+        "RejectCharacterDeletions": "Enabled",
+        "UseNewLuauTypeSolver": "Disabled"
       }
     },
     "Lighting": {

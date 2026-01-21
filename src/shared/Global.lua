@@ -1,4 +1,4 @@
--- Global constants
+-- Global constants for client and server side modules.
 
 return table.freeze({
     GAME_PHYS_DEBUG = true,
@@ -7,14 +7,5 @@ return table.freeze({
 
     PLAYERS_INST_FOLDER_NAME = "PlayerInstContainer",
 
-    PLAYER_CHARACTER_TAG_NAME = "PlayerCharacter",
-
-    COLL_GROUPS = {
-        DEFAULT = "Default",
-        NOCOLL = "NoCollide",
-        PLAYER = "Player",
-        TRIGGER = "Trigger",
-        WATER = "Water",
-        WALL = "Wall"
-    },
+    PLAYER_CHARACTER_TAG_NAME = "PlayerCharacter"
 })

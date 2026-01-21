@@ -1,19 +1,24 @@
 --[[
-    Main module for all client-side player and game logic
+    Main module for all client-side player and game logic.
 
     lots and lot of TODO here
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 
+local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local InputManager = require(ReplicatedStorage.Shared.Controller.InputManager)
+local Controller = require(ReplicatedStorage.Shared.Controller)
+local Network = require(ReplicatedStorage.Shared.Network)
+local CliApi = require(ReplicatedStorage.Shared.Network.CliNetApi)
+
+local clientEvents = Network.clientEvents
 
 local DASH_TIME = 1.6 --seconds
 local DASH_COOLDOWN_TIME = 0.8 --seconds
 local DEFAULT_HEALTH = 100
-
-local updateConn = nil
 
 type Counter = {
     t: number,
@@ -23,6 +28,8 @@ type Counter = {
 ------------------------------------------------------------------------------------------------------------------------
 -- Module
 ------------------------------------------------------------------------------------------------------------------------
+local updateConn = nil
+
 local GameClient = {
     gameTime = 0,
     currentInvSlot = 0,
@@ -36,6 +43,17 @@ local GameClient = {
     score = 0,
 }
 GameClient.__index = GameClient
+
+function GameClient:InitPlayer()
+    local function respawnAfterCharRemove(character: Model)
+        print(character.Name .. " was removed")
+        --task.wait(1.5)
+        CliApi[clientEvents.requestSpawn]()
+    end
+
+    CliApi[clientEvents.requestSpawn]()
+    Players.LocalPlayer.CharacterRemoving:Connect(respawnAfterCharRemove)
+end
 
 function GameClient:updateGameTime(dt: number, override: number?)
     if (override) then self.gameTime = override end

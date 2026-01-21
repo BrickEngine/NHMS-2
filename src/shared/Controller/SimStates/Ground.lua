@@ -8,8 +8,9 @@ local SoundService = game:GetService("SoundService")
 local Workspace = game:GetService("Workspace")
 
 local controller = script.Parent.Parent
-local GameClient = require(ReplicatedStorage.Shared.GameClient)
-local Global = require(ReplicatedStorage.Shared.Global)
+--local GameClient = require(ReplicatedStorage.Shared.GameClient)
+local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
+local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(controller.InputManager)
 local BaseState = require(controller.SimStates.BaseState)
@@ -47,7 +48,7 @@ local VEC3_UP = Vector3.new(0, 1, 0)
 
 -- Local vars
 local ray_params_gnd = RaycastParams.new()
-ray_params_gnd.CollisionGroup = Global.COLL_GROUPS.PLAYER
+ray_params_gnd.CollisionGroup = CollisionGroup.PLAYER
 ray_params_gnd.FilterType = Enum.RaycastFilterType.Exclude
 ray_params_gnd.IgnoreWater = true
 ray_params_gnd.RespectCanCollide = true
@@ -263,7 +264,7 @@ function Ground:update(dt: number)
 
     self.grounded = groundData.grounded
     self.nearWall = wallData.nearWall
-    self.dashActive = GameClient:getIsDashing()
+    self.dashActive = ClientRoot.getIsDashing()
 
     if (self.grounded) then
         local targetPosY = groundData.gndHeight + HIP_HEIGHT

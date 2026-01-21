@@ -1,16 +1,9 @@
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Init character controller
-require(ReplicatedStorage.Shared.Controller)
-
-local Network = require(ReplicatedStorage.Shared.Network)
-local CliApi = require(ReplicatedStorage.Shared.Network.CliNetApi)
 local GameClient = require(ReplicatedStorage.Shared.GameClient)
 
 GameClient:reset()
-
-local clientEvents = Network.clientEvents
+GameClient:InitPlayer()
 
 -- TODO:
 -- request streaming position with RequestStreamAroundAsync(), which is returned from
@@ -21,13 +14,13 @@ local clientEvents = Network.clientEvents
 --     task.wait()
 -- end
 
-local function respawnAfterCharRemove(character: Model)
-    print(character.Name .. " was removed")
-    --task.wait(1.5)
-    CliApi[clientEvents.requestSpawn]()
-end
+-- local function respawnAfterCharRemove(character: Model)
+--     print(character.Name .. " was removed")
+--     --task.wait(1.5)
+--     CliApi[clientEvents.requestSpawn]()
+-- end
 
-print("client requests character for first time")
-CliApi[clientEvents.requestSpawn]()
+-- print("client requests character for first time")
+-- CliApi[clientEvents.requestSpawn]()
 
-Players.LocalPlayer.CharacterRemoving:Connect(respawnAfterCharRemove)
+-- Players.LocalPlayer.CharacterRemoving:Connect(respawnAfterCharRemove)
