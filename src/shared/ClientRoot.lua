@@ -12,37 +12,53 @@ export type Counter = {
     cooldown: number
 }
 
+local data = {
+    gameTime = 0.0,
+    playerState = PlayerState.NONE,
+    health = 100.0,
+    armor = 100.0,
+    isDashing = false,
+    currentInvSlot = 0,
+}
+
 ------------------------------------------------------------------------------------------------------------------------
 -- Module
 ------------------------------------------------------------------------------------------------------------------------
 local ClientRoot = {
-    playerState = PlayerState.NONE,
-    health = 100.0,
-    isDashing = false,
-    gameTime = 0.0,
-    currentInvSlot = 0,
-}
-ClientRoot.__index = ClientRoot
-
-ClientRoot.Signals = {
-    inventoryChanged = Instance.new("BindableEvent"),
-    weaponSwitched = Instance.new("BindableEvent"),
-    healthChanged = Instance.new("BindableEvent"),
-    effectAdded = Instance.new("BindableEvent")
+    signals = {
+        inventoryChanged = Instance.new("BindableEvent"),
+        playerStateChanged = Instance.new("BindableEvent"),
+        weaponSwitched = Instance.new("BindableEvent"),
+        healthChanged = Instance.new("BindableEvent"),
+        effectAdded = Instance.new("BindableEvent")
+    }
 }
 
-function ClientRoot.updateHealth(val: number): number
-    ClientRoot.health = val
-    ClientRoot.Signals.healthChanged:Fire(ClientRoot.health)
-    return ClientRoot.health
+-- Getters
+function ClientRoot:getPlayerState(): string
+    return data.playerState
 end
 
-function ClientRoot.getPlayerState(): string
-    return ClientRoot.playerState
+function ClientRoot:getIsDashing(): boolean
+    return data.isDashing
 end
 
-function ClientRoot.getIsDashing(): boolean
-    return ClientRoot.isDashing
+-- Setters
+function ClientRoot:setHealth(val: number): number
+    data.health = val
+    ClientRoot.signals.healthChanged:Fire(data.health)
+    return data.health
+end
+
+function ClientRoot:setPlayerState(val: number): number
+    data.playerState = val
+    ClientRoot.signals.playerStateChanged:Fire(data.playerState)
+    return data.playerState
+end
+
+function ClientRoot:setIsDashing(val: boolean): boolean
+    data.isDashing = val
+    return data.isDashing
 end
 
 return ClientRoot

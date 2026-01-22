@@ -10,9 +10,11 @@ local Players = game:GetService("Players")
 
 local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local InputManager = require(ReplicatedStorage.Shared.Controller.InputManager)
-local Controller = require(ReplicatedStorage.Shared.Controller)
 local Network = require(ReplicatedStorage.Shared.Network)
 local CliApi = require(ReplicatedStorage.Shared.Network.CliNetApi)
+
+-- Init Controller singleton
+require(ReplicatedStorage.Shared.Controller)
 
 local clientEvents = Network.clientEvents
 
@@ -32,17 +34,12 @@ local updateConn = nil
 
 local GameClient = {
     gameTime = 0,
-    currentInvSlot = 0,
-    health = 0,
-    armor = 0,
-
-    dash = {t = 0, cooldown = 0} :: Counter,
-    isDashing = false,
-
-    kills = 0,
-    score = 0,
 }
 GameClient.__index = GameClient
+
+function GameClient.init()
+    
+end
 
 function GameClient:InitPlayer()
     local function respawnAfterCharRemove(character: Model)
@@ -58,10 +55,6 @@ end
 function GameClient:updateGameTime(dt: number, override: number?)
     if (override) then self.gameTime = override end
     self.gameTime += dt
-end
-
-function GameClient:getIsDashing()
-    return self.isDashing
 end
 
 local lastDashInput = false
@@ -97,7 +90,6 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 function GameClient:update(dt: number)
     self:updateGameTime(dt)
-    self:updateDash(dt)
 end
 
 -- Sets player data default values and stops execution

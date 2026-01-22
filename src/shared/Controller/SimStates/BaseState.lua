@@ -2,19 +2,9 @@
 
 -- Abstract class for defining a simulation controlled state
 
--- export type BaseState = {
---     new: (_simulation: any) -> BaseState,
---     stateLeave: (BaseState) -> (),
---     stateEnter: (BaseState) -> (),
---     damagePlayer: (BaseState) -> (),
---     update: (BaseState, dt: number) -> (),
---     destroy: (BaseState) -> (),
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
---     _simulation: any,
---     id: number,
-
---     [string]: any
--- }
+local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
 
 local BaseState = {}
 BaseState.__index = BaseState
@@ -28,7 +18,7 @@ function BaseState.new(_simulation)
     self.grounded = false
     self.nearWall = false
     self.inWater = false
-    self.id = -1
+    self.id = PlayerState.NONE
 
     return self
 end

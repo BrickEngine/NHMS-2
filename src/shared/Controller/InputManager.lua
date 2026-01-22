@@ -68,11 +68,9 @@ function InputManager.new()
         -- TODO
 		self.playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
 		if self.playerGui then
-            print("plrGui exists")
 			self:createTouchGuiContainer()
 			self:onLastInputTypeChanged(UserInputService:GetLastInputType())
 		else
-            print("plrGui NONONONON exists")
 			self.playerGuiAddedConn = Players.LocalPlayer.ChildAdded:Connect(function(child)
 				if child:IsA("PlayerGui") then
 					self.playerGui = child
@@ -88,7 +86,7 @@ function InputManager.new()
     return self
 end
 
-------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
 
 function InputManager:getMoveVec(): Vector3
     if (not self.activeInputController) then

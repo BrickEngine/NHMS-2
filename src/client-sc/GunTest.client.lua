@@ -31,9 +31,11 @@ local function updateFunc()
     ))
 end
 
-RunService:BindToRenderStep("GunUpdate", Enum.RenderPriority.Camera.Value, updateFunc)
+local updateConnection = RunService:BindToRenderStep("GunUpdate", Enum.RenderPriority.Camera.Value, updateFunc)
 
 plr.CharacterRemoving:Connect(function(character)
-    updateFunc:Disconnect()
+    if (updateConnection) then
+        updateConnection:Disconnect()
+    end
 end)
 

@@ -11,10 +11,11 @@ local controller = script.Parent.Parent
 local Global = require(ReplicatedStorage.Shared.Global)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(controller.InputManager)
+local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
 local BaseState = require(script.Parent.BaseState)
 local PhysCheck = require(controller.Common.PhysCheck)
 
-local STATE_ID = 2
+local STATE_ID = PlayerState.ON_WALL
 
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X

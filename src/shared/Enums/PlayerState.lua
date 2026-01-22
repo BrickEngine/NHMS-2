@@ -1,6 +1,6 @@
 return table.freeze({
-    NONE = "None",
-    GROUNDED = "Grounded",
-    IN_WATER = "InWater",
-    ON_WALL = "OnWall"
+    NONE = -1,
+    GROUNDED = 0,
+    IN_WATER = 1,
+    ON_WALL = 2
 })

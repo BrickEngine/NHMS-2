@@ -13,10 +13,11 @@ local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(controller.InputManager)
+local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
 local BaseState = require(controller.SimStates.BaseState)
 local PhysCheck = require(controller.Common.PhysCheck)
 
-local STATE_ID = 0
+local STATE_ID = PlayerState.GROUNDED
 
 -- General physics config
 local MOVE_SPEED = 1.75
@@ -26,6 +27,8 @@ local GND_CLEAR_DIST = 0.45
 local MAX_INCLINE = math.rad(70) -- radiants
 local JUMP_HEIGHT = 6
 local JUMP_DELAY = 0.28
+local DASH_TIME = 1.6 -- seconds
+local DASH_COOLDOWN_TIME = 0.8 -- seconds
 local MOVE_DAMP = 0.4 -- lower value ~ more rigid movement (do not set too low; breaks at low framerates)
 local DASH_DAMP = 0.1 -- equivalent to MOVE_DAMP
 local MOVE_DT = 0.05 -- time delta for move accel
@@ -44,7 +47,11 @@ local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
 local COLL_HEIGHT = CharacterDef.PARAMS.MAINCOLL_SIZE.X
 local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1, 0)
--- local PI2 = math.pi*2
+
+type Counter = {
+    t: number,
+    cooldown: number
+}
 
 -- Local vars
 local ray_params_gnd = RaycastParams.new()
@@ -120,8 +127,7 @@ function Ground.new(...)
 
     self.character = self._simulation.character :: Model
     self.forces = createForces(self.character)
-    self.jumpSignal = false
-    self.dashActive = false
+    self.isDashing = false
 
     self.animation = self._simulation.animation
 
@@ -132,12 +138,11 @@ end
 
 function Ground:stateEnter()
     if (not self.forces) then
-        return
+        warn("No forces to enable in state: 'Ground'"); return
     end
     for _, f in self.forces do
         f.Enabled = true
     end
-
     self.animation:setState("Idle")
 end
 
@@ -148,6 +153,8 @@ function Ground:stateLeave()
     for _, f in self.forces do
         f.Enabled = false
     end
+    self.isDashing = false
+    ClientRoot:setIsDashing(self.isDashing)
 
     wasGroundedOnce = false
 end
@@ -156,6 +163,7 @@ local j_lastDown = false
 local j_Delay = 0
 local lastYPos = 0
 local jumped = false
+local jumpSignal = false
 
 function Ground:updateJump(dt: number, overwrite: boolean?)
     -- Manages input cooldown for the jump action
@@ -164,7 +172,7 @@ function Ground:updateJump(dt: number, overwrite: boolean?)
             if (not j_lastDown and j_Delay <= 0) then
                 j_lastDown = true
                 j_Delay = JUMP_DELAY
-                self.jumpSignal = true
+                jumpSignal = true
                 return
             end
         else
@@ -172,7 +180,7 @@ function Ground:updateJump(dt: number, overwrite: boolean?)
         end
 
         j_Delay = math.max(j_Delay - dt, 0)
-        self.jumpSignal = false
+        jumpSignal = false
     end
 
     updateJumpTime()
@@ -189,7 +197,7 @@ function Ground:updateJump(dt: number, overwrite: boolean?)
         end
 
         -- execute jump
-        if (self.jumpSignal or overwrite) then
+        if (jumpSignal or overwrite) then
             if (DO_QUAKE_JUMP_SOUND) then
                 local s = Instance.new("Sound")
                 s.SoundId = "rbxassetid://5466166437"
@@ -209,6 +217,40 @@ function Ground:updateJump(dt: number, overwrite: boolean?)
     lastYPos = currRootPos.Y
 end
 
+local lastDashInput = false
+local dash = {
+    t = 0,
+    cooldown = 0
+} :: Counter
+
+-- Checks if conditions to execute a dash are met
+function Ground:updateDash(dt: number)
+    local input = InputManager:getDashKeyDown()
+    local dashImpulse = false
+
+    if (dash.cooldown <= 0) then
+        dashImpulse = input and not lastDashInput
+
+        if (self.isDashing and (not input or dash.t <= 0)) then
+            dash.t = 0
+            dash.cooldown = DASH_COOLDOWN_TIME
+            self.isDashing = false
+        end
+    end
+
+    if (dashImpulse) then
+        dash.t = DASH_TIME
+        self.isDashing = true
+    end
+
+    dash.cooldown = math.max(dash.cooldown - dt, 0)
+    if (self.isDashing) then
+        dash.t = math.max(dash.t - dt, 0)
+    end
+
+    lastDashInput = input
+end
+
 -- Updates horizontal movement force
 function Ground:updateMove(dt: number, normal: Vector3, normAngle: number)
     local primaryPart: BasePart = self.character.PrimaryPart
@@ -219,7 +261,7 @@ function Ground:updateMove(dt: number, normal: Vector3, normAngle: number)
     local currHoriVel = Vector3.new(currVel.X, 0, currVel.Z)
 
     local accelVec, moveDirVec, target
-    if (self.dashActive and not (normAngle > MAX_INCLINE)) then
+    if (self.isDashing and not (normAngle > MAX_INCLINE)) then
         -- projectOnPlace breaks here for low framerates
         -- moveDirVec = -projectOnPlaneVec3(
         --     camCFrame.LookVector, VEC3_UP
@@ -234,7 +276,7 @@ function Ground:updateMove(dt: number, normal: Vector3, normAngle: number)
     end
     self.forces.moveForce.Force = accelVec * mass
 
-    if (not self.grounded and not self.dashActive) then
+    if (not self.grounded and not self.isDashing) then
         self.forces.moveForce.Force *= 0.1
     end
 end
@@ -264,7 +306,6 @@ function Ground:update(dt: number)
 
     self.grounded = groundData.grounded
     self.nearWall = wallData.nearWall
-    self.dashActive = ClientRoot.getIsDashing()
 
     if (self.grounded) then
         local targetPosY = groundData.gndHeight + HIP_HEIGHT
@@ -310,7 +351,11 @@ function Ground:update(dt: number)
     -- Update jumping
     self:updateJump(dt)
 
-    -- Update dashing and movement
+    -- Update dashing checks, set ClientRoot var
+    self:updateDash(dt)
+    ClientRoot:setIsDashing(self.isDashing)
+
+    -- Update movement and switch to dash, if dashing
     self:updateMove(dt, groundData.normal, groundData.normalAngle)
 
     -- Update animation
@@ -334,9 +379,9 @@ function Ground:update(dt: number)
     local wallConditions = not self.grounded and wasGroundedOnce and currHoriVel.Magnitude >= MIN_WALL_MOUNT_SPEED
 
     if (self.inWater) then
-        self._simulation:transitionState(self._simulation.states.Water)
+        self._simulation:transitionState(PlayerState.IN_WATER)
     elseif (self.nearWall and wallConditions) then
-        self._simulation:transitionState(self._simulation.states.Wall)
+        self._simulation:transitionState(PlayerState.ON_WALL)
     end
 end
 

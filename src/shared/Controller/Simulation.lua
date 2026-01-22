@@ -1,11 +1,14 @@
 local Players = game:GetService("Players")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 --local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local Animation = require(script.Parent.Animation)
 local DebugVisualize = require(script.Parent.Common.DebugVisualize)
 
+local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
+local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
 local simStates = script.Parent.SimStates
 local BaseState = require(simStates.BaseState)
 local Ground = require(simStates.Ground) :: BaseState.BaseState
@@ -18,6 +21,9 @@ local Wall = require(simStates.Wall) :: BaseState.BaseState
 local primaryPartListener: RBXScriptConnection
 local state_free = true
 
+------------------------------------------------------------------------------------------------------------------------------
+-- Module
+------------------------------------------------------------------------------------------------------------------------------
 local Simulation = {}
 Simulation.__index = Simulation
 
@@ -26,7 +32,7 @@ export type Simulation = typeof(Simulation)
 function Simulation.new()
     local self = setmetatable({}, Simulation) :: any
     self.states = {}
-    self.currentState = nil
+    self.currentState = PlayerState.NONE
     self.simUpdateConn = nil
     self.animation = nil
 
@@ -43,13 +49,17 @@ function Simulation.new()
 end
 
 ------------------------------------------------------------------------------------------------------------------------------
+-- Module
+------------------------------------------------------------------------------------------------------------------------------
 
--- should be bound to RunService.PreSimulation
+-- should be bound to RunService.PostSimulation
 function Simulation:update(dt: number)
     if (not self.character.PrimaryPart) then
         warn("missing PrimaryPart of character, skipping simulation update")
         self.simUpdateConn:Disconnect(); return
     end
+
+    -- Skip the update cycle, if state transition not complete
     if (not state_free) then
         return
     end
@@ -58,16 +68,17 @@ function Simulation:update(dt: number)
     DebugVisualize.step()
 end
 
-function Simulation:transitionState(newState: BaseState.BaseState)
+function Simulation:transitionState(newStateId: number)
     state_free = false
 
-    if (not newState) then
-        error("cannot transition to nonexistent state")
-    end
+    local newState = self.states[newStateId]
+    assert(newState, "cannot transition to nonexistent state")
 
     self.currentState:stateLeave()
     self.currentState = newState
     self.currentState:stateEnter()
+
+    ClientRoot:setPlayerState(newStateId)
 
     state_free = true
 end
@@ -76,7 +87,7 @@ function Simulation:getCurrentStateId(): number
     if (self.currentState) then
         return self.currentState.id
     end
-    return -1
+    return PlayerState.NONE
 end
 
 function Simulation:getNormal(): Vector3
@@ -103,22 +114,23 @@ function Simulation:resetSimulation()
 
     self.animation = Animation.new(self)
 
-    if (self.states :: {[string]: BaseState.BaseState}) then
-        for name: string, _ in pairs(self.states) do
-            self.states[name]:destroy()
-            self.states[name] = nil
+    if (self.states :: {[number]: BaseState.BaseState}) then
+        for id: number, _ in pairs(self.states) do
+            self.states[id]:destroy()
+            self.states[id] = nil
         end
     end
 
     self.states = {
-        Ground = Ground.new(self),
-        Water = Water.new(self),
-        Wall = Wall.new(self)
+        [PlayerState.GROUNDED] = Ground.new(self),
+        [PlayerState.IN_WATER] = Water.new(self),
+        [PlayerState.ON_WALL] = Wall.new(self)
     }
-    self.currentState = self.states.Ground
+    self.currentState = self.states[PlayerState.GROUNDED]
     self.currentState:stateEnter()
+    ClientRoot:setPlayerState(PlayerState.GROUNDED)
 
-    self.simUpdateConn = RunService.PreSimulation:Connect(function(dt)
+    self.simUpdateConn = RunService.PostSimulation:Connect(function(dt)
         self:update(dt)
     end)
 end
@@ -165,6 +177,7 @@ function Simulation:onCharAdded(character: Model)
     end
 
     -- Copy over Instances from StarterCharacterScripts
+    -- TODO: move logic over to GameClient
     for _, s: Instance in pairs(StarterPlayer.StarterCharacterScripts:GetChildren()) do
         if (s.ClassName ~= ("LocalScript" or "Script" or "ModuleScript")) then
             warn("instance within StarterCharacterScripts is not a script")
