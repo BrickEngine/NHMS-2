@@ -165,7 +165,7 @@ local lastYPos = 0
 local jumped = false
 local jumpSignal = false
 
-function Ground:updateJump(dt: number, overwrite: boolean?)
+function Ground:updateJump(dt: number, override: boolean?)
     -- Manages input cooldown for the jump action
     local function updateJumpTime()
         if (InputManager:getJumpKeyDown()) then
@@ -197,7 +197,7 @@ function Ground:updateJump(dt: number, overwrite: boolean?)
         end
 
         -- execute jump
-        if (jumpSignal or overwrite) then
+        if (jumpSignal or override) then
             if (DO_QUAKE_JUMP_SOUND) then
                 local s = Instance.new("Sound")
                 s.SoundId = "rbxassetid://5466166437"

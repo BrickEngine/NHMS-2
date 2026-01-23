@@ -4,11 +4,9 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local SoundService = game:GetService("SoundService")
 local Workspace = game:GetService("Workspace")
 
 local controller = script.Parent.Parent
-local Global = require(ReplicatedStorage.Shared.Global)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(controller.InputManager)
 local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
@@ -17,9 +15,9 @@ local PhysCheck = require(controller.Common.PhysCheck)
 
 local STATE_ID = PlayerState.ON_WALL
 
+local DISMOUNT_SPEED = 2
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
-local COLL_HEIGHT = CharacterDef.PARAMS.MAINCOLL_SIZE.X
 local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1, 0)
 
@@ -29,16 +27,18 @@ local function createForces(mdl: Model): {[string]: Instance}
 
     local att = Instance.new("Attachment")
     att.WorldAxis = Vector3.new(0, 1, 0)
-    att.Name = "Ground"
+    att.Name = "WallAtt"
     att.Parent = mdl.PrimaryPart
 
     local moveForce = Instance.new("VectorForce", mdl.PrimaryPart)
+    moveForce.Name = "WallMoveForce"
     moveForce.Enabled = false
     moveForce.Attachment0 = att
     moveForce.ApplyAtCenterOfMass = true
     moveForce.RelativeTo = Enum.ActuatorRelativeTo.World
 
     local rotForce = Instance.new("AlignOrientation", mdl.PrimaryPart)
+    rotForce.Name = "WallRotForce"
     rotForce.Enabled = false
     rotForce.Attachment0 = att
     rotForce.Mode = Enum.OrientationAlignmentMode.OneAttachment
@@ -50,11 +50,12 @@ local function createForces(mdl: Model): {[string]: Instance}
     rotForce.PrimaryAxis = VEC3_UP
 
     local posForce = Instance.new("AlignPosition", mdl.PrimaryPart)
+    posForce.Name = "WallPosForce"
     posForce.Enabled = false
     posForce.Attachment0 = att
     posForce.Mode = Enum.PositionAlignmentMode.OneAttachment
     posForce.ForceLimitMode = Enum.ForceLimitMode.PerAxis
-    posForce.MaxAxesForce = Vector3.zero
+    posForce.MaxAxesForce = VEC3_UP * 1000000
     posForce.MaxVelocity = 300--100000
     posForce.Responsiveness = 200
     posForce.ForceRelativeTo = Enum.ActuatorRelativeTo.World
@@ -66,6 +67,8 @@ local function createForces(mdl: Model): {[string]: Instance}
         posForce = posForce,
     } :: {[string]: Instance}
 end
+
+local initialVel = VEC3_ZERO
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Module
@@ -82,16 +85,39 @@ function Wall.new(...)
 
     return setmetatable(self, Wall)
 end
-
+local count = 0
 function Wall:stateEnter()
-    return
+    if (not self.forces) then
+        warn("No forces to enable in state: 'Ground'"); return
+    end
+    for _, f: Constraint in self.forces do
+        f.Enabled = true
+    end
+
+    local primaryPart: BasePart = self.character.PrimaryPart
+    assert(primaryPart, "Missing PrimaryPart of character".. self.character.name)
+
+    initialVel = primaryPart.AssemblyLinearVelocity
+    print(initialVel.Magnitude)
+    count = 0
 end
 
 function Wall:stateLeave()
-    return
+    if (not self.forces) then
+        return
+    end
+    for _, f: Constraint in self.forces do
+        f.Enabled = false
+    end
+    warn("WALL LEFT")
+end
+
+function Wall:updateMove(dt: number, normal: Vector3, bankAngle: number)
+    
 end
 
 function Wall:update(dt: number)
+    count += dt
     local primaryPart: BasePart = self.character.PrimaryPart
     local camCFrame = Workspace.CurrentCamera.CFrame
     local currVel = primaryPart.AssemblyLinearVelocity
@@ -100,6 +126,32 @@ function Wall:update(dt: number)
     local g = Workspace.Gravity
     local mass = primaryPart.AssemblyMass
 
+    -- Do physics checks
+    local groundData: PhysCheck.groundData = PhysCheck.checkFloor(currPos, PHYS_RADIUS, HIP_HEIGHT, 0.1)
+    local wallData: PhysCheck.wallData
+    if (currHoriVel.Magnitude < 0.1) then
+        wallData = PhysCheck.defaultWallData()
+    else
+        wallData = PhysCheck.checkWall(currPos, currHoriVel, PHYS_RADIUS, HIP_HEIGHT)
+    end
+
+    self.grounded = groundData.grounded
+    self.nearWall = wallData.nearWall
+
+    -- if (self.grounded or not self.nearWall or currHoriVel.magnitude < DISMOUNT_SPEED) then
+    --     self._simulation:transitionState(PlayerState.GROUNDED)
+    -- end
+
+    if (count > 0.5) then
+        self._simulation:transitionState(PlayerState.GROUNDED)
+    end
+
+    -- Update wall movement
+    if (self.nearWall) then
+        self:updateMove(dt, wallData.normal, wallData.wallBankAngle)
+    end
+    self.forces.posForce.Position = VEC3_UP * 6
+
     -- Update playermodel rotation
     primaryPart.CFrame = CFrame.lookAlong(
         primaryPart.CFrame.Position, Vector3.new(
@@ -107,10 +159,22 @@ function Wall:update(dt: number)
         )
     )
     primaryPart.AssemblyAngularVelocity = VEC3_ZERO
+
+    -- State transitions
+    if (self.inWater) then
+        self._simulation:transitionState(PlayerState.IN_WATER)
+    elseif (self.onGround) then
+        self._simulation:transitionState(PlayerState.GROUNDED)
+    end
 end
 
 function Wall:destroy()
-
+    if (self.forces) then
+        for i, _ in pairs(self.forces) do
+            (self.forces[i] :: Instance):Destroy()
+        end
+    end
+    setmetatable(self, nil)
 end
 
 return Wall

@@ -15,7 +15,7 @@ local RAY_Y_OFFSET = 0.1
 -- evaluated differently for ground detection
 local MAX_GND_POINT_DIFF = 0.25
 local TARGET_CLOSEST = true -- if true, picks highest point as target position
-local USE_WALL_COLL_GROUP = false -- determines which coll group to use for wall detection (false = default)
+local USE_WALL_COLL_GROUP = true -- determines which coll group to use for wall detection (false = default)
 local MAX_INCLINE_ANGLE = math.rad(70) -- in rad, angle at which a hit will not be registered
 
 local PHI = 1.61803398875
@@ -114,7 +114,7 @@ local function avgVecFromVecs(vecArr: {Vector3}): Vector3
 		vecSum += v
 	end
 
-	return (vecSum * 1/n)
+	return (vecSum * 1/n).Unit
 end
 
 -- Finds the biggest numerical difference between two adjacent numbers in an ordered array
@@ -166,7 +166,7 @@ function PhysCheck.checkFloor(
 	maxRadius: number,
 	hipHeight: number,
 	gndClearDist: number,
-	rayParams: RaycastParams
+	rayParams: RaycastParams?
 ) : groundData
 
 	local grounded = false
@@ -178,6 +178,7 @@ function PhysCheck.checkFloor(
 	local numHits = 0
 	local numTotalHits = 0
 	local adjHipHeight = hipHeight + RAY_Y_OFFSET
+	local _rayParams = rayParams or floorRayParams
 
 	-- Cylinder cast checks with sunflower distribution
 	local hitPointsArr = {} :: {Vector3}
@@ -200,7 +201,7 @@ function PhysCheck.checkFloor(
 				rootPos.Z + offsetZ
 			),
 			-VEC3_UP * adjHipHeight * 2,
-			rayParams
+			_rayParams
 		)
 		if (ray :: RaycastResult) then
 			local debug_gnd_hit = false
@@ -351,7 +352,7 @@ function PhysCheck.checkWall(
 		return PhysCheck.defaultWallData()
 	end
 
-	local normal = avgVecFromVecs(hitNormalsArr).Unit
+	local normal = avgVecFromVecs(hitNormalsArr)
 	local position = avgVecFromVecs(posArr)
 	local wallBankAngle = math.acos(normal:Dot(VEC3_UP))
 	local nearWall = true

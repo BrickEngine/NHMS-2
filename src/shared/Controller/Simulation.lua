@@ -49,13 +49,13 @@ function Simulation.new()
 end
 
 ------------------------------------------------------------------------------------------------------------------------------
--- Module
+-- Update
 ------------------------------------------------------------------------------------------------------------------------------
 
 -- should be bound to RunService.PostSimulation
 function Simulation:update(dt: number)
     if (not self.character.PrimaryPart) then
-        warn("missing PrimaryPart of character, skipping simulation update")
+        warn("Missing PrimaryPart of character, disconnecting simulation update func")
         self.simUpdateConn:Disconnect(); return
     end
 
@@ -99,7 +99,7 @@ end
 
 function Simulation:onRootPartChanged()
     if (not self.character.PrimaryPart) then
-        warn("missing PrimaryPart -> halting simulation, removing character")
+        warn("PrimaryPart of character removed -> halting simulation, removing character")
         self:onCharRemoving(Players.LocalPlayer.Character)
     end
 end
@@ -165,7 +165,8 @@ function Simulation:onCharAdded(character: Model)
     if (not self.character.PrimaryPart) then
         error("character missing PrimaryPart")
     end
-    primaryPartListener = self.character.PrimaryPart.Changed:Connect(function()
+    --self.character.PrimaryPart.Removing
+    primaryPartListener = self.character.DescendantRemoving:Connect(function()
         self:onRootPartChanged()
     end)
 

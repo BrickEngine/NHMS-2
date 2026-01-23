@@ -24,17 +24,12 @@ function BaseState.new(_simulation)
 end
 
 function BaseState:stateEnter()
-    return false
 end
 
 function BaseState:stateLeave()
-    return false
 end
 
-function BaseState:dealDamage()
-end
-
-function BaseState:stun(impulse: Vector3?)
+function BaseState:stun(impulse: Vector3)
 end
 
 function BaseState:update(dt: number)
