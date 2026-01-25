@@ -381,7 +381,13 @@ function Ground:update(dt: number)
     if (self.inWater) then
         self._simulation:transitionState(PlayerState.IN_WATER)
     elseif (self.nearWall and wallConditions) then
-        self._simulation:transitionState(PlayerState.ON_WALL)
+        self._simulation:transitionState(
+            PlayerState.ON_WALL, 
+            {
+                normal = wallData.normal, 
+                position = wallData.position
+            }
+        )
     end
 end
 

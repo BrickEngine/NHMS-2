@@ -16,14 +16,16 @@ function BaseState.new(_simulation)
 
     self._simulation = _simulation
     self.grounded = false
-    self.nearWall = false
     self.inWater = false
+    self.isDashing = false
+    self.nearWall = false
+    self.isRightSideWall = false
     self.id = PlayerState.NONE
 
     return self
 end
 
-function BaseState:stateEnter()
+function BaseState:stateEnter(params: any?)
 end
 
 function BaseState:stateLeave()

@@ -12,14 +12,20 @@ local InputManager = require(controller.InputManager)
 local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
 local BaseState = require(script.Parent.BaseState)
 local PhysCheck = require(controller.Common.PhysCheck)
+local MathUtil = require(ReplicatedStorage.Shared.MathUtil)
 
 local STATE_ID = PlayerState.ON_WALL
 
 local DISMOUNT_SPEED = 2
+local DISTANCE = CharacterDef.PARAMS.MAINCOLL_CF.X * 0.65
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
 local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1, 0)
+
+local initialVel = VEC3_ZERO
+local initialTargetPos = VEC3_ZERO
+local scanVecFunc = nil
 
 -- Create required physics constraints
 local function createForces(mdl: Model): {[string]: Instance}
@@ -68,7 +74,32 @@ local function createForces(mdl: Model): {[string]: Instance}
     } :: {[string]: Instance}
 end
 
-local initialVel = VEC3_ZERO
+local function getRightVector(part: BasePart): Vector3
+    return part.CFrame.RightVector
+end
+
+local function getLeftVector(part: BasePart): Vector3
+    return -part.CFrame.RightVector
+end
+
+--[[ 
+    Calculates whether the wall is to the left or right of the character and returns a corresponding function
+    for computing the directional vector for future wall scans
+]]
+local function getDirFuncFromWallSide(initialVel: Vector3, wallNormal: Vector3): (BasePart) -> Vector3
+    local horiVel = Vector3.new(initialVel.X, 0, initialVel.Z)
+    local side = (horiVel:Cross(initialVel)):Dot(wallNormal)
+
+    if (side < 0) then
+        return getRightVector
+    else
+        return getLeftVector
+    end
+end
+
+local function getOffsetPos(hitPos: Vector3, offset: Vector3): Vector3
+    return (hitPos + (offset.Unit * DISTANCE))
+end
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Module
@@ -85,8 +116,8 @@ function Wall.new(...)
 
     return setmetatable(self, Wall)
 end
-local count = 0
-function Wall:stateEnter()
+
+function Wall:stateEnter(params: any?)
     if (not self.forces) then
         warn("No forces to enable in state: 'Ground'"); return
     end
@@ -95,11 +126,18 @@ function Wall:stateEnter()
     end
 
     local primaryPart: BasePart = self.character.PrimaryPart
-    assert(primaryPart, "Missing PrimaryPart of character".. self.character.name)
+    local hitNormal: Vector3 = params.normal
+    local hitPos: Vector3 = params.position
+    assert(primaryPart, `Missing PrimaryPart of character '{self.character.name}'`)
+    assert(hitNormal, "Missing required normal parameters")
+    assert(hitPos, "Missing required position parameters")
 
     initialVel = primaryPart.AssemblyLinearVelocity
-    print(initialVel.Magnitude)
-    count = 0
+    scanVecFunc = getDirFuncFromWallSide(initialVel, hitNormal)
+    initialTargetPos = getOffsetPos(hitPos, hitNormal)
+
+    primaryPart.CFrame = CFrame.new(initialTargetPos)
+    print((initialTargetPos - params.position).Magnitude)
 end
 
 function Wall:stateLeave()
@@ -109,6 +147,12 @@ function Wall:stateLeave()
     for _, f: Constraint in self.forces do
         f.Enabled = false
     end
+
+    local primaryPart: BasePart = self.character.PrimaryPart
+    assert(primaryPart, `Missing PrimaryPart of character '{self.character.name}'`)
+
+    primaryPart.AssemblyLinearVelocity = VEC3_ZERO
+
     warn("WALL LEFT")
 end
 
@@ -117,7 +161,6 @@ function Wall:updateMove(dt: number, normal: Vector3, bankAngle: number)
 end
 
 function Wall:update(dt: number)
-    count += dt
     local primaryPart: BasePart = self.character.PrimaryPart
     local camCFrame = Workspace.CurrentCamera.CFrame
     local currVel = primaryPart.AssemblyLinearVelocity
@@ -126,25 +169,27 @@ function Wall:update(dt: number)
     local g = Workspace.Gravity
     local mass = primaryPart.AssemblyMass
 
+    local scanDirVec = scanVecFunc(primaryPart)
+    scanDirVec = Vector3.new(scanDirVec.X, 0, scanDirVec.Z)
+
     -- Do physics checks
     local groundData: PhysCheck.groundData = PhysCheck.checkFloor(currPos, PHYS_RADIUS, HIP_HEIGHT, 0.1)
     local wallData: PhysCheck.wallData
     if (currHoriVel.Magnitude < 0.1) then
         wallData = PhysCheck.defaultWallData()
     else
-        wallData = PhysCheck.checkWall(currPos, currHoriVel, PHYS_RADIUS, HIP_HEIGHT)
+        wallData = PhysCheck.checkWall(currPos, scanDirVec, PHYS_RADIUS, HIP_HEIGHT)
     end
-
     self.grounded = groundData.grounded
     self.nearWall = wallData.nearWall
 
-    -- if (self.grounded or not self.nearWall or currHoriVel.magnitude < DISMOUNT_SPEED) then
-    --     self._simulation:transitionState(PlayerState.GROUNDED)
-    -- end
-
-    if (count > 0.5) then
+    if (self.grounded or not self.nearWall or currHoriVel.magnitude < DISMOUNT_SPEED) then
         self._simulation:transitionState(PlayerState.GROUNDED)
     end
+
+    -- if (count > 0.5) then
+    --     self._simulation:transitionState(PlayerState.GROUNDED)
+    -- end
 
     -- Update wall movement
     if (self.nearWall) then

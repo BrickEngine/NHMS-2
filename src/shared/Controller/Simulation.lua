@@ -32,7 +32,7 @@ export type Simulation = typeof(Simulation)
 function Simulation.new()
     local self = setmetatable({}, Simulation) :: any
     self.states = {}
-    self.currentState = PlayerState.NONE
+    self.currentState = nil
     self.simUpdateConn = nil
     self.animation = nil
 
@@ -52,7 +52,7 @@ end
 -- Update
 ------------------------------------------------------------------------------------------------------------------------------
 
--- should be bound to RunService.PostSimulation
+-- Should be bound to RunService.PostSimulation
 function Simulation:update(dt: number)
     if (not self.character.PrimaryPart) then
         warn("Missing PrimaryPart of character, disconnecting simulation update func")
@@ -68,7 +68,7 @@ function Simulation:update(dt: number)
     DebugVisualize.step()
 end
 
-function Simulation:transitionState(newStateId: number)
+function Simulation:transitionState(newStateId: number, params: any?)
     state_free = false
 
     local newState = self.states[newStateId]
@@ -76,7 +76,7 @@ function Simulation:transitionState(newStateId: number)
 
     self.currentState:stateLeave()
     self.currentState = newState
-    self.currentState:stateEnter()
+    self.currentState:stateEnter(params)
 
     ClientRoot:setPlayerState(newStateId)
 
@@ -95,6 +95,20 @@ function Simulation:getNormal(): Vector3
         return self.currentState.normal
     end
     return Vector3.zero
+end
+
+function Simulation:getIsDashing(): boolean
+    if (self.currentState) then
+        return self.currentState.isDashing
+    end
+    return false
+end
+
+function Simulation:getNearWall(): (boolean, boolean)
+    if (self.currentState) then
+        return self.currentState.nearWall, self.currentState.isRightSideWall
+    end
+    return false, false
 end
 
 function Simulation:onRootPartChanged()

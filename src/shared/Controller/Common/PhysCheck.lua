@@ -25,7 +25,7 @@ local VEC3_FARDOWN = -999999999 * VEC3_UP --Vector3.new(999999, 999999, 999999)
 local BOUND_POINTS = math.round(2 * math.sqrt(NUM_GND_RAYS))
 
 local floorRayParams = RaycastParams.new()
-floorRayParams.CollisionGroup = CollisionGroup.DEFAULT
+floorRayParams.CollisionGroup = CollisionGroup.PLAYER
 floorRayParams.FilterType = Enum.RaycastFilterType.Exclude
 floorRayParams.IgnoreWater = true
 
@@ -52,6 +52,7 @@ local function avgPlaneFromPoints(ptsArr: {Vector3}) : {centroid: Vector3, norma
 			normal = VEC3_UP
 		}
 	if (n < 3) then
+		warn("No plane exists")
 		return noPlane
 	end
 
@@ -104,6 +105,7 @@ local function avgVecFromVecs(vecArr: {Vector3}): Vector3
 	local n = #vecArr
 	-- If there is no data, default to a horizontal plane
 	if (n == 0) then
+		warn("Empty vector array")
 		return VEC3_UP
 	elseif (n == 1) then
 		return vecArr[1]
@@ -114,7 +116,7 @@ local function avgVecFromVecs(vecArr: {Vector3}): Vector3
 		vecSum += v
 	end
 
-	return (vecSum * 1/n).Unit
+	return (vecSum * 1/n)
 end
 
 -- Finds the biggest numerical difference between two adjacent numbers in an ordered array
@@ -245,20 +247,23 @@ function PhysCheck.checkFloor(
 			
 			local biggestDist = biggestOrderedDist(ptsHeightArr)
 			if (biggestDist <= MAX_GND_POINT_DIFF) then
-				if (numHits > 2) then
+				if (numHits >= 3) then
 					targetPos = avgPlaneFromPoints(hitPointsArr).centroid
-				else
+				elseif (numHits == 2) then
 					targetPos = avgVecFromVecs(hitPointsArr)
+				else
+					targetPos = hitPointsArr[1]
 				end
 			else
 				targetPos = closestPos
 			end
 
 			targetPos = closestPos
+			targetNorm = avgVecFromVecs(normalsArr)
 		else
 			grounded = false
+			targetNorm = VEC3_UP
 		end
-		targetNorm = avgVecFromVecs(normalsArr)
 
 	else
 		targetNorm = avgVecFromVecs(normalsArr)
@@ -332,8 +337,8 @@ function PhysCheck.checkWall(
 					hitWallsSet[ray.Instance] = true
 					hitWallsArr[#hitWallsArr + 1] = ray.Instance
 				end
-				hitNormalsArr[#hitWallsArr] = ray.Normal
-				posArr[#hitWallsArr] = ray.Position
+				hitNormalsArr[#hitNormalsArr + 1] = ray.Normal
+				posArr[#posArr + 1] = ray.Position
 
 				-- DEBUG
 				if (DebugVisualize.enabled) then
@@ -356,6 +361,14 @@ function PhysCheck.checkWall(
 	local position = avgVecFromVecs(posArr)
 	local wallBankAngle = math.acos(normal:Dot(VEC3_UP))
 	local nearWall = true
+	
+	local function cp(pos: Vector3)
+		local p = Instance.new("Part", workspace)
+		p.Anchored = true; p.CanCollide = false; p.Color = Color3.fromRGB(255, 0, 0)
+		p.Size = Vector3.new(2, 2, 2)
+		p.CFrame = CFrame.new(pos)
+		p.Name = "GGGOGOOGOGOGOGOGO"
+	end
 
 	-- Case: direction vector points away from wall (should rarely ever happen)
 	if ((normal:Dot(unitDir) > 0)) then

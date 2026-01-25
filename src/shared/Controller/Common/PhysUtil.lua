@@ -1,3 +1,5 @@
+local VEC3_ZERO = Vector3.zero
+
 local PhysUtil = {}
 
 function PhysUtil.getModelMass(mdl: Model, recurse: boolean?): number
@@ -13,6 +15,7 @@ function PhysUtil.getModelMass(mdl: Model, recurse: boolean?): number
     return totalMass
 end
 
+-- Get the mass of a model's part assembly with only the given tag
 function PhysUtil.getModelMassByTag(mdl: Model, tag: string, recurse: boolean?): number
     local totalMass = 0
 
@@ -36,17 +39,20 @@ function PhysUtil.unanchorModel(mdl: Model)
     end
 end
 
--- calculate accel based on displacement and current vel of assembly
+-- Calculate accel based on displacement and current vel of assembly
 function PhysUtil.accelFromDispl(posDiff: number, vel: number, downForce: number, dt: number)
     return downForce + (2*(posDiff - vel*dt))/(dt*dt)
 end
 
 --[[
-substep for stable accel prediction at low framerates (high dt)
-- initial accel calculated with PhysUtil.forceFromDisplacementVec3
-- downForce should be positive
+    Substep for stable acceleration prediction at low framerates (high dt)
+    - initial accel calculated with PhysUtil.forceFromDisplacementVec3
+    - downForce should be positive
 ]]
-function PhysUtil.substepAccel(vel: number, pos: number, targetPos: number, downForce: number, numSteps: number, dt: number)
+function PhysUtil.substepAccel(
+        vel: number, pos: number, targetPos: number, downForce: number, numSteps: number, dt: number
+    ): (number, number, number)
+
     local accel = PhysUtil.accelFromDispl((targetPos-pos), vel, downForce, dt)
 
     local stepAccel = accel
@@ -69,7 +75,10 @@ function PhysUtil.substepAccel(vel: number, pos: number, targetPos: number, down
     return stepAccel, stepVel, stepPos
 end
 
-function PhysUtil.stepperVec3(pos: Vector3, vel: Vector3, targetPos: Vector3, stiffness: number, damping: number, precision: number, dt: number)
+function PhysUtil.stepperVec3(
+        pos: Vector3, vel: Vector3, targetPos: Vector3, stiffness: number, damping: number,precision: number, dt: number
+    ): (Vector3, Vector3)
+
     local force = -stiffness*(pos - targetPos)
     local dampForce = damping*vel
     local accel = force - dampForce
@@ -78,22 +87,9 @@ function PhysUtil.stepperVec3(pos: Vector3, vel: Vector3, targetPos: Vector3, st
     local stepPos = pos*vel*dt
 
     if ((stepVel.Magnitude < precision) and ((targetPos - stepPos).Magnitude < precision)) then
-        return targetPos, 0
+        return targetPos, VEC3_ZERO
     end
     return stepPos, stepVel
-end
-
-function PhysUtil.projectOnPlaneVec3(v: Vector3, norm: Vector3): Vector3
-    local sqrMag = norm:Dot(norm)
-    if (sqrMag < 0.01) then
-        return v
-    end
-    local dot = v:Dot(norm)
-    return Vector3.new(
-        v.X - norm.X * dot / sqrMag,
-        v.Y - norm.Y * dot / sqrMag,
-        v.Z - norm.Z * dot / sqrMag
-    )
 end
 
 return PhysUtil
