@@ -15,14 +15,25 @@ function BaseState.new(_simulation)
     local self = setmetatable({}, BaseState)
 
     self._simulation = _simulation
+    self.id = PlayerState.NONE
+
     self.grounded = false
     self.inWater = false
     self.isDashing = false
     self.nearWall = false
     self.isRightSideWall = false
-    self.id = PlayerState.NONE
+    self.wallTime = 0
 
     return self
+end
+
+function BaseState:resetData()
+    self.grounded = false
+    self.inWater = false
+    self.isDashing = false
+    self.nearWall = false
+    self.isRightSideWall = false
+    self.wallTime = 0
 end
 
 function BaseState:stateEnter(params: any?)

@@ -9,7 +9,7 @@ local Simulation = require(script.Parent.Parent.Simulation)
 local CamInput = require(script.Parent.CamInput)
 local BaseCam = require(script.Parent.BaseCam)
 --local GameClient = require(ReplicatedStorage.Shared.GameClient)
-local MathUtil = require(ReplicatedStorage.Shared.MathUtil)
+local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
 
 --local INITIAL_CAM_ANG = CFrame.fromOrientation(math.rad(-15), 0, 0)
@@ -51,9 +51,10 @@ end
 
 function FPCam:updateWallCam(dt: number)
 	local nearWall, rightSide = Simulation:getNearWall()
+	local fac = rightSide and -1 or 1
 	local effCamTilt = 
 		(nearWall and Simulation:getCurrentStateId() == PlayerState.ON_WALL) and WALL_TILT or 0
-	effCamTilt *= rightSide and 1 or -1 
+	effCamTilt *= fac
 
 	lastCamTilt = math.clamp(
 		MathUtil.flerp(lastCamTilt, effCamTilt, dt * 50), -WALL_TILT, WALL_TILT

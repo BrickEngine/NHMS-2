@@ -9,6 +9,7 @@ local DebugVisualize = require(script.Parent.Common.DebugVisualize)
 
 local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
+local Global = require(ReplicatedStorage.Shared.Global)
 local simStates = script.Parent.SimStates
 local BaseState = require(simStates.BaseState)
 local Ground = require(simStates.Ground) :: BaseState.BaseState
@@ -49,7 +50,7 @@ function Simulation.new()
 end
 
 ------------------------------------------------------------------------------------------------------------------------------
--- Update
+-- Simulation update
 ------------------------------------------------------------------------------------------------------------------------------
 
 -- Should be bound to RunService.PostSimulation
@@ -70,6 +71,10 @@ end
 
 function Simulation:transitionState(newStateId: number, params: any?)
     state_free = false
+
+    if (Global.PRINT_SIM_DEBUG) then
+        print(`Transitioning from {self.currentState.id} to {newStateId}`)
+    end
 
     local newState = self.states[newStateId]
     assert(newState, "cannot transition to nonexistent state")

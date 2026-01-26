@@ -8,7 +8,6 @@ local SoundService = game:GetService("SoundService")
 local Workspace = game:GetService("Workspace")
 
 local controller = script.Parent.Parent
---local GameClient = require(ReplicatedStorage.Shared.GameClient)
 local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
@@ -22,7 +21,8 @@ local STATE_ID = PlayerState.GROUNDED
 -- General physics config
 local MOVE_SPEED = 1.75
 local DASH_SPEED = 3.2
-local MIN_WALL_MOUNT_SPEED = 2 -- studs/s
+local MIN_WALL_MOUNT_SPEED = 12 -- studs/s
+local ALLOW_IMM_WALL_MOUNT = true -- whether to allow repeated Wall state transitions
 local GND_CLEAR_DIST = 0.45
 local MAX_INCLINE = math.rad(70) -- radiants
 local JUMP_HEIGHT = 6
@@ -262,10 +262,6 @@ function Ground:updateMove(dt: number, normal: Vector3, normAngle: number)
 
     local accelVec, moveDirVec, target
     if (self.isDashing and not (normAngle > MAX_INCLINE)) then
-        -- projectOnPlace breaks here for low framerates
-        -- moveDirVec = -projectOnPlaneVec3(
-        --     camCFrame.LookVector, VEC3_UP
-        -- ).Unit
         moveDirVec = getCFrameRelMoveVec(camCFrame, Vector3.zAxis)
         target = currPos - moveDirVec * DASH_SPEED
         accelVec = 2 * ((target - currPos) - currHoriVel * MOVE_DT)/(MOVE_DT * DASH_DAMP)
@@ -368,26 +364,38 @@ function Ground:update(dt: number)
     end
 
     -- Update playermodel rotation
+    local horiCamLookVec = Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z)
     primaryPart.CFrame = CFrame.lookAlong(
-        primaryPart.CFrame.Position, Vector3.new(
-            camCFrame.LookVector.X, 0, camCFrame.LookVector.Z
-        )
+        primaryPart.CFrame.Position, horiCamLookVec
     )
     primaryPart.AssemblyAngularVelocity = VEC3_ZERO
 
     -- State transitions
-    local wallConditions = not self.grounded and wasGroundedOnce and currHoriVel.Magnitude >= MIN_WALL_MOUNT_SPEED
+    do
+        local canMountWall
+        if (ALLOW_IMM_WALL_MOUNT) then
+            canMountWall = true
+        else
+            canMountWall = wasGroundedOnce
+        end
 
-    if (self.inWater) then
-        self._simulation:transitionState(PlayerState.IN_WATER)
-    elseif (self.nearWall and wallConditions) then
-        self._simulation:transitionState(
-            PlayerState.ON_WALL, 
-            {
-                normal = wallData.normal, 
-                position = wallData.position
-            }
-        )
+        local wallConditions = not self.grounded and currHoriVel.Magnitude >= MIN_WALL_MOUNT_SPEED and canMountWall
+        local facingWall = false
+        if (wallData.normal and wallData.normal ~= VEC3_ZERO) then
+            facingWall = wallData.normal:Dot(horiCamLookVec) < 0
+        end
+
+        if (self.inWater) then
+            self._simulation:transitionState(PlayerState.IN_WATER); return
+        elseif (self.nearWall and wallConditions and facingWall) then
+            self._simulation:transitionState(
+                PlayerState.ON_WALL, 
+                {
+                    normal = wallData.normal, 
+                    position = wallData.position
+                }
+            ); return
+        end 
     end
 end
 

@@ -57,7 +57,7 @@ function MathUtil.vec3Clamp(vec: Vector3, vMin: Vector3, vMax: Vector3): Vector3
 	)
 end
 
--- Project a Vector onto a plane with given plane normal
+-- Project a Vector3 onto a plane with given plane normal
 function MathUtil.projectOnPlaneVec3(v: Vector3, norm: Vector3): Vector3
     local sqrMag = norm:Dot(norm)
     if (sqrMag < 0.01) then
@@ -70,5 +70,57 @@ function MathUtil.projectOnPlaneVec3(v: Vector3, norm: Vector3): Vector3
         v.Z - norm.Z * dot / sqrMag
     )
 end
+
+-- Rotates a Vector3 around another vector with a given angle in radiants
+function MathUtil.rotateAroundAxisVec3(vec: Vector3, axisVec: Vector3, phi: number)
+	local k = axisVec.Unit
+	local cos = math.cos(phi)
+	local sin = math.sin(phi)
+
+	return vec * cos
+	+ k:Cross(vec) * sin
+	+ k * (k:Dot(vec) * (1 - cos))
+end
+
+-- Clamps a Vector3 to a virtual cone with a given angle in radiants
+function MathUtil.clampVectorToCone(v: Vector3, n: Vector3, phi: number): Vector3
+    local mag = v.Magnitude
+    if (mag < 0.01) then
+        return v
+    end
+
+    local u = v.Unit
+    local axis = n.Unit
+
+    local dot = math.clamp(u:Dot(axis), -1, 1)
+    local theta = math.acos(dot)
+
+	-- Return v, if located inside the cone
+    if (theta <= phi) then
+        return v
+    end
+
+    -- Project onto cone surface
+    local cosPhi = math.cos(phi)
+    local sinPhi = math.sin(phi)
+
+    local perp = u - axis * dot
+    local perpMag = perp.Magnitude
+
+    if (perpMag < 0.01) then
+        perp = axis:Cross(Vector3.new(1,0,0))
+        if (perp.Magnitude < 0.01) then
+            perp = axis:Cross(Vector3.new(0,1,0))
+        end
+        perp = perp.Unit
+    else
+        perp = perp / perpMag
+    end
+
+    local uProj = (axis * cosPhi + perp * sinPhi).Unit
+
+    return uProj * mag
+end
+
 
 return MathUtil

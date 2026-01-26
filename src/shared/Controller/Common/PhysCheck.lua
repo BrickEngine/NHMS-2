@@ -6,8 +6,8 @@ local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 
 local NUM_GND_RAYS = 64
 local NUM_WALL_RAYS = 12
-local LEG_OFFSET = 1
-local WALL_RANGE = 3
+local LEG_OFFSET = 1.0
+local WALL_RANGE = 5.5
 local RADIUS_OFFSET = 0.08
 local RAY_Y_OFFSET = 0.1
 
@@ -162,6 +162,10 @@ export type wallData = {
 	wallBankAngle: number
 }
 
+------------------------------------------------------------------------------------------------------------------------
+-- Ground
+------------------------------------------------------------------------------------------------------------------------
+
 -- Cylindrical raycast operation for detailed ground proximity data
 function PhysCheck.checkFloor(
 	rootPos: Vector3,
@@ -294,6 +298,13 @@ function PhysCheck.checkFloor(
     } :: groundData
 end
 
+------------------------------------------------------------------------------------------------------------------------
+-- Wall
+------------------------------------------------------------------------------------------------------------------------
+
+-- TODO: (BUGFIX) do NOT rely on direction change. Instead, create 2 ray stacks from both sides of the character
+-- and determine the wall side in this function instead of the Wall module
+
 -- To be used by the state machine modules when other checks require wall detection to be ignored
 function PhysCheck.defaultWallData() : wallData
 	return {
@@ -313,9 +324,8 @@ function PhysCheck.checkWall(
 ) : wallData
 
 	assert(direction ~= VEC3_ZERO, "Direction vector must be non zero")
-	assert(direction.Y == 0, "Directional vector must be on the XZ plane")
 
-	local unitDir = direction.Unit
+	local unitDir = Vector3.new(direction.X, 0, direction.Z).Unit
 	local lineDir = unitDir:Cross(VEC3_UP)
 	local lineStart = (rootPos + VEC3_UP * (LEG_OFFSET - hipHeight)) - lineDir * maxRadius
 	local hitWallsSet = {} :: {[BasePart]: boolean}
@@ -361,14 +371,6 @@ function PhysCheck.checkWall(
 	local position = avgVecFromVecs(posArr)
 	local wallBankAngle = math.acos(normal:Dot(VEC3_UP))
 	local nearWall = true
-	
-	local function cp(pos: Vector3)
-		local p = Instance.new("Part", workspace)
-		p.Anchored = true; p.CanCollide = false; p.Color = Color3.fromRGB(255, 0, 0)
-		p.Size = Vector3.new(2, 2, 2)
-		p.CFrame = CFrame.new(pos)
-		p.Name = "GGGOGOOGOGOGOGOGO"
-	end
 
 	-- Case: direction vector points away from wall (should rarely ever happen)
 	if ((normal:Dot(unitDir) > 0)) then
