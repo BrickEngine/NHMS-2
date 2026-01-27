@@ -26,8 +26,9 @@ local SCAN_ANGLE = math.rad(76.0) -- angle offset for left / right wall scans
 -- local MOVE_DT = 0.05 -- time delta for move accel
 -- local MOVE_DAMP = 0.1 -- equivalent to MOVE_DAMP in the Ground module
 -- local WALL_SPEED_FAC = 0.038
-local OMEGA = 7.5 -- constant for the updateMove spring
-local WALL_OFFSET = CharacterDef.PARAMS.MAINCOLL_SIZE.X * 0.54
+-- local OMEGA = 4.5 -- stiffness constant for the updateMove spring
+-- local WALL_OFFSET = CharacterDef.PARAMS.MAINCOLL_SIZE.X * 0.54
+local WALL_FORCE_STRENGTH = 500
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
 
@@ -46,10 +47,9 @@ local normVecRotFunc = nil
 local function createForces(mdl: Model): {[string]: Instance}
     assert(mdl.PrimaryPart)
 
-    local att = Instance.new("Attachment")
+    local att = Instance.new("Attachment", mdl.PrimaryPart)
     att.WorldAxis = Vector3.new(0, 1, 0)
     att.Name = "WallAtt"
-    att.Parent = mdl.PrimaryPart
 
     local moveForce = Instance.new("VectorForce", mdl.PrimaryPart)
     moveForce.Name = "WallMoveForce"
@@ -71,7 +71,7 @@ local function createForces(mdl: Model): {[string]: Instance}
     rotForce.PrimaryAxis = VEC3_UP
 
     local posForce = Instance.new("AlignPosition", mdl.PrimaryPart)
-    posForce.Name = "WallPosForce"
+    posForce.Name = "VertWallPosForce"
     posForce.Enabled = false
     posForce.Attachment0 = att
     posForce.Mode = Enum.PositionAlignmentMode.OneAttachment
@@ -85,7 +85,7 @@ local function createForces(mdl: Model): {[string]: Instance}
     return {
         moveForce = moveForce,
         rotForce = rotForce,
-        posForce = posForce,
+        posForce = posForce
     } :: {[string]: Instance}
 end
 
@@ -192,7 +192,7 @@ function Wall:stateLeave()
 end
 
 -- Registers jump input and transitions to ground, when a dismount is executed
-function Wall:handleDismount(wallNorm: Vector3)
+function Wall:handleDismount(dt: number, wallNorm: Vector3)
     if (jumpKeyPressedInit) then
         jumpKeyPressedInit = InputManager:getJumpKeyDown()
         return
@@ -218,15 +218,17 @@ function Wall:handleDismount(wallNorm: Vector3)
             + math.sqrt(Workspace.Gravity * JUMP_HEIGHT * 1.2)
         vertAccel *= VEC3_UP
         local currVertVel = VEC3_UP * primaryPart.AssemblyLinearVelocity.Y
-
         impulse = (horiAccel + vertAccel - currVertVel) * mass
     end
 
+    print(impulse.Magnitude)
     self.forces.moveForce.Enabled = false
     self.forces.posForce.Enabled = false
+
     primaryPart:ApplyImpulse(impulse)
 
     self._simulation:transitionState(PlayerState.GROUNDED)
+    print("LEAVLEAVE")
 end
 
 -- Updates posForce
@@ -246,28 +248,43 @@ end
 
 -- Updates moveForce
 function Wall:updateMove(dt: number, targetPos: Vector3, normal: Vector3, bankAngle: number)
-    local primaryPart: BasePart = self.character.PrimaryPart
-    local currHoriVel = primaryPart.AssemblyLinearVelocity
-    currHoriVel = Vector3.new(currHoriVel.X, 0, currHoriVel.Z)
-
-    local currPos = primaryPart.CFrame.Position
-    local offsTargetPos = targetPos + normal * WALL_OFFSET
+    local primaryPart = self.character.PrimaryPart
     local mass = primaryPart.AssemblyMass
 
-    local horiCamDir = Workspace.CurrentCamera.CFrame.LookVector
-    horiCamDir = Vector3.new(horiCamDir.X, 0, horiCamDir.Z).Unit
-
-    local stiffness = mass * OMEGA * OMEGA
-    local damping = 0.45 * mass * OMEGA
-
-    local accel = (offsTargetPos - currPos):Dot(-normal) * stiffness
-    local dampAccel = damping * currHoriVel:Dot(-normal)
-    local accelVec = -normal * (accel - dampAccel)
-
-    print(math.round((currPos - targetPos).Magnitude))
-
-    self.forces.moveForce.Force = accelVec * mass
+    self.forces.moveForce.Force = -normal * mass * WALL_FORCE_STRENGTH
 end
+-- function Wall:updateMove(dt: number, targetPos: Vector3, normal: Vector3, bankAngle: number)
+--     local primaryPart = self.character.PrimaryPart
+--     local mass = primaryPart.AssemblyMass
+
+--     local currPos = primaryPart.Position
+--     local currVel = primaryPart.AssemblyLinearVelocity
+--     currVel = Vector3.new(currVel.X, 0, currVel.Z)
+
+--     local offsTargetPos = targetPos + normal * WALL_OFFSET
+
+--     -- Project position and velocity onto the spring axis (normal)
+--     local x = (currPos - offsTargetPos):Dot(-normal)   -- displacement along normal
+--     local v = currVel:Dot(-normal)                     -- velocity along normal
+
+--     -- Spring parameters (same OMEGA idea as before)
+--     local k = mass * OMEGA * OMEGA                    -- stiffness
+--     local c = 2 * mass * OMEGA * 0.45                 -- damping (0.45 like your original factor)
+
+--     -- Implicit integration: solve for acceleration a along the normal
+--     -- a = (-k*x - c*v) / (m + c*dt + k*dt^2)
+--     local dt2 = dt * dt
+--     local denom = mass + c * dt + k * dt2
+--     local a = 0
+--     if denom ~= 0 then
+--         a = (-k * x - c * v) / denom
+--     end
+
+--     -- World-space acceleration vector
+--     local accelVec = -normal * a
+
+--     self.forces.moveForce.Force = accelVec * mass
+-- end
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Wall update
@@ -317,7 +334,7 @@ function Wall:update(dt: number)
     -- Update posForce
     self:updateVerticalAnchor(dt)
     -- Check for jump input
-    self:handleDismount(wallData.normal)
+    self:handleDismount(dt, wallData.normal)
 
     -- Update playermodel rotation
     primaryPart.CFrame = CFrame.lookAlong(
@@ -330,6 +347,8 @@ function Wall:update(dt: number)
     jumpInpDebounce -= dt
     jumpInpDebounce = math.max(jumpInpDebounce, 0)
     self.wallTime += dt
+
+    print("AFTERYES")
 end
 
 function Wall:destroy()

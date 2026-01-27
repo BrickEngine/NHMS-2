@@ -315,6 +315,8 @@ function Ground:update(dt: number)
     self.grounded = groundData.grounded
     self.nearWall = wallData.nearWall
 
+    ClientRoot.setIsGrounded(self.grounded)
+
     if (self.grounded) then
         local targetPosY = groundData.gndHeight + HIP_HEIGHT
 

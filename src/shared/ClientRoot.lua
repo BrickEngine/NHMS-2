@@ -18,6 +18,7 @@ local data = {
     health = 100.0,
     armor = 100.0,
     isDashing = false,
+    isGrounded = false,
     currentInvSlot = 0,
 }
 
@@ -43,6 +44,10 @@ function ClientRoot.getIsDashing(): boolean
     return data.isDashing
 end
 
+function ClientRoot.getIsGrounded(): boolean
+    return data.isGrounded
+end
+
 -- Setters
 function ClientRoot.setHealth(val: number): number
     data.health = val
@@ -59,6 +64,11 @@ end
 function ClientRoot.setIsDashing(val: boolean): boolean
     data.isDashing = val
     return data.isDashing
+end
+
+function ClientRoot.setIsGrounded(val: boolean): boolean
+    data.isGrounded = val
+    return data.isGrounded
 end
 
 return ClientRoot

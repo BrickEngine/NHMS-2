@@ -3,7 +3,6 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
-local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
 
@@ -23,15 +22,19 @@ viewPortFrame.Size = UDim2.new(1, 0, 1, 0)
 --viewPortFrame.Transparency = 1
 viewPortFrame.BackgroundTransparency = 1
 
-local mdl = Instance.new("Model", viewPortFrame)
-local part = Instance.new("Part", mdl)
-mdl.PrimaryPart = part
-part.Anchored = true
-part.CanCollide = false
-part.CanQuery = false
-part.CanTouch = false
-part.CollisionGroup = CollisionGroup.NOCOLL
-part.Size = Vector3.new(1,1,3)
+-- local mdl = Instance.new("Model", viewPortFrame)
+-- local part = Instance.new("Part", mdl)
+-- mdl.PrimaryPart = part
+-- part.Anchored = true
+-- part.CanCollide = false
+-- part.CanQuery = false
+-- part.CanTouch = false
+-- part.CollisionGroup = CollisionGroup.NOCOLL
+-- part.Size = Vector3.new(1,1,3)
+
+local mdl = ReplicatedStorage.Models["Test Gun"]
+mdl.Parent = viewPortFrame
+local gunPart = mdl.PrimaryPart
 
 if (not char) then
     error("no char")
@@ -47,16 +50,20 @@ local function updateFunc(dt: number)
     local velFac = math.clamp(horiVel.Magnitude, 0, 25)
 
     local velTimeFac = math.clamp(velFac * 0.1, 0, 6)
-    if (horiVel.Magnitude < 0.05 or ClientRoot.getPlayerState() == PlayerState.ON_WALL) then
+    if (
+        horiVel.Magnitude < 0.05 or ClientRoot.getPlayerState() == PlayerState.ON_WALL
+        or not ClientRoot.getIsGrounded()
+    ) then
         circT = 0
     end
     
-    local pvOffset = VEC3_UP * math.sin(circT * 5) * 0.1 * velTimeFac
+    local pvOffset = VEC3_UP * math.sin(circT * 7) * 0.06 * velTimeFac
 
-    part:PivotTo(cam.CFrame * CFrame.new(
-        2.5,-1.5,-1
-    ))
-    part.CFrame = part.CFrame * CFrame.new(pvOffset)
+    --2.5,-1.5,-1
+    mdl:PivotTo(
+        cam.CFrame * CFrame.new(1.08, -0.9, -1) * CFrame.Angles(0, math.rad(180), 0)
+    )
+    mdl:PivotTo(gunPart.CFrame * CFrame.new(pvOffset))
 
     circT += dt
     if (circT >= PI_2) then
