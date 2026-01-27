@@ -162,6 +162,11 @@ export type wallData = {
 	wallBankAngle: number
 }
 
+type wallSide = {
+	posArr: {Vector3},
+	normalsArr: {Vector3}
+}
+
 ------------------------------------------------------------------------------------------------------------------------
 -- Ground
 ------------------------------------------------------------------------------------------------------------------------
@@ -384,5 +389,74 @@ function PhysCheck.checkWall(
 		wallBankAngle = wallBankAngle
 	} :: wallData
 end
+
+-- function PhysCheck.checkWall(
+-- 	rootPos: Vector3,
+-- 	direction: Vector3,
+-- 	maxRadius: number,
+-- 	hipHeight: number
+-- ) : wallData
+
+-- 	assert(direction ~= VEC3_ZERO, "Direction vector must be non zero")
+
+-- 	local unitDir = Vector3.new(direction.X, 0, direction.Z).Unit
+-- 	local lineDir = unitDir:Cross(VEC3_UP)
+-- 	local lineStart = (rootPos + VEC3_UP * (LEG_OFFSET - hipHeight)) - lineDir * maxRadius
+-- 	local hitWallsSet = {} :: {[BasePart]: boolean}
+-- 	local hitWallsArr = {} :: {BasePart}
+-- 	local hitNormalsArr = {} :: {Vector3}
+-- 	local posArr = {} :: {Vector3}
+
+-- 	for i=0, NUM_WALL_RAYS - 1, 1 do
+-- 		local currPos =  lineStart + lineDir * lineDist(maxRadius, i, NUM_WALL_RAYS)
+-- 		local ray = Workspace:Raycast(currPos, unitDir * WALL_RANGE, wallRayParams) :: RaycastResult
+-- 		if (ray and ray.Instance and ray.Instance:IsA("BasePart")) then
+-- 			local hitPart = ray.Instance :: BasePart
+
+-- 			if (
+-- 				hitPart.CollisionGroup ==
+-- 				(USE_WALL_COLL_GROUP and CollisionGroup.WALL or CollisionGroup.DEFAULT)
+-- 			) then
+-- 				if (not hitWallsSet[ray.Instance]) then
+-- 					hitWallsSet[ray.Instance] = true
+-- 					hitWallsArr[#hitWallsArr + 1] = ray.Instance
+-- 				end
+-- 				hitNormalsArr[#hitNormalsArr + 1] = ray.Normal
+-- 				posArr[#posArr + 1] = ray.Position
+
+-- 				-- DEBUG
+-- 				if (DebugVisualize.enabled) then
+-- 					DebugVisualize.point(ray.Position, Color3.new(1, 0.5, 0))
+-- 				end
+-- 			end
+-- 		end
+
+-- 		-- DEBUG
+-- 		if (DebugVisualize.enabled) then
+-- 			DebugVisualize.point(currPos, Color3.new(0, 0, 1))
+-- 		end
+-- 	end
+
+-- 	if (#hitWallsArr == 0) then
+-- 		return PhysCheck.defaultWallData()
+-- 	end
+
+-- 	local normal = avgVecFromVecs(hitNormalsArr)
+-- 	local position = avgVecFromVecs(posArr)
+-- 	local wallBankAngle = math.acos(normal:Dot(VEC3_UP))
+-- 	local nearWall = true
+
+-- 	-- Case: direction vector points away from wall (should rarely ever happen)
+-- 	if ((normal:Dot(unitDir) > 0)) then
+-- 		nearWall = false
+-- 	end
+
+-- 	return {
+-- 		nearWall = nearWall,
+-- 		normal = normal,
+-- 		position = position,
+-- 		wallBankAngle = wallBankAngle
+-- 	} :: wallData
+-- end
 
 return PhysCheck

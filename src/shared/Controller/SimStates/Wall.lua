@@ -16,18 +16,17 @@ local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 
 local STATE_ID = PlayerState.ON_WALL
 
-local DISMOUNT_SPEED = 10.0 -- studs/s (should be lower than mount speed in the Ground state)
+local DISMOUNT_SPEED = 0.0 -- studs/s (should be lower than mount speed in the Ground state)
 local JUNP_INP_COOLDOWN = 0.2 -- seconds
 local JUMP_HEIGHT = 6
 local JUMP_DIST_FAC = 16
 local BANK_MIN = math.rad(75.0) -- min dismount wall angle
 local BANK_MAX = math.rad(105.0) -- max dismount wall angle
-local SCAN_ANGLE = math.rad(65.0) -- angle offset for left / right wall scans
-local MOVE_DT = 0.05 -- time delta for move accel
-local MOVE_DAMP = 0.1 -- equivalent to MOVE_DAMP in the Ground module
-local WALL_SPEED_FAC = 0.038
-local WALL_OFFSET = 1.6
---local DISTANCE = CharacterDef.PARAMS.MAINCOLL_CF.X * 2
+local SCAN_ANGLE = math.rad(90.0) -- angle offset for left / right wall scans
+-- local MOVE_DT = 0.05 -- time delta for move accel
+-- local MOVE_DAMP = 0.1 -- equivalent to MOVE_DAMP in the Ground module
+-- local WALL_SPEED_FAC = 0.038
+local WALL_OFFSET = CharacterDef.PARAMS.MAINCOLL_SIZE.X
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
 
@@ -110,9 +109,9 @@ end
     Calculates whether the wall is to the left or right of the character and returns a corresponding function
     for computing the directional vector for future wall scans
 ]]
-local function getDirFuncFromWallSide(initialVel: Vector3, wallNormal: Vector3): (Vector3) -> Vector3
-    local horiVel = Vector3.new(initialVel.X, 0, initialVel.Z)
-    local right = horiVel:Cross(VEC3_UP)
+local function getDirFuncFromWallSide(initialDir: Vector3, wallNormal: Vector3): (Vector3) -> Vector3
+    local horiDir = Vector3.new(initialDir.X, 0, initialDir.Z)
+    local right = horiDir:Cross(VEC3_UP)
     local side = right:Dot(wallNormal)
 
     if (side < 0) then
@@ -133,9 +132,12 @@ Wall.__index = Wall
 function Wall.new(...)
     local self = BaseState.new(...) :: BaseState.BaseState
 
+    self.id = STATE_ID
+
     self.character = self._simulation.character :: Model
     self.forces = createForces(self.character)
-    self.id = STATE_ID
+
+    self.animation = self._simulation.animation
 
     return setmetatable(self, Wall)
 end
@@ -144,17 +146,26 @@ function Wall:stateEnter(params: any?)
     local primaryPart: BasePart = self.character.PrimaryPart
     local hitNormal: Vector3 = params.normal
     local hitPos: Vector3 = params.position
+    local horiCamDir = Workspace.CurrentCamera.CFrame.LookVector
+    horiCamDir = Vector3.new(horiCamDir.X, 0, horiCamDir.Z).Unit
+
     assert(primaryPart, `Missing PrimaryPart of character '{self.character.name}'`)
     assert(hitNormal, "Missing required normal parameters")
     assert(hitPos, "Missing required position parameters")
-
+    
     initialVel = primaryPart.AssemblyLinearVelocity
-    currWallVelFac = initialVel.Magnitude
-    scanVecRotFunc, normVecRotFunc = getDirFuncFromWallSide(initialVel, hitNormal)
+    assert(initialVel.Magnitude > 0.01, "Minimum velocity required")
+
+    --currWallVelFac = initialVel.Magnitude
+    scanVecRotFunc, normVecRotFunc = getDirFuncFromWallSide(horiCamDir, hitNormal)
+
+    local projWallVel = normVecRotFunc(hitNormal).Unit * initialVel.Magnitude
+    print(projWallVel)
+    primaryPart:ApplyImpulse((projWallVel - initialVel) * primaryPart.AssemblyMass)
 
     self.isRightSideWall = isRightSideWall
     jumpInpDebounce = JUNP_INP_COOLDOWN
-print(isRightSideWall)
+
     if (not self.forces) then
         warn("No forces to enable in state: 'Ground'"); return
     end
@@ -224,11 +235,15 @@ end
 
 function Wall:updateMove(dt: number, targetPos: Vector3, normal: Vector3, bankAngle: number)
     local primaryPart: BasePart = self.character.PrimaryPart
-    local currVel = primaryPart.AssemblyLinearVelocity
-    local currHoriVel = Vector3.new(currVel.X, 0, currVel.Z)
+    local currHoriVel = primaryPart.AssemblyLinearVelocity
+    currHoriVel = Vector3.new(currHoriVel.X, 0, currHoriVel.Z)
     local currPos = primaryPart.CFrame.Position
     local offsTargetPos = targetPos + normal * WALL_OFFSET
     local mass = primaryPart.AssemblyMass
+
+    local omega = 1.2
+    local stiffness = mass * omega * omega
+    local damping = 0.7 * mass * omega
 
     local horiCamDir = Workspace.CurrentCamera.CFrame.LookVector
     horiCamDir = Vector3.new(horiCamDir.X, 0, horiCamDir.Z).Unit
@@ -236,10 +251,15 @@ function Wall:updateMove(dt: number, targetPos: Vector3, normal: Vector3, bankAn
     -- Rotate the wall normal into movement direction
     --local flyDir = normVecRotFunc(normal) * currWallVelFac * WALL_SPEED_FAC
     --local accelVec = 2 * ((target - currPos) - currHoriVel * MOVE_DT)/(MOVE_DT * MOVE_DAMP)
-    local flyDir = MathUtil.projectOnPlaneVec3(horiCamDir, normal) * currWallVelFac * WALL_SPEED_FAC
-    local target = offsTargetPos + flyDir
-    local accelVec = 2 * ((target - currPos) - currHoriVel * MOVE_DT)/(MOVE_DT * MOVE_DAMP)
-    accelVec = Vector3.new(accelVec.X, 0, accelVec.Z)
+
+    -- local flyDir = (normal:Cross(VEC3_UP)) * currWallVelFac * WALL_SPEED_FAC
+    -- local target = offsTargetPos
+    -- local accelVec = 2 * ((target - currPos))/(MOVE_DT * MOVE_DT)
+    -- accelVec = -Vector3.new(accelVec.X, 0, accelVec.Z).Magnitude * normal
+
+    local accel = (offsTargetPos - currPos):Dot(-normal) * stiffness
+    local dampAccel = damping * currHoriVel:Dot(-normal)
+    local accelVec = -normal * (accel - dampAccel)
 
     self.forces.moveForce.Force = accelVec * mass
 end
@@ -254,7 +274,6 @@ function Wall:update(dt: number)
     local currVel = primaryPart.AssemblyLinearVelocity
     local currPos = primaryPart.CFrame.Position
     local currHoriVel = Vector3.new(currVel.X, 0, currVel.Z)
-    local grav = Workspace.Gravity
 
     -- Physics checks
     local groundData: PhysCheck.groundData = PhysCheck.checkFloor(currPos, PHYS_RADIUS, HIP_HEIGHT, 0.1)
@@ -288,12 +307,11 @@ function Wall:update(dt: number)
         end
     end
 
-    -- Update wall movement
+    -- Update horizontal moveForce
     self:updateMove(dt, wallData.position, wallData.normal, wallData.wallBankAngle)
+    -- Update posForce
     self:updateVerticalAnchor(dt)
-    -- self.forces.posForce.Enabled = true
-    -- self.forces.posForce.Position = VEC3_UP * 6--initialTargetPos
-
+    -- Check for jump input
     self:handleJumpExit(wallData.normal)
 
     -- Update playermodel rotation

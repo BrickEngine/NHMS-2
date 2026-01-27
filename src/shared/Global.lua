@@ -1,4 +1,3 @@
-local AudioFocusService = game:GetService("AudioFocusService")
 -- Global constants for client and server side modules.
 
 return table.freeze({

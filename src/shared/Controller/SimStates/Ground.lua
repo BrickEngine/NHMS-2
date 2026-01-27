@@ -13,6 +13,7 @@ local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(controller.InputManager)
 local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
+local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 local BaseState = require(controller.SimStates.BaseState)
 local PhysCheck = require(controller.Common.PhysCheck)
 
@@ -53,6 +54,7 @@ type Counter = {
     cooldown: number
 }
 
+------------------------------------------------------------------------------------------------------------------------
 -- Local vars
 local ray_params_gnd = RaycastParams.new()
 ray_params_gnd.CollisionGroup = CollisionGroup.PLAYER
@@ -61,6 +63,18 @@ ray_params_gnd.IgnoreWater = true
 ray_params_gnd.RespectCanCollide = true
 
 local wasGroundedOnce = false
+
+local lastDashInput = false
+local dash = {
+    t = 0,
+    cooldown = 0
+} :: Counter
+
+local j_lastDown = false
+local j_Delay = 0
+local lastYPos = 0
+local jumped = false
+local jumpSignal = false
 
 -- Create required physics constraints
 local function createForces(mdl: Model): {[string]: Instance}
@@ -123,6 +137,7 @@ Ground.__index = Ground
 
 function Ground.new(...)
     local self = BaseState.new(...) :: BaseState.BaseState
+
     self.id = STATE_ID
 
     self.character = self._simulation.character :: Model
@@ -143,6 +158,12 @@ function Ground:stateEnter()
     for _, f in self.forces do
         f.Enabled = true
     end
+
+    dash = {
+        t = 0,
+        cooldown = 0
+    }
+
     self.animation:setState("Idle")
 end
 
@@ -158,12 +179,6 @@ function Ground:stateLeave()
 
     wasGroundedOnce = false
 end
-
-local j_lastDown = false
-local j_Delay = 0
-local lastYPos = 0
-local jumped = false
-local jumpSignal = false
 
 function Ground:updateJump(dt: number, override: boolean?)
     -- Manages input cooldown for the jump action
@@ -216,12 +231,6 @@ function Ground:updateJump(dt: number, override: boolean?)
 
     lastYPos = currRootPos.Y
 end
-
-local lastDashInput = false
-local dash = {
-    t = 0,
-    cooldown = 0
-} :: Counter
 
 -- Checks if conditions to execute a dash are met
 function Ground:updateDash(dt: number)
@@ -379,11 +388,15 @@ function Ground:update(dt: number)
             canMountWall = wasGroundedOnce
         end
 
-        local wallConditions = not self.grounded and currHoriVel.Magnitude >= MIN_WALL_MOUNT_SPEED and canMountWall
         local facingWall = false
+        local projWallVel = VEC3_ZERO
         if (wallData.normal and wallData.normal ~= VEC3_ZERO) then
+            projWallVel = MathUtil.projectOnPlaneVec3(currHoriVel, wallData.normal).Unit * currHoriVel.Magnitude
             facingWall = wallData.normal:Dot(horiCamLookVec) < 0
+            print(projWallVel.magnitude)
         end
+
+        local wallConditions = not self.grounded and projWallVel.Magnitude >= MIN_WALL_MOUNT_SPEED and canMountWall
 
         if (self.inWater) then
             self._simulation:transitionState(PlayerState.IN_WATER); return
