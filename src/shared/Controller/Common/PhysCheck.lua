@@ -4,25 +4,43 @@ local Workspace = game:GetService("Workspace")
 local DebugVisualize = require(script.Parent.DebugVisualize)
 local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 
-local NUM_GND_RAYS = 64
-local NUM_WALL_RAYS = 12
-local LEG_OFFSET = 1.0
-local WALL_RANGE = 5.5
-local RADIUS_OFFSET = 0.08
-local RAY_Y_OFFSET = 0.1
+-- [[checkFloor]]
 
+-- number of rays to cast
+local NUM_GND_RAYS = 64
+-- inward offset of the boundary for the outermost rays
+local RADIUS_OFFSET = 0.08
+-- ray origin offset from the default hip height
+local RAY_Y_OFFSET = 0.1
+ -- in rad, angle at which a hit will not be registered
+local MAX_INCLINE_ANGLE = math.rad(70)
+
+-- [[checkWall]]
+
+-- number of rays to cast
+local NUM_WALL_RAYS = 12
+-- ray origin offset from the character's lowest position
+local LEG_OFFSET = 1.0
+-- range of the rays
+local WALL_RANGE = 3.45
 -- max distance between ordered hit points which, if exceeded, will force the target position to be
 -- evaluated differently for ground detection
 local MAX_GND_POINT_DIFF = 0.25
-local TARGET_CLOSEST = true -- if true, picks highest point as target position
-local USE_WALL_COLL_GROUP = true -- determines which coll group to use for wall detection (false = default)
-local MAX_INCLINE_ANGLE = math.rad(70) -- in rad, angle at which a hit will not be registered
+ -- if true, picks highest point as target position
+local TARGET_CLOSEST = true
+-- whether to only register wall proximity when multiple rays successfully hit
+local REQUIRE_MIN_RAYS = false
+local MIN_REGISTER_RAYS = 4
+-- determines which coll group to use for wall detection (false = default)
+local USE_WALL_COLL_GROUP = true
+
+-- [[Misc]]
 
 local PHI = 1.61803398875
+local BOUND_POINTS = math.round(2 * math.sqrt(NUM_GND_RAYS))
 local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1 ,0)
-local VEC3_FARDOWN = -999999999 * VEC3_UP --Vector3.new(999999, 999999, 999999)
-local BOUND_POINTS = math.round(2 * math.sqrt(NUM_GND_RAYS))
+local VEC3_FARDOWN = -999999999 * VEC3_UP
 
 local floorRayParams = RaycastParams.new()
 floorRayParams.CollisionGroup = CollisionGroup.PLAYER
@@ -307,9 +325,6 @@ end
 -- Wall
 ------------------------------------------------------------------------------------------------------------------------
 
--- TODO: (BUGFIX) do NOT rely on direction change. Instead, create 2 ray stacks from both sides of the character
--- and determine the wall side in this function instead of the Wall module
-
 -- To be used by the state machine modules when other checks require wall detection to be ignored
 function PhysCheck.defaultWallData() : wallData
 	return {
@@ -372,6 +387,12 @@ function PhysCheck.checkWall(
 		return PhysCheck.defaultWallData()
 	end
 
+	if (REQUIRE_MIN_RAYS) then
+		if (#hitNormalsArr < MIN_REGISTER_RAYS) then
+			return PhysCheck.defaultWallData()
+		end
+	end
+
 	local normal = avgVecFromVecs(hitNormalsArr)
 	local position = avgVecFromVecs(posArr)
 	local wallBankAngle = math.acos(normal:Dot(VEC3_UP))
@@ -389,74 +410,5 @@ function PhysCheck.checkWall(
 		wallBankAngle = wallBankAngle
 	} :: wallData
 end
-
--- function PhysCheck.checkWall(
--- 	rootPos: Vector3,
--- 	direction: Vector3,
--- 	maxRadius: number,
--- 	hipHeight: number
--- ) : wallData
-
--- 	assert(direction ~= VEC3_ZERO, "Direction vector must be non zero")
-
--- 	local unitDir = Vector3.new(direction.X, 0, direction.Z).Unit
--- 	local lineDir = unitDir:Cross(VEC3_UP)
--- 	local lineStart = (rootPos + VEC3_UP * (LEG_OFFSET - hipHeight)) - lineDir * maxRadius
--- 	local hitWallsSet = {} :: {[BasePart]: boolean}
--- 	local hitWallsArr = {} :: {BasePart}
--- 	local hitNormalsArr = {} :: {Vector3}
--- 	local posArr = {} :: {Vector3}
-
--- 	for i=0, NUM_WALL_RAYS - 1, 1 do
--- 		local currPos =  lineStart + lineDir * lineDist(maxRadius, i, NUM_WALL_RAYS)
--- 		local ray = Workspace:Raycast(currPos, unitDir * WALL_RANGE, wallRayParams) :: RaycastResult
--- 		if (ray and ray.Instance and ray.Instance:IsA("BasePart")) then
--- 			local hitPart = ray.Instance :: BasePart
-
--- 			if (
--- 				hitPart.CollisionGroup ==
--- 				(USE_WALL_COLL_GROUP and CollisionGroup.WALL or CollisionGroup.DEFAULT)
--- 			) then
--- 				if (not hitWallsSet[ray.Instance]) then
--- 					hitWallsSet[ray.Instance] = true
--- 					hitWallsArr[#hitWallsArr + 1] = ray.Instance
--- 				end
--- 				hitNormalsArr[#hitNormalsArr + 1] = ray.Normal
--- 				posArr[#posArr + 1] = ray.Position
-
--- 				-- DEBUG
--- 				if (DebugVisualize.enabled) then
--- 					DebugVisualize.point(ray.Position, Color3.new(1, 0.5, 0))
--- 				end
--- 			end
--- 		end
-
--- 		-- DEBUG
--- 		if (DebugVisualize.enabled) then
--- 			DebugVisualize.point(currPos, Color3.new(0, 0, 1))
--- 		end
--- 	end
-
--- 	if (#hitWallsArr == 0) then
--- 		return PhysCheck.defaultWallData()
--- 	end
-
--- 	local normal = avgVecFromVecs(hitNormalsArr)
--- 	local position = avgVecFromVecs(posArr)
--- 	local wallBankAngle = math.acos(normal:Dot(VEC3_UP))
--- 	local nearWall = true
-
--- 	-- Case: direction vector points away from wall (should rarely ever happen)
--- 	if ((normal:Dot(unitDir) > 0)) then
--- 		nearWall = false
--- 	end
-
--- 	return {
--- 		nearWall = nearWall,
--- 		normal = normal,
--- 		position = position,
--- 		wallBankAngle = wallBankAngle
--- 	} :: wallData
--- end
 
 return PhysCheck

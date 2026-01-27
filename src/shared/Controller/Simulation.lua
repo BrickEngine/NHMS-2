@@ -83,7 +83,7 @@ function Simulation:transitionState(newStateId: number, params: any?)
     self.currentState = newState
     self.currentState:stateEnter(params)
 
-    ClientRoot:setPlayerState(newStateId)
+    ClientRoot.setPlayerState(newStateId)
 
     state_free = true
 end
@@ -147,7 +147,7 @@ function Simulation:resetSimulation()
     }
     self.currentState = self.states[PlayerState.GROUNDED]
     self.currentState:stateEnter()
-    ClientRoot:setPlayerState(PlayerState.GROUNDED)
+    ClientRoot.setPlayerState(PlayerState.GROUNDED)
 
     self.simUpdateConn = RunService.PostSimulation:Connect(function(dt)
         self:update(dt)

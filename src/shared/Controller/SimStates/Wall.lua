@@ -16,17 +16,18 @@ local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 
 local STATE_ID = PlayerState.ON_WALL
 
-local DISMOUNT_SPEED = 0.0 -- studs/s (should be lower than mount speed in the Ground state)
-local JUNP_INP_COOLDOWN = 0.2 -- seconds
-local JUMP_HEIGHT = 6
-local JUMP_DIST_FAC = 16
+local DISMOUNT_SPEED = 10.0 -- studs/s (should be lower than mount speed in the Ground state)
+local JUNP_INP_COOLDOWN = 0.1 -- seconds
+local JUMP_HEIGHT = 8.0
+local JUMP_DIST_FAC = 18.0
 local BANK_MIN = math.rad(75.0) -- min dismount wall angle
 local BANK_MAX = math.rad(105.0) -- max dismount wall angle
-local SCAN_ANGLE = math.rad(90.0) -- angle offset for left / right wall scans
+local SCAN_ANGLE = math.rad(76.0) -- angle offset for left / right wall scans
 -- local MOVE_DT = 0.05 -- time delta for move accel
 -- local MOVE_DAMP = 0.1 -- equivalent to MOVE_DAMP in the Ground module
 -- local WALL_SPEED_FAC = 0.038
-local WALL_OFFSET = CharacterDef.PARAMS.MAINCOLL_SIZE.X
+local OMEGA = 7.5 -- constant for the updateMove spring
+local WALL_OFFSET = CharacterDef.PARAMS.MAINCOLL_SIZE.X * 0.54
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
 
@@ -38,7 +39,6 @@ local jumpInpDebounce = JUNP_INP_COOLDOWN
 local peakedJumpAfterEntry = false
 local jumpKeyPressedInit = false
 local isRightSideWall = false
-local currWallVelFac = 0
 local scanVecRotFunc = nil
 local normVecRotFunc = nil
 
@@ -149,19 +149,21 @@ function Wall:stateEnter(params: any?)
     local horiCamDir = Workspace.CurrentCamera.CFrame.LookVector
     horiCamDir = Vector3.new(horiCamDir.X, 0, horiCamDir.Z).Unit
 
+    initialVel = primaryPart.AssemblyLinearVelocity
+    local initialHoriVel = Vector3.new(initialVel.X, 0, initialVel.Z)
+
     assert(primaryPart, `Missing PrimaryPart of character '{self.character.name}'`)
     assert(hitNormal, "Missing required normal parameters")
     assert(hitPos, "Missing required position parameters")
-    
-    initialVel = primaryPart.AssemblyLinearVelocity
     assert(initialVel.Magnitude > 0.01, "Minimum velocity required")
 
     --currWallVelFac = initialVel.Magnitude
-    scanVecRotFunc, normVecRotFunc = getDirFuncFromWallSide(horiCamDir, hitNormal)
+    scanVecRotFunc, normVecRotFunc = getDirFuncFromWallSide(initialHoriVel, hitNormal)
 
     local projWallVel = normVecRotFunc(hitNormal).Unit * initialVel.Magnitude
-    print(projWallVel)
-    primaryPart:ApplyImpulse((projWallVel - initialVel) * primaryPart.AssemblyMass)
+    primaryPart:ApplyImpulse(
+        (projWallVel - Vector3.new(initialVel.X, 0, initialVel.Z)) * primaryPart.AssemblyMass
+    )
 
     self.isRightSideWall = isRightSideWall
     jumpInpDebounce = JUNP_INP_COOLDOWN
@@ -189,7 +191,8 @@ function Wall:stateLeave()
     self.wallTime = 0
 end
 
-function Wall:handleJumpExit(wallNorm: Vector3)
+-- Registers jump input and transitions to ground, when a dismount is executed
+function Wall:handleDismount(wallNorm: Vector3)
     if (jumpKeyPressedInit) then
         jumpKeyPressedInit = InputManager:getJumpKeyDown()
         return
@@ -200,16 +203,23 @@ function Wall:handleJumpExit(wallNorm: Vector3)
 
     local primaryPart: BasePart = self.character.PrimaryPart
     local mass = primaryPart.AssemblyMass
-    local horiCamDir = Workspace.CurrentCamera.CFrame.LookVector
-    horiCamDir = Vector3.new(horiCamDir.X, 0, horiCamDir.Z).Unit
+    local camDir =  Workspace.CurrentCamera.CFrame.lookVector
+    local horiCamDir = Vector3.new(camDir.X, 0, camDir.Z).Unit
 
     local impulse do
-        local movDir = normVecRotFunc(wallNorm).Unit
-        local dirFac = 2 - math.clamp(horiCamDir:Dot(movDir), 0, 1)
-        local horiAccel = wallNorm * dirFac * dirFac * JUMP_DIST_FAC
-        local vertAccel = VEC3_UP * math.sqrt(Workspace.Gravity * 2 *JUMP_HEIGHT) * 1.8
+        --local movDir = normVecRotFunc(wallNorm).Unit
+        --local dirFac = 2 - math.clamp(horiCamDir:Dot(movDir), 0, 1)
+        local dirFac = 1.0 + math.clamp(wallNorm:Dot(horiCamDir), 0, 1)
+        local horiAccel = wallNorm * dirFac * JUMP_DIST_FAC
+        local targetJumpFac = math.clamp(VEC3_UP:Dot(camDir), -0.4, 0.4) * 1.65
 
-        impulse = (horiAccel + vertAccel) * mass
+        local vertAccel = 
+            math.sqrt(Workspace.Gravity * 2 * JUMP_HEIGHT) * targetJumpFac
+            + math.sqrt(Workspace.Gravity * JUMP_HEIGHT * 1.2)
+        vertAccel *= VEC3_UP
+        local currVertVel = VEC3_UP * primaryPart.AssemblyLinearVelocity.Y
+
+        impulse = (horiAccel + vertAccel - currVertVel) * mass
     end
 
     self.forces.moveForce.Enabled = false
@@ -219,6 +229,7 @@ function Wall:handleJumpExit(wallNorm: Vector3)
     self._simulation:transitionState(PlayerState.GROUNDED)
 end
 
+-- Updates posForce
 function Wall:updateVerticalAnchor(dt: number)
     if (peakedJumpAfterEntry) then return end
 
@@ -233,33 +244,27 @@ function Wall:updateVerticalAnchor(dt: number)
     end
 end
 
+-- Updates moveForce
 function Wall:updateMove(dt: number, targetPos: Vector3, normal: Vector3, bankAngle: number)
     local primaryPart: BasePart = self.character.PrimaryPart
     local currHoriVel = primaryPart.AssemblyLinearVelocity
     currHoriVel = Vector3.new(currHoriVel.X, 0, currHoriVel.Z)
+
     local currPos = primaryPart.CFrame.Position
     local offsTargetPos = targetPos + normal * WALL_OFFSET
     local mass = primaryPart.AssemblyMass
 
-    local omega = 1.2
-    local stiffness = mass * omega * omega
-    local damping = 0.7 * mass * omega
-
     local horiCamDir = Workspace.CurrentCamera.CFrame.LookVector
     horiCamDir = Vector3.new(horiCamDir.X, 0, horiCamDir.Z).Unit
 
-    -- Rotate the wall normal into movement direction
-    --local flyDir = normVecRotFunc(normal) * currWallVelFac * WALL_SPEED_FAC
-    --local accelVec = 2 * ((target - currPos) - currHoriVel * MOVE_DT)/(MOVE_DT * MOVE_DAMP)
-
-    -- local flyDir = (normal:Cross(VEC3_UP)) * currWallVelFac * WALL_SPEED_FAC
-    -- local target = offsTargetPos
-    -- local accelVec = 2 * ((target - currPos))/(MOVE_DT * MOVE_DT)
-    -- accelVec = -Vector3.new(accelVec.X, 0, accelVec.Z).Magnitude * normal
+    local stiffness = mass * OMEGA * OMEGA
+    local damping = 0.45 * mass * OMEGA
 
     local accel = (offsTargetPos - currPos):Dot(-normal) * stiffness
     local dampAccel = damping * currHoriVel:Dot(-normal)
     local accelVec = -normal * (accel - dampAccel)
+
+    print(math.round((currPos - targetPos).Magnitude))
 
     self.forces.moveForce.Force = accelVec * mass
 end
@@ -312,7 +317,7 @@ function Wall:update(dt: number)
     -- Update posForce
     self:updateVerticalAnchor(dt)
     -- Check for jump input
-    self:handleJumpExit(wallData.normal)
+    self:handleDismount(wallData.normal)
 
     -- Update playermodel rotation
     primaryPart.CFrame = CFrame.lookAlong(

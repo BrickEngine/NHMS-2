@@ -24,6 +24,7 @@ local MOVE_SPEED = 1.75
 local DASH_SPEED = 3.2
 local MIN_WALL_MOUNT_SPEED = 12 -- studs/s
 local ALLOW_IMM_WALL_MOUNT = true -- whether to allow repeated Wall state transitions
+local MUST_LOOK_AT_WALL = false -- whether to allow wall mounting without looking at the wall
 local GND_CLEAR_DIST = 0.45
 local MAX_INCLINE = math.rad(70) -- radiants
 local JUMP_HEIGHT = 6
@@ -175,7 +176,7 @@ function Ground:stateLeave()
         f.Enabled = false
     end
     self.isDashing = false
-    ClientRoot:setIsDashing(self.isDashing)
+    ClientRoot.setIsDashing(self.isDashing)
 
     wasGroundedOnce = false
 end
@@ -291,10 +292,11 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 function Ground:update(dt: number)
     local primaryPart: BasePart = self.character.PrimaryPart
-    local camCFrame = Workspace.CurrentCamera.CFrame
+    local camDir = Workspace.CurrentCamera.CFrame.LookVector
+    local horiCamDir = Vector3.new(camDir.X, 0, camDir.Z)
     local currVel = primaryPart.AssemblyLinearVelocity
-    local currPos = primaryPart.CFrame.Position
     local currHoriVel = Vector3.new(currVel.X, 0, currVel.Z)
+    local currPos = primaryPart.CFrame.Position
     local grav = Workspace.Gravity
     local mass = primaryPart.AssemblyMass
 
@@ -306,7 +308,8 @@ function Ground:update(dt: number)
     if (currHoriVel.Magnitude < 0.1) then
         wallData = PhysCheck.defaultWallData()
     else
-        wallData = PhysCheck.checkWall(currPos, currHoriVel, PHYS_RADIUS, HIP_HEIGHT)
+        local scanDir = self.isDashing and horiCamDir or currHoriVel
+        wallData = PhysCheck.checkWall(currPos, scanDir, PHYS_RADIUS, HIP_HEIGHT)
     end
 
     self.grounded = groundData.grounded
@@ -358,7 +361,7 @@ function Ground:update(dt: number)
 
     -- Update dashing checks, set ClientRoot var
     self:updateDash(dt)
-    ClientRoot:setIsDashing(self.isDashing)
+    ClientRoot.setIsDashing(self.isDashing)
 
     -- Update movement and switch to dash, if dashing
     self:updateMove(dt, groundData.normal, groundData.normalAngle)
@@ -373,9 +376,8 @@ function Ground:update(dt: number)
     end
 
     -- Update playermodel rotation
-    local horiCamLookVec = Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z)
     primaryPart.CFrame = CFrame.lookAlong(
-        primaryPart.CFrame.Position, horiCamLookVec
+        primaryPart.CFrame.Position, horiCamDir
     )
     primaryPart.AssemblyAngularVelocity = VEC3_ZERO
 
@@ -392,15 +394,19 @@ function Ground:update(dt: number)
         local projWallVel = VEC3_ZERO
         if (wallData.normal and wallData.normal ~= VEC3_ZERO) then
             projWallVel = MathUtil.projectOnPlaneVec3(currHoriVel, wallData.normal).Unit * currHoriVel.Magnitude
-            facingWall = wallData.normal:Dot(horiCamLookVec) < 0
-            print(projWallVel.magnitude)
+            facingWall = wallData.normal:Dot(horiCamDir) < 0
+        end
+        if (not MUST_LOOK_AT_WALL) then
+            facingWall = true
         end
 
-        local wallConditions = not self.grounded and projWallVel.Magnitude >= MIN_WALL_MOUNT_SPEED and canMountWall
+        local wallConditions = 
+            not self.grounded and projWallVel.Magnitude >= MIN_WALL_MOUNT_SPEED 
+            and canMountWall and facingWall
 
         if (self.inWater) then
             self._simulation:transitionState(PlayerState.IN_WATER); return
-        elseif (self.nearWall and wallConditions and facingWall) then
+        elseif (self.nearWall and wallConditions) then
             self._simulation:transitionState(
                 PlayerState.ON_WALL, 
                 {

@@ -35,28 +35,28 @@ local ClientRoot = {
 }
 
 -- Getters
-function ClientRoot:getPlayerState(): string
+function ClientRoot.getPlayerState(): number
     return data.playerState
 end
 
-function ClientRoot:getIsDashing(): boolean
+function ClientRoot.getIsDashing(): boolean
     return data.isDashing
 end
 
 -- Setters
-function ClientRoot:setHealth(val: number): number
+function ClientRoot.setHealth(val: number): number
     data.health = val
     ClientRoot.signals.healthChanged:Fire(data.health)
     return data.health
 end
 
-function ClientRoot:setPlayerState(val: number): number
+function ClientRoot.setPlayerState(val: number): number
     data.playerState = val
     ClientRoot.signals.playerStateChanged:Fire(data.playerState)
     return data.playerState
 end
 
-function ClientRoot:setIsDashing(val: boolean): boolean
+function ClientRoot.setIsDashing(val: boolean): boolean
     data.isDashing = val
     return data.isDashing
 end
