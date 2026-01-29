@@ -16,19 +16,22 @@ local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 
 local STATE_ID = PlayerState.ON_WALL
 
-local DISMOUNT_SPEED = 10.0 -- studs/s (should be lower than mount speed in the Ground state)
+local DISMOUNT_SPEED = 12.0 -- studs/s (should be lower than mount speed in the Ground state)
 local JUNP_INP_COOLDOWN = 0.1 -- seconds
 local JUMP_HEIGHT = 8.0
 local JUMP_DIST_FAC = 18.0
 local BANK_MIN = math.rad(75.0) -- min dismount wall angle
 local BANK_MAX = math.rad(105.0) -- max dismount wall angle
 local SCAN_ANGLE = math.rad(76.0) -- angle offset for left / right wall scans
--- local MOVE_DT = 0.05 -- time delta for move accel
--- local MOVE_DAMP = 0.1 -- equivalent to MOVE_DAMP in the Ground module
--- local WALL_SPEED_FAC = 0.038
--- local OMEGA = 4.5 -- stiffness constant for the updateMove spring
--- local WALL_OFFSET = CharacterDef.PARAMS.MAINCOLL_SIZE.X * 0.54
-local WALL_FORCE_STRENGTH = 500
+
+-- difference between the detected current wall normal and the wall normal on the last frame
+-- which, if exceeded, will result in a dismount
+local MAX_NORM_DIFF = 1.025
+
+ -- force scaling for how much force should be applied 
+ -- along the negative wall normal relative to movement speed
+local WALL_FORCE_STRENGTH_FAC = 10
+
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
 
@@ -36,6 +39,7 @@ local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1, 0)
 
 local initialVel = VEC3_ZERO
+local lastWallNorm = VEC3_ZERO
 local jumpInpDebounce = JUNP_INP_COOLDOWN
 local peakedJumpAfterEntry = false
 local jumpKeyPressedInit = false
@@ -109,7 +113,7 @@ end
     Calculates whether the wall is to the left or right of the character and returns a corresponding function
     for computing the directional vector for future wall scans
 ]]
-local function getDirFuncFromWallSide(initialDir: Vector3, wallNormal: Vector3): (Vector3) -> Vector3
+local function getDirFuncFromWallSide(initialDir: Vector3, wallNormal: Vector3): (Vector3) -> any
     local horiDir = Vector3.new(initialDir.X, 0, initialDir.Z)
     local right = horiDir:Cross(VEC3_UP)
     local side = right:Dot(wallNormal)
@@ -160,10 +164,14 @@ function Wall:stateEnter(params: any?)
     --currWallVelFac = initialVel.Magnitude
     scanVecRotFunc, normVecRotFunc = getDirFuncFromWallSide(initialHoriVel, hitNormal)
 
-    local projWallVel = normVecRotFunc(hitNormal).Unit * initialVel.Magnitude
+    --projWallVel = MathUtil.projectOnPlaneVec3(initialHoriVel, hitNormal) 
+    local wallVel = normVecRotFunc(hitNormal).Unit * initialHoriVel.Magnitude
     primaryPart:ApplyImpulse(
-        (projWallVel - Vector3.new(initialVel.X, 0, initialVel.Z)) * primaryPart.AssemblyMass
+        (wallVel - initialHoriVel) * primaryPart.AssemblyMass
     )
+
+    -- Set wall normal on first contact
+    lastWallNorm = hitNormal
 
     self.isRightSideWall = isRightSideWall
     jumpInpDebounce = JUNP_INP_COOLDOWN
@@ -221,14 +229,12 @@ function Wall:handleDismount(dt: number, wallNorm: Vector3)
         impulse = (horiAccel + vertAccel - currVertVel) * mass
     end
 
-    print(impulse.Magnitude)
     self.forces.moveForce.Enabled = false
     self.forces.posForce.Enabled = false
 
     primaryPart:ApplyImpulse(impulse)
 
     self._simulation:transitionState(PlayerState.GROUNDED)
-    print("LEAVLEAVE")
 end
 
 -- Updates posForce
@@ -248,10 +254,11 @@ end
 
 -- Updates moveForce
 function Wall:updateMove(dt: number, targetPos: Vector3, normal: Vector3, bankAngle: number)
-    local primaryPart = self.character.PrimaryPart
+    local primaryPart: BasePart = self.character.PrimaryPart
+    local velFac = 1.0 + primaryPart.AssemblyLinearVelocity.Magnitude
     local mass = primaryPart.AssemblyMass
 
-    self.forces.moveForce.Force = -normal * mass * WALL_FORCE_STRENGTH
+    self.forces.moveForce.Force = -normal * mass * WALL_FORCE_STRENGTH_FAC * velFac
 end
 -- function Wall:updateMove(dt: number, targetPos: Vector3, normal: Vector3, bankAngle: number)
 --     local primaryPart = self.character.PrimaryPart
@@ -314,7 +321,7 @@ function Wall:update(dt: number)
     else
         self.forces.posForce.Enabled = false
     end
-
+    print((lastWallNorm - wallData.normal).Magnitude)
     -- State transitions
     do
         local bankAngleExceeded = wallData.wallBankAngle < BANK_MIN or wallData.wallBankAngle > BANK_MAX
@@ -324,6 +331,7 @@ function Wall:update(dt: number)
         elseif (
             self.grounded or (not self.nearWall) 
             or currHoriVel.Magnitude < DISMOUNT_SPEED or bankAngleExceeded
+            or (lastWallNorm - wallData.normal).Magnitude > MAX_NORM_DIFF
         ) then
             self._simulation:transitionState(PlayerState.GROUNDED); return
         end
@@ -347,8 +355,6 @@ function Wall:update(dt: number)
     jumpInpDebounce -= dt
     jumpInpDebounce = math.max(jumpInpDebounce, 0)
     self.wallTime += dt
-
-    print("AFTERYES")
 end
 
 function Wall:destroy()
