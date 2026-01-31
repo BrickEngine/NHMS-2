@@ -5,7 +5,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
+local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 
 export type Counter = {
     t: number,
@@ -14,7 +14,7 @@ export type Counter = {
 
 local data = {
     gameTime = 0.0,
-    playerState = PlayerState.NONE,
+    playerState = PlayerStateId.NONE,
     health = 100.0,
     armor = 100.0,
     isDashing = false,

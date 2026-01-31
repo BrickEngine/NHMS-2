@@ -4,7 +4,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
+local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 
 local BaseState = {}
 BaseState.__index = BaseState
@@ -15,7 +15,7 @@ function BaseState.new(_simulation)
     local self = setmetatable({}, BaseState)
 
     self._simulation = _simulation
-    self.id = PlayerState.NONE
+    self.id = PlayerStateId.NONE
 
     self.grounded = false
     self.inWater = false

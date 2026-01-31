@@ -8,7 +8,7 @@ local Animation = require(script.Parent.Animation)
 local DebugVisualize = require(script.Parent.Common.DebugVisualize)
 
 local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
-local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
+local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local Global = require(ReplicatedStorage.Shared.Global)
 local simStates = script.Parent.SimStates
 local BaseState = require(simStates.BaseState)
@@ -96,7 +96,7 @@ function Simulation:getCurrentStateId(): number
     if (self.currentState) then
         return self.currentState.id
     end
-    return PlayerState.NONE
+    return PlayerStateId.NONE
 end
 
 function Simulation:getNormal(): Vector3
@@ -145,13 +145,13 @@ function Simulation:resetSimulation()
     end
 
     self.states = {
-        [PlayerState.GROUNDED] = Ground.new(self),
-        [PlayerState.IN_WATER] = Water.new(self),
-        [PlayerState.ON_WALL] = Wall.new(self)
+        [PlayerStateId.GROUNDED] = Ground.new(self),
+        [PlayerStateId.IN_WATER] = Water.new(self),
+        [PlayerStateId.ON_WALL] = Wall.new(self)
     }
-    self.currentState = self.states[PlayerState.GROUNDED]
+    self.currentState = self.states[PlayerStateId.GROUNDED]
     self.currentState:stateEnter()
-    ClientRoot.setPlayerState(PlayerState.GROUNDED)
+    ClientRoot.setPlayerState(PlayerStateId.GROUNDED)
 
     self.simUpdateConn = RunService.PostSimulation:Connect(function(dt)
         self:update(dt)

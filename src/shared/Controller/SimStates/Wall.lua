@@ -9,12 +9,12 @@ local Workspace = game:GetService("Workspace")
 local controller = script.Parent.Parent
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(controller.InputManager)
-local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
+local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local BaseState = require(script.Parent.BaseState)
 local PhysCheck = require(controller.Common.PhysCheck)
 local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 
-local STATE_ID = PlayerState.ON_WALL
+local STATE_ID = PlayerStateId.ON_WALL
 
 local DISMOUNT_SPEED = 2.0 -- studs/s (should be lower than mount speed in the Ground state)
 local JUNP_INP_COOLDOWN = 0.1 -- seconds
@@ -230,7 +230,7 @@ function Wall:handleDismount(dt: number, wallNorm: Vector3)
 
     primaryPart:ApplyImpulse(impulse)
 
-    self._simulation:transitionState(PlayerState.GROUNDED)
+    self._simulation:transitionState(PlayerStateId.GROUNDED)
 end
 
 -- Updates posForce
@@ -323,13 +323,13 @@ function Wall:update(dt: number)
         local bankAngleExceeded = wallData.bankAngle < BANK_MIN or wallData.bankAngle > BANK_MAX
 
         if (self.inWater) then
-            self._simulation:transitionState(PlayerState.IN_WATER); return
+            self._simulation:transitionState(PlayerStateId.IN_WATER); return
         elseif (
             self.grounded or (not self.nearWall) 
             or currHoriVel.Magnitude < DISMOUNT_SPEED or bankAngleExceeded
             or wallData.maxAngleDiff > MAX_ANGLE_DIFF
         ) then
-            self._simulation:transitionState(PlayerState.GROUNDED); return
+            self._simulation:transitionState(PlayerStateId.GROUNDED); return
         end
     end
 

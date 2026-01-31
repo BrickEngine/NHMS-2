@@ -23,8 +23,20 @@ do
     -- Check if all collision groups are registered
     for _, groupName in pairs(CollisionGroup) do
         if (not PhysicsService:IsCollisionGroupRegistered(groupName)) then
-            warn("unregistered collision group: " .. groupName)
+            warn("Unregistered collision group: " .. groupName)
         end
+    end
+
+    -- Init walls
+    local wallsFold = Workspace:FindFirstChild(Global.WALL_INST_FOLDER_NAME, true)
+    if (wallsFold) then
+        for _, v: Instance in pairs(wallsFold:GetDescendants()) do
+            if (v:IsA("BasePart")) then
+                v.CollisionGroup = CollisionGroup.WALL
+            end
+        end
+    else
+        warn("No 'Walls' folder present")
     end
 end
 

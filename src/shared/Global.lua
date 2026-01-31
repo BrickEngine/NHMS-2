@@ -7,6 +7,7 @@ return table.freeze({
     PRINT_SIM_DEBUG = true,
 
     PLAYERS_INST_FOLDER_NAME = "PlayerInstContainer",
+    WALL_INST_FOLDER_NAME = "Walls",
 
     PLAYER_CHARACTER_TAG_NAME = "PlayerCharacter"
 })

@@ -12,12 +12,12 @@ local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(controller.InputManager)
-local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
+local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 local BaseState = require(controller.SimStates.BaseState)
 local PhysCheck = require(controller.Common.PhysCheck)
 
-local STATE_ID = PlayerState.GROUNDED
+local STATE_ID = PlayerStateId.GROUNDED
 
 -- General physics config
 local MOVE_SPEED = 1.75
@@ -407,10 +407,10 @@ function Ground:update(dt: number)
             and canMountWall and facingWall
 
         if (self.inWater) then
-            self._simulation:transitionState(PlayerState.IN_WATER); return
+            self._simulation:transitionState(PlayerStateId.IN_WATER); return
         elseif (self.nearWall and wallConditions) then
             self._simulation:transitionState(
-                PlayerState.ON_WALL, 
+                PlayerStateId.ON_WALL, 
                 {
                     normal = wallData.normal, 
                     position = wallData.position

@@ -4,7 +4,7 @@ local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
 local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
-local PlayerState = require(ReplicatedStorage.Shared.Enums.PlayerState)
+local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 
 local VEC3_UP = Vector3.new(0, 1, 0)
 local PI_2 = math.pi * 2
@@ -51,7 +51,7 @@ local function updateFunc(dt: number)
 
     local velTimeFac = math.clamp(velFac * 0.1, 0, 6)
     if (
-        horiVel.Magnitude < 0.05 or ClientRoot.getPlayerState() == PlayerState.ON_WALL
+        horiVel.Magnitude < 0.05 or ClientRoot.getPlayerState() == PlayerStateId.ON_WALL
         or not ClientRoot.getIsGrounded()
     ) then
         circT = 0
