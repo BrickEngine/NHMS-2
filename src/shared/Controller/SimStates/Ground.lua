@@ -22,7 +22,7 @@ local STATE_ID = PlayerStateId.GROUNDED
 -- General physics config
 local MOVE_SPEED = 1.75
 local DASH_SPEED = 3.2
-local MIN_WALL_MOUNT_SPEED = 12 -- studs/s
+local MIN_WALL_MOUNT_SPEED = 15 -- studs/s
 local ALLOW_IMM_WALL_MOUNT = true -- whether to allow repeated Wall state transitions
 local MUST_LOOK_AT_WALL = false -- whether to allow wall mounting without looking at the wall
 local GND_CLEAR_DIST = 0.45

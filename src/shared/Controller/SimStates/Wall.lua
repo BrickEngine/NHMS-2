@@ -4,6 +4,7 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
 local Workspace = game:GetService("Workspace")
 
 local controller = script.Parent.Parent
@@ -16,7 +17,7 @@ local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 
 local STATE_ID = PlayerStateId.ON_WALL
 
-local DISMOUNT_SPEED = 2.0 -- studs/s (should be lower than mount speed in the Ground state)
+local DISMOUNT_SPEED = 12.0 -- studs/s (should be lower than mount speed in the Ground state)
 local JUNP_INP_COOLDOWN = 0.1 -- seconds
 local JUMP_HEIGHT = 8.0
 local JUMP_DIST_FAC = 18.0
@@ -28,8 +29,8 @@ local SCAN_ANGLE = math.rad(70.0) -- angle offset for left / right wall scans
 -- which, if exceeded, will result in a dismount
 local MAX_ANGLE_DIFF = math.rad(87.5)
 
- -- force scaling for how much force should be applied 
- -- along the negative wall normal relative to movement speed
+-- force scaling for how much force should be applied 
+-- along the negative wall normal relative to movement speed
 local WALL_FORCE_STRENGTH_FAC = 10.75
 
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
@@ -45,6 +46,11 @@ local jumpKeyPressedInit = false
 local isRightSideWall = false
 local scanVecRotFunc = nil
 local normVecRotFunc = nil
+
+-- temp
+local loopSound = Instance.new("Sound")
+loopSound.Looped = true
+loopSound.SoundId = "rbxassetid://81521378859476"
 
 -- Create required physics constraints
 local function createForces(mdl: Model): {[string]: Instance}
@@ -177,6 +183,22 @@ function Wall:stateEnter(params: any?)
     end
     self.forces.moveForce.Enabled = true
     self.forces.rotForce.Enabled = true
+
+    -- temp
+    do
+        local s = Instance.new("Sound")
+        s.TimePosition = 0.1
+        local soundIds = {
+            "rbxassetid://15764092592",
+            "rbxassetid://81202220081219"
+        }
+        s.SoundId = soundIds[math.random(1, 2)]
+        SoundService:PlayLocalSound(s)
+        s:Destroy()
+
+        loopSound.Parent = primaryPart
+        loopSound:Play()
+    end
 end
 
 function Wall:stateLeave()
@@ -193,6 +215,8 @@ function Wall:stateLeave()
     jumpKeyPressedInit = InputManager:getJumpKeyDown()
     peakedJumpAfterEntry = false
     self.wallTime = 0
+
+    loopSound:Stop()
 end
 
 -- Registers jump input and transitions to ground, when a dismount is executed
@@ -229,6 +253,18 @@ function Wall:handleDismount(dt: number, wallNorm: Vector3)
     self.forces.posForce.Enabled = false
 
     primaryPart:ApplyImpulse(impulse)
+
+    -- temp
+    do
+        local s = Instance.new("Sound")
+        local soundIds = {
+            "rbxassetid://143384769",
+            "rbxassetid://128602720222961"
+        }
+        s.SoundId = soundIds[math.random(1, 2)]
+        SoundService:PlayLocalSound(s)
+        s:Destroy()
+    end
 
     self._simulation:transitionState(PlayerStateId.GROUNDED)
 end
