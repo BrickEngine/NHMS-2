@@ -22,7 +22,7 @@ local NUM_WALL_RAYS = 12
 -- ray origin offset from the character's lowest position
 local LEG_OFFSET = 1.0
 -- range of the rays
-local WALL_RANGE = 3.45
+local WALL_RANGE = 2.75 --3.45
 -- max distance between ordered hit points which, if exceeded, will force the target position to be
 -- evaluated differently for ground detection
 local MAX_GND_POINT_DIFF = 0.25
@@ -138,9 +138,9 @@ local function avgVecFromVecs(vecArr: {Vector3}): Vector3
 end
 
 -- Finds the biggest numerical difference between two adjacent numbers in an ordered array
-local function biggestOrderedDist(vecArr: {number}): number
-	local arr = vecArr
-	table.sort(vecArr, function(a0: number, a1: number): boolean 
+local function biggestOrderedDist(numArr: {number}): number
+	local arr = numArr
+	table.sort(numArr, function(a0: number, a1: number): boolean 
 		return a0 < a1
 	end)
 
@@ -157,6 +157,30 @@ end
 
 local function lineDist(radius: number, point: number, n: number): number
 	return (radius / n) * (1 + 2 * point)
+end
+
+-- Finds the biggest difference 
+local function biggestVecAngleDiff(vecArr: {Vector3}): number
+	local maxAng = 0
+	local arr = vecArr
+
+	for i, vec: Vector3 in ipairs(arr) do
+		arr[i] = vec.Unit
+	end
+
+	for i=1, #arr-2, 1 do
+		for j=i+1, #arr-1, 1 do
+			local dot = arr[i]:Dot(arr[j])
+
+			-- compensate for rounding errors
+			if (dot > 1) then dot = 1.0 end
+			if (dot < -1) then dot = -1.0 end
+
+			maxAng = math.max(math.acos(dot), maxAng)
+		end
+	end
+
+	return maxAng
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -177,7 +201,8 @@ export type wallData = {
 	nearWall: boolean,
 	normal: Vector3,
 	position: Vector3,
-	wallBankAngle: number
+	bankAngle: number,
+	maxAngleDiff: number
 }
 
 type wallSide = {
@@ -331,7 +356,8 @@ function PhysCheck.defaultWallData() : wallData
 		nearWall = false,
 		normal = VEC3_ZERO,
 		position = VEC3_ZERO,
-		wallBankAngle = 0
+		bankAngle = 0,
+		maxAngleDiff = 0
 	}
 end
 
@@ -395,7 +421,8 @@ function PhysCheck.checkWall(
 
 	local normal = avgVecFromVecs(hitNormalsArr)
 	local position = avgVecFromVecs(posArr)
-	local wallBankAngle = math.acos(normal:Dot(VEC3_UP))
+	local bankAngle = math.acos(normal:Dot(VEC3_UP))
+	local maxAngleDiff = biggestVecAngleDiff(hitNormalsArr)
 	local nearWall = true
 
 	-- Case: direction vector points away from wall (should rarely ever happen)
@@ -407,7 +434,8 @@ function PhysCheck.checkWall(
 		nearWall = nearWall,
 		normal = normal,
 		position = position,
-		wallBankAngle = wallBankAngle
+		bankAngle = bankAngle,
+		maxAngleDiff = maxAngleDiff
 	} :: wallData
 end
 

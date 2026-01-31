@@ -16,21 +16,21 @@ local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 
 local STATE_ID = PlayerState.ON_WALL
 
-local DISMOUNT_SPEED = 12.0 -- studs/s (should be lower than mount speed in the Ground state)
+local DISMOUNT_SPEED = 2.0 -- studs/s (should be lower than mount speed in the Ground state)
 local JUNP_INP_COOLDOWN = 0.1 -- seconds
 local JUMP_HEIGHT = 8.0
 local JUMP_DIST_FAC = 18.0
 local BANK_MIN = math.rad(75.0) -- min dismount wall angle
 local BANK_MAX = math.rad(105.0) -- max dismount wall angle
-local SCAN_ANGLE = math.rad(76.0) -- angle offset for left / right wall scans
+local SCAN_ANGLE = math.rad(70.0) -- angle offset for left / right wall scans
 
--- difference between the detected current wall normal and the wall normal on the last frame
+-- max angle difference between two out of all hit wall normals
 -- which, if exceeded, will result in a dismount
-local MAX_NORM_DIFF = 1.025
+local MAX_ANGLE_DIFF = math.rad(87.5)
 
  -- force scaling for how much force should be applied 
  -- along the negative wall normal relative to movement speed
-local WALL_FORCE_STRENGTH_FAC = 10
+local WALL_FORCE_STRENGTH_FAC = 10.75
 
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
@@ -39,7 +39,6 @@ local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1, 0)
 
 local initialVel = VEC3_ZERO
-local lastWallNorm = VEC3_ZERO
 local jumpInpDebounce = JUNP_INP_COOLDOWN
 local peakedJumpAfterEntry = false
 local jumpKeyPressedInit = false
@@ -170,9 +169,6 @@ function Wall:stateEnter(params: any?)
         (wallVel - initialHoriVel) * primaryPart.AssemblyMass
     )
 
-    -- Set wall normal on first contact
-    lastWallNorm = hitNormal
-
     self.isRightSideWall = isRightSideWall
     jumpInpDebounce = JUNP_INP_COOLDOWN
 
@@ -253,7 +249,7 @@ function Wall:updateVerticalAnchor(dt: number)
 end
 
 -- Updates moveForce
-function Wall:updateMove(dt: number, targetPos: Vector3, normal: Vector3, bankAngle: number)
+function Wall:updateWallForce(dt: number, targetPos: Vector3, normal: Vector3)
     local primaryPart: BasePart = self.character.PrimaryPart
     local velFac = 1.0 + primaryPart.AssemblyLinearVelocity.Magnitude
     local mass = primaryPart.AssemblyMass
@@ -321,24 +317,24 @@ function Wall:update(dt: number)
     else
         self.forces.posForce.Enabled = false
     end
-    print((lastWallNorm - wallData.normal).Magnitude)
+
     -- State transitions
     do
-        local bankAngleExceeded = wallData.wallBankAngle < BANK_MIN or wallData.wallBankAngle > BANK_MAX
+        local bankAngleExceeded = wallData.bankAngle < BANK_MIN or wallData.bankAngle > BANK_MAX
 
         if (self.inWater) then
             self._simulation:transitionState(PlayerState.IN_WATER); return
         elseif (
             self.grounded or (not self.nearWall) 
             or currHoriVel.Magnitude < DISMOUNT_SPEED or bankAngleExceeded
-            or (lastWallNorm - wallData.normal).Magnitude > MAX_NORM_DIFF
+            or wallData.maxAngleDiff > MAX_ANGLE_DIFF
         ) then
             self._simulation:transitionState(PlayerState.GROUNDED); return
         end
     end
 
     -- Update horizontal moveForce
-    self:updateMove(dt, wallData.position, wallData.normal, wallData.wallBankAngle)
+    self:updateWallForce(dt, wallData.position, wallData.normal)
     -- Update posForce
     self:updateVerticalAnchor(dt)
     -- Check for jump input
