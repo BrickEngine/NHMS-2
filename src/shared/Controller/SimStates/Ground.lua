@@ -22,7 +22,7 @@ local STATE_ID = PlayerStateId.GROUNDED
 -- General physics config
 local MOVE_SPEED = 1.75
 local DASH_SPEED = 3.2
-local MIN_WALL_MOUNT_SPEED = 15 -- studs/s
+local MIN_WALL_MOUNT_SPEED = 12.0 -- studs/s
 local ALLOW_IMM_WALL_MOUNT = true -- whether to allow repeated Wall state transitions
 local MUST_LOOK_AT_WALL = false -- whether to allow wall mounting without looking at the wall
 local GND_CLEAR_DIST = 0.45
@@ -156,9 +156,8 @@ function Ground:stateEnter()
     if (not self.forces) then
         warn("No forces to enable in state: 'Ground'"); return
     end
-    for _, f in self.forces do
-        f.Enabled = true
-    end
+    self.forces.moveForce.Enabled = true
+    self.forces.rotForce.Enabled = true
 
     dash = {
         t = 0,

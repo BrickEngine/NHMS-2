@@ -17,21 +17,30 @@ local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 
 local STATE_ID = PlayerStateId.ON_WALL
 
-local DISMOUNT_SPEED = 12.0 -- studs/s (should be lower than mount speed in the Ground state)
+local DISMOUNT_SPEED = 0.01--2.4 -- studs/s (should be lower than mount speed in the Ground state)
+
 local JUNP_INP_COOLDOWN = 0.1 -- seconds
 local JUMP_HEIGHT = 8.0
 local JUMP_DIST_FAC = 18.0
+
 local BANK_MIN = math.rad(75.0) -- min dismount wall angle
 local BANK_MAX = math.rad(105.0) -- max dismount wall angle
 local SCAN_ANGLE = math.rad(70.0) -- angle offset for left / right wall scans
 
--- max angle difference between two out of all hit wall normals
--- which, if exceeded, will result in a dismount
+-- max angle difference between two out of all hit wall normals which, if exceeded, will result in a dismount
 local MAX_ANGLE_DIFF = math.rad(87.5)
 
--- force scaling for how much force should be applied 
--- along the negative wall normal relative to movement speed
+-- force scaling for how much force should be applied along the negative wall normal relative to movement speed
 local WALL_FORCE_STRENGTH_FAC = 10.75
+
+local SLIDE_FAC = 1.25 -- distance scaling for how much a player slides per frame
+local START_SLIDE_VEL = 45.0 -- studs/s, velocity at which a player starts to slide
+
+-- max speed on the wall in studs/s
+local WALL_MAX_SPEED = 105.0
+
+-- by how much to boost the wall velocity on enter
+local BOOST_FAC = 1.35
 
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
@@ -170,10 +179,15 @@ function Wall:stateEnter(params: any?)
     scanVecRotFunc, normVecRotFunc = getDirFuncFromWallSide(initialHoriVel, hitNormal)
 
     --projWallVel = MathUtil.projectOnPlaneVec3(initialHoriVel, hitNormal) 
-    local wallVel = normVecRotFunc(hitNormal).Unit * initialHoriVel.Magnitude
-    primaryPart:ApplyImpulse(
-        (wallVel - initialHoriVel) * primaryPart.AssemblyMass
-    )
+    local wallVel: Vector3 = normVecRotFunc(hitNormal).Unit * initialHoriVel.Magnitude * BOOST_FAC
+    local projInitialVel = MathUtil.projectOnPlaneVec3(initialHoriVel, hitNormal) 
+    local delVel = wallVel - projInitialVel
+
+    if (delVel.Magnitude > WALL_MAX_SPEED - initialHoriVel.Magnitude) then
+        delVel = delVel.Unit * (WALL_MAX_SPEED - initialHoriVel.Magnitude)
+    end
+    primaryPart:ApplyImpulse(delVel * primaryPart.AssemblyMass)
+
 
     self.isRightSideWall = isRightSideWall
     jumpInpDebounce = JUNP_INP_COOLDOWN
@@ -271,10 +285,23 @@ end
 
 -- Updates posForce
 function Wall:updateVerticalAnchor(dt: number)
-    if (peakedJumpAfterEntry) then return end
-
     local primaryPart: BasePart = self.character.PrimaryPart
     local currVel = primaryPart.AssemblyLinearVelocity
+    local currHoriVel = Vector3.new(currVel.X, 0, currVel.Z)
+
+    if (peakedJumpAfterEntry) then
+        local camLooKVec = Workspace.CurrentCamera.CFrame.LookVector
+        local cappedVelFac = math.min(currVel.Magnitude * 25, 600.0)
+
+        local camUpFac = math.clamp(VEC3_UP:Dot(camLooKVec), -0.4, 0.4) * 0.0084 * currVel.Magnitude
+        local forceDownFac = 0
+        if (currHoriVel.Magnitude < START_SLIDE_VEL) then
+            forceDownFac = Workspace.Gravity * SLIDE_FAC / cappedVelFac
+        end
+
+        self.forces.posForce.Position = self.forces.posForce.Position + VEC3_UP * (camUpFac - forceDownFac)
+        return
+    end
     
     peakedJumpAfterEntry = currVel.Y < 0.1
 

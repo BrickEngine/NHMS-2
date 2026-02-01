@@ -16,8 +16,6 @@ local Ground = require(simStates.Ground) :: BaseState.BaseState
 local Water = require(simStates.Water) :: BaseState.BaseState
 local Wall = require(simStates.Wall) :: BaseState.BaseState
 
-local STATE_DELAY_TIME = 0.06
-
 -- Local vars
 local primaryPartListener: RBXScriptConnection
 local state_free = true
@@ -80,10 +78,6 @@ function Simulation:transitionState(newStateId: number, params: any?)
     assert(newState, "cannot transition to nonexistent state")
 
     self.currentState:stateLeave()
-
-    -- Compensate for possible physics glitches between states when FPS is low
-    task.wait(STATE_DELAY_TIME)
-
     self.currentState = newState
     self.currentState:stateEnter(params)
 

@@ -22,7 +22,7 @@ local NUM_WALL_RAYS = 12
 -- ray origin offset from the character's lowest position
 local LEG_OFFSET = 1.0
 -- range of the rays
-local WALL_RANGE = 2.75 --3.45
+local WALL_RANGE = 2.95 --3.45
 -- max distance between ordered hit points which, if exceeded, will force the target position to be
 -- evaluated differently for ground detection
 local MAX_GND_POINT_DIFF = 0.25

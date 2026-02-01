@@ -72,7 +72,7 @@ function MathUtil.projectOnPlaneVec3(v: Vector3, norm: Vector3): Vector3
 end
 
 -- Rotates a Vector3 around another vector with a given angle in radiants
-function MathUtil.rotateAroundAxisVec3(vec: Vector3, axisVec: Vector3, phi: number)
+function MathUtil.rotateAroundAxisVec3(vec: Vector3, axisVec: Vector3, phi: number): Vector3
 	local k = axisVec.Unit
 	local cos = math.cos(phi)
 	local sin = math.sin(phi)
@@ -80,6 +80,17 @@ function MathUtil.rotateAroundAxisVec3(vec: Vector3, axisVec: Vector3, phi: numb
 	return vec * cos
 	+ k:Cross(vec) * sin
 	+ k * (k:Dot(vec) * (1 - cos))
+end
+
+-- Returns the angle between two vectors
+function MathUtil.getAngleVec3(v0: Vector3, v1: Vector3): number
+    local dot = v0.Unit:Dot(v1.Unit)
+
+    -- compensate for rounding errors
+    if (dot > 1) then dot = 1.0 end
+    if (dot < -1) then dot = -1.0 end
+
+    return math.acos(dot)
 end
 
 -- Clamps a Vector3 to a virtual cone with a given angle in radiants
