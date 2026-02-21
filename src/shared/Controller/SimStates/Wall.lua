@@ -26,21 +26,18 @@ local JUMP_DIST_FAC = 18.0
 local BANK_MIN = math.rad(75.0) -- min dismount wall angle
 local BANK_MAX = math.rad(105.0) -- max dismount wall angle
 local SCAN_ANGLE = math.rad(70.0) -- angle offset for left / right wall scans
-
 -- max angle difference between two out of all hit wall normals which, if exceeded, will result in a dismount
 local MAX_ANGLE_DIFF = math.rad(87.5)
-
 -- force scaling for how much force should be applied along the negative wall normal relative to movement speed
 local WALL_FORCE_STRENGTH_FAC = 10.75
 
 local SLIDE_FAC = 1.25 -- distance scaling for how much a player slides per frame
 local START_SLIDE_VEL = 45.0 -- studs/s, velocity at which a player starts to slide
-
--- max speed on the wall in studs/s
-local WALL_MAX_SPEED = 105.0
-
--- by how much to boost the wall velocity on enter
-local BOOST_FAC = 1.35
+local WALL_MAX_SPEED = 105.0 -- studs/s, max speed on the wall
+local BOOST_FAC = 1.35 -- by how much to boost the wall velocity on enter
+local WALL_SPEED_LOSS_FAC = 4.75 -- how much speed is reduced each phys update on the wall
+-- max force to be applied by the linear velocity along the wall
+local MAX_LIN_VEL_FORCE = 400000
 
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
@@ -49,6 +46,7 @@ local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1, 0)
 
 local initialVel = VEC3_ZERO
+local currLineDirVel = 0
 local jumpInpDebounce = JUNP_INP_COOLDOWN
 local peakedJumpAfterEntry = false
 local jumpKeyPressedInit = false
@@ -66,8 +64,8 @@ local function createForces(mdl: Model): {[string]: Instance}
     assert(mdl.PrimaryPart)
 
     local att = Instance.new("Attachment", mdl.PrimaryPart)
-    att.WorldAxis = Vector3.new(0, 1, 0)
     att.Name = "WallAtt"
+    att.WorldAxis = VEC3_UP
 
     local moveForce = Instance.new("VectorForce", mdl.PrimaryPart)
     moveForce.Name = "WallMoveForce"
@@ -75,6 +73,17 @@ local function createForces(mdl: Model): {[string]: Instance}
     moveForce.Attachment0 = att
     moveForce.ApplyAtCenterOfMass = true
     moveForce.RelativeTo = Enum.ActuatorRelativeTo.World
+
+    local linVelocity = Instance.new("LinearVelocity", mdl.PrimaryPart)
+    linVelocity.Name = "WallLinVelocity"
+    linVelocity.Enabled = false
+    linVelocity.Attachment0 = att
+    linVelocity.RelativeTo = Enum.ActuatorRelativeTo.World
+    linVelocity.ForceLimitsEnabled = true
+    linVelocity.ForceLimitMode = Enum.ForceLimitMode.Magnitude
+    linVelocity.VelocityConstraintMode = Enum.VelocityConstraintMode.Line
+    linVelocity.MaxForce = MAX_LIN_VEL_FORCE
+    linVelocity.LineVelocity = 0
 
     local rotForce = Instance.new("AlignOrientation", mdl.PrimaryPart)
     rotForce.Name = "WallRotForce"
@@ -102,6 +111,7 @@ local function createForces(mdl: Model): {[string]: Instance}
 
     return {
         moveForce = moveForce,
+        linVelocity = linVelocity,
         rotForce = rotForce,
         posForce = posForce
     } :: {[string]: Instance}
@@ -127,10 +137,10 @@ end
     Calculates whether the wall is to the left or right of the character and returns a corresponding function
     for computing the directional vector for future wall scans
 ]]
-local function getDirFuncFromWallSide(initialDir: Vector3, wallNormal: Vector3): (Vector3) -> any
+local function getDirFuncFromWallSide(initialDir: Vector3, wallNorm: Vector3): (Vector3) -> any
     local horiDir = Vector3.new(initialDir.X, 0, initialDir.Z)
     local right = horiDir:Cross(VEC3_UP)
-    local side = right:Dot(wallNormal)
+    local side = right:Dot(wallNorm)
 
     if (side < 0) then
         isRightSideWall = true
@@ -140,6 +150,14 @@ local function getDirFuncFromWallSide(initialDir: Vector3, wallNormal: Vector3):
         return rotateVecLeft, rotateNormVecLeft
     end
 end
+
+-- local function getDirFacFromWallSide(initialDir: Vector3, wallNorm: Vector3): number
+--     local horiDir = Vector3.new(initialDir.X, 0, initialDir.Z)
+--     local right = horiDir:Cross(VEC3_UP)
+--     local side = right:Dot(wallNorm)
+
+--     return (side < 0) and 1 or 0
+-- end
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Module
@@ -173,21 +191,19 @@ function Wall:stateEnter(params: any?)
     assert(primaryPart, `Missing PrimaryPart of character '{self.character.name}'`)
     assert(hitNormal, "Missing required normal parameters")
     assert(hitPos, "Missing required position parameters")
-    assert(initialVel.Magnitude > 0.01, "Minimum velocity required")
+    assert(initialVel.Magnitude > 0.01, "Initial velocity mag too small")
 
-    --currWallVelFac = initialVel.Magnitude
     scanVecRotFunc, normVecRotFunc = getDirFuncFromWallSide(initialHoriVel, hitNormal)
 
-    --projWallVel = MathUtil.projectOnPlaneVec3(initialHoriVel, hitNormal) 
-    local wallVel: Vector3 = normVecRotFunc(hitNormal).Unit * initialHoriVel.Magnitude * BOOST_FAC
-    local projInitialVel = MathUtil.projectOnPlaneVec3(initialHoriVel, hitNormal) 
-    local delVel = wallVel - projInitialVel
+    local projInitialVel = MathUtil.projectOnPlaneVec3(initialHoriVel, hitNormal)
+    local wallVel: Vector3 = normVecRotFunc(hitNormal).Unit * projInitialVel.Magnitude * BOOST_FAC
 
-    if (delVel.Magnitude > WALL_MAX_SPEED - initialHoriVel.Magnitude) then
-        delVel = delVel.Unit * (WALL_MAX_SPEED - initialHoriVel.Magnitude)
+    if (wallVel.Magnitude > WALL_MAX_SPEED) then
+        wallVel = wallVel.Unit * WALL_MAX_SPEED
     end
-    primaryPart:ApplyImpulse(delVel * primaryPart.AssemblyMass)
-
+    currLineDirVel = wallVel.Magnitude
+    self.forces.linVelocity.LineDirection = wallVel.Unit
+    self.forces.linVelocity.LineVelocity = wallVel.Magnitude
 
     self.isRightSideWall = isRightSideWall
     jumpInpDebounce = JUNP_INP_COOLDOWN
@@ -197,6 +213,7 @@ function Wall:stateEnter(params: any?)
     end
     self.forces.moveForce.Enabled = true
     self.forces.rotForce.Enabled = true
+    self.forces.linVelocity.Enabled = true
 
     -- temp
     do
@@ -314,10 +331,18 @@ end
 -- Updates moveForce
 function Wall:updateWallForce(dt: number, targetPos: Vector3, normal: Vector3)
     local primaryPart: BasePart = self.character.PrimaryPart
+
+    -- calc wall-clinging force
     local velFac = 1.0 + primaryPart.AssemblyLinearVelocity.Magnitude
     local mass = primaryPart.AssemblyMass
-
     self.forces.moveForce.Force = -normal * mass * WALL_FORCE_STRENGTH_FAC * velFac
+
+    -- calc velocity along wall
+    local flyDir: Vector3 = normVecRotFunc(normal).Unit
+    self.forces.linVelocity.LineDirection = flyDir
+    self.forces.linVelocity.LineVelocity = currLineDirVel
+
+    currLineDirVel -= dt * WALL_SPEED_LOSS_FAC
 end
 -- function Wall:updateMove(dt: number, targetPos: Vector3, normal: Vector3, bankAngle: number)
 --     local primaryPart = self.character.PrimaryPart
