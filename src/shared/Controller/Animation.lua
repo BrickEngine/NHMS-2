@@ -10,9 +10,12 @@ Animation.__index = Animation
 
 Animation.states = {
 	-- idle (0)
-	Idle = {id = "http://www.roblox.com/asset/?id=180435571", prio = 0},
+	Death = {id = "rbxassetid://86228921476914", prio = 0},
+	--Idle = {id = "http://www.roblox.com/asset/?id=180435571", prio = 0},
+	Idle = {id = "rbxassetid://112935245839336", prio = 0},
 	-- movement (1)
-    Walk = {id = "http://www.roblox.com/asset/?id=180426354", prio = 1},
+	Walk = {id = "rbxassetid://131022707317400", prio = 1},
+    --Walk = {id = "http://www.roblox.com/asset/?id=180426354", prio = 1},
 	--SWIM = "",
 	--FALL = "",
 	-- actions (2-5)

@@ -4,13 +4,13 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local SoundService = game:GetService("SoundService")
 local Workspace = game:GetService("Workspace")
 
 local controller = script.Parent.Parent
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(controller.InputManager)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
+local SoundManager = require(ReplicatedStorage.Shared.SoundManager)
 local BaseState = require(script.Parent.BaseState)
 local PhysCheck = require(controller.Common.PhysCheck)
 local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
@@ -30,14 +30,16 @@ local SCAN_ANGLE = math.rad(70.0) -- angle offset for left / right wall scans
 local MAX_ANGLE_DIFF = math.rad(87.5)
 -- force scaling for how much force should be applied along the negative wall normal relative to movement speed
 local WALL_FORCE_STRENGTH_FAC = 10.75
+-- max force to be applied by the linear velocity along the wall
+local MAX_LIN_VEL_FORCE = 400000
 
 local SLIDE_FAC = 1.25 -- distance scaling for how much a player slides per frame
 local START_SLIDE_VEL = 45.0 -- studs/s, velocity at which a player starts to slide
-local WALL_MAX_SPEED = 105.0 -- studs/s, max speed on the wall
+local WALL_MAX_SPEED = 125.0 -- 105.0 -- studs/s, max speed on the wall
 local BOOST_FAC = 1.35 -- by how much to boost the wall velocity on enter
-local WALL_SPEED_LOSS_FAC = 4.75 -- how much speed is reduced each phys update on the wall
--- max force to be applied by the linear velocity along the wall
-local MAX_LIN_VEL_FORCE = 400000
+local WALL_SPEED_LOSS_FAC = 9.5--4.75 -- how much speed is reduced each phys update on the wall
+
+local PLAY_WALL_SOUNDS = true
 
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
@@ -49,15 +51,10 @@ local initialVel = VEC3_ZERO
 local currLineDirVel = 0
 local jumpInpDebounce = JUNP_INP_COOLDOWN
 local peakedJumpAfterEntry = false
-local jumpKeyPressedInit = false
+local jumpKeyPressedOnEnter = false
 local isRightSideWall = false
 local scanVecRotFunc = nil
 local normVecRotFunc = nil
-
--- temp
-local loopSound = Instance.new("Sound")
-loopSound.Looped = true
-loopSound.SoundId = "rbxassetid://81521378859476"
 
 -- Create required physics constraints
 local function createForces(mdl: Model): {[string]: Instance}
@@ -195,8 +192,8 @@ function Wall:stateEnter(params: any?)
 
     scanVecRotFunc, normVecRotFunc = getDirFuncFromWallSide(initialHoriVel, hitNormal)
 
-    local projInitialVel = MathUtil.projectOnPlaneVec3(initialHoriVel, hitNormal)
-    local wallVel: Vector3 = normVecRotFunc(hitNormal).Unit * projInitialVel.Magnitude * BOOST_FAC
+    --local projInitialVel = MathUtil.projectOnPlaneVec3(initialHoriVel, hitNormal)
+    local wallVel: Vector3 = normVecRotFunc(hitNormal).Unit * initialHoriVel.Magnitude * BOOST_FAC
 
     if (wallVel.Magnitude > WALL_MAX_SPEED) then
         wallVel = wallVel.Unit * WALL_MAX_SPEED
@@ -215,20 +212,19 @@ function Wall:stateEnter(params: any?)
     self.forces.rotForce.Enabled = true
     self.forces.linVelocity.Enabled = true
 
-    -- temp
-    do
-        local s = Instance.new("Sound")
-        s.TimePosition = 0.1
-        local soundIds = {
-            "rbxassetid://15764092592",
-            "rbxassetid://81202220081219"
-        }
-        s.SoundId = soundIds[math.random(1, 2)]
-        SoundService:PlayLocalSound(s)
-        s:Destroy()
+    -- check if jump key is pressed on state enter
+    jumpKeyPressedOnEnter = InputManager:getJumpKeyDown()
 
-        loopSound.Parent = primaryPart
-        loopSound:Play()
+    -- play entry sounds and start looped wall-run sound
+    if (PLAY_WALL_SOUNDS) then
+        local soundArr = {
+            SoundManager.SOUND_ITEMS.WALL_ENTER_0,
+            SoundManager.SOUND_ITEMS.WALL_ENTER_1
+        }
+        local chosen = soundArr[math.random(1, 2)]
+        SoundManager:updateGlobalSound(chosen, true)
+        -- looped sound
+        SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WALL_SLIDE, true)
     end
 end
 
@@ -243,17 +239,17 @@ function Wall:stateLeave()
     local primaryPart: BasePart = self.character.PrimaryPart
     assert(primaryPart, `Missing PrimaryPart of character '{self.character.name}'`)
 
-    jumpKeyPressedInit = InputManager:getJumpKeyDown()
     peakedJumpAfterEntry = false
     self.wallTime = 0
 
-    loopSound:Stop()
+    SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WALL_SLIDE, false)
 end
 
 -- Registers jump input and transitions to ground, when a dismount is executed
 function Wall:handleDismount(dt: number, wallNorm: Vector3)
-    if (jumpKeyPressedInit) then
-        jumpKeyPressedInit = InputManager:getJumpKeyDown()
+    -- do not dismount if the jump key was held down when entering the state
+    if (jumpKeyPressedOnEnter) then
+        jumpKeyPressedOnEnter = InputManager:getJumpKeyDown()
         return
     end
     if (not InputManager:getJumpKeyDown() or jumpInpDebounce > 0) then
@@ -285,16 +281,9 @@ function Wall:handleDismount(dt: number, wallNorm: Vector3)
 
     primaryPart:ApplyImpulse(impulse)
 
-    -- temp
-    do
-        local s = Instance.new("Sound")
-        local soundIds = {
-            "rbxassetid://143384769",
-            "rbxassetid://128602720222961"
-        }
-        s.SoundId = soundIds[math.random(1, 2)]
-        SoundService:PlayLocalSound(s)
-        s:Destroy()
+    -- play dismount sound
+    if (PLAY_WALL_SOUNDS) then
+        SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.JUMP, true)
     end
 
     self._simulation:transitionState(PlayerStateId.GROUNDED)
@@ -344,38 +333,6 @@ function Wall:updateWallForce(dt: number, targetPos: Vector3, normal: Vector3)
 
     currLineDirVel -= dt * WALL_SPEED_LOSS_FAC
 end
--- function Wall:updateMove(dt: number, targetPos: Vector3, normal: Vector3, bankAngle: number)
---     local primaryPart = self.character.PrimaryPart
---     local mass = primaryPart.AssemblyMass
-
---     local currPos = primaryPart.Position
---     local currVel = primaryPart.AssemblyLinearVelocity
---     currVel = Vector3.new(currVel.X, 0, currVel.Z)
-
---     local offsTargetPos = targetPos + normal * WALL_OFFSET
-
---     -- Project position and velocity onto the spring axis (normal)
---     local x = (currPos - offsTargetPos):Dot(-normal)   -- displacement along normal
---     local v = currVel:Dot(-normal)                     -- velocity along normal
-
---     -- Spring parameters (same OMEGA idea as before)
---     local k = mass * OMEGA * OMEGA                    -- stiffness
---     local c = 2 * mass * OMEGA * 0.45                 -- damping (0.45 like your original factor)
-
---     -- Implicit integration: solve for acceleration a along the normal
---     -- a = (-k*x - c*v) / (m + c*dt + k*dt^2)
---     local dt2 = dt * dt
---     local denom = mass + c * dt + k * dt2
---     local a = 0
---     if denom ~= 0 then
---         a = (-k * x - c * v) / denom
---     end
-
---     -- World-space acceleration vector
---     local accelVec = -normal * a
-
---     self.forces.moveForce.Force = accelVec * mass
--- end
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Wall update

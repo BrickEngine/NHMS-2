@@ -35,6 +35,12 @@ viewPortFrame.BackgroundTransparency = 1
 local mdl = ReplicatedStorage.Models["Test Gun"]
 mdl.Parent = viewPortFrame
 local gunPart = mdl.PrimaryPart
+for i, v: Instance in pairs(mdl:GetDescendants()) do
+    if v:IsA("BasePart") then
+        v.Material = Enum.Material.Glass
+        v.Transparency = 0.5
+    end
+end
 
 if (not char) then
     error("no char")

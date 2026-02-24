@@ -351,7 +351,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 
 -- To be used by the state machine modules when other checks require wall detection to be ignored
-function PhysCheck.defaultWallData() : wallData
+function PhysCheck.defaultWallData(): wallData
 	return {
 		nearWall = false,
 		normal = VEC3_ZERO,
@@ -367,7 +367,7 @@ function PhysCheck.checkWall(
 	direction: Vector3,
 	maxRadius: number,
 	hipHeight: number
-) : wallData
+): wallData
 
 	assert(direction ~= VEC3_ZERO, "Direction vector must be non zero")
 

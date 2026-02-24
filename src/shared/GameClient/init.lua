@@ -8,81 +8,71 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
-local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
-local InputManager = require(ReplicatedStorage.Shared.Controller.InputManager)
+--local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local Network = require(ReplicatedStorage.Shared.Network)
-local CliApi = require(ReplicatedStorage.Shared.Network.CliNetApi)
+local CliApi = require(script.CliNetApi)
+local SoundManager = require(ReplicatedStorage.Shared.SoundManager)
 
 -- Init Controller singleton
 require(ReplicatedStorage.Shared.Controller)
 
 local clientEvents = Network.clientEvents
 
-local DASH_TIME = 1.6 --seconds
-local DASH_COOLDOWN_TIME = 0.8 --seconds
 local DEFAULT_HEALTH = 100
 
-type Counter = {
-    t: number,
-    cooldown: number
+local updateConn: RBXScriptConnection
+local charConn: RBXScriptConnection
+
+------------------------------------------------------------------------------------------------------------------------
+-- Network
+------------------------------------------------------------------------------------------------------------------------
+
+local cliREFunction = {
+    [Network.serverEvents.playSound] = function(plr: Player, item: string, play: boolean)
+        SoundManager:updatePlayerSound(plr, item, play)
+    end
 }
+
+local cliFastREFunctions = {
+    [Network.serverFastEvents.jointsDataToClient] = function(plr: Player, ...)
+        -- TODO
+    end,
+}
+
+CliApi.implementREvents(cliREFunction)
+CliApi.implementFastREvents(cliFastREFunctions)
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Module
 ------------------------------------------------------------------------------------------------------------------------
-local updateConn = nil
 
 local GameClient = {
     gameTime = 0,
 }
-GameClient.__index = GameClient
 
 function GameClient.init()
-    
+    GameClient:initPlayer()
 end
 
-function GameClient:InitPlayer()
+function GameClient:initPlayer()
     local function respawnAfterCharRemove(character: Model)
         print(character.Name .. " was removed")
         --task.wait(1.5)
-        CliApi[clientEvents.requestSpawn]()
+        CliApi.events[clientEvents.requestSpawn]:FireServer()
     end
 
-    CliApi[clientEvents.requestSpawn]()
-    Players.LocalPlayer.CharacterRemoving:Connect(respawnAfterCharRemove)
+    CliApi.events[clientEvents.requestSpawn]:FireServer()
+
+    if (charConn) then
+        charConn:Disconnect()
+    end
+    charConn = Players.LocalPlayer.CharacterRemoving:Connect(respawnAfterCharRemove)
 end
 
 function GameClient:updateGameTime(dt: number, override: number?)
     if (override) then self.gameTime = override end
+    print(self.gameTime)
     self.gameTime += dt
-end
-
-local lastDashInput = false
-function GameClient:updateDash(dt: number)
-    local input = InputManager:getDashKeyDown()
-    local dashImpulse = false
-
-    if (self.dash.cooldown <= 0) then
-        dashImpulse = input and not lastDashInput
-
-        if (self.isDashing and (not input or self.dash.t <= 0)) then
-            self.dash.t = 0
-            self.dash.cooldown = DASH_COOLDOWN_TIME
-            self.isDashing = false
-        end
-    end
-
-    if (dashImpulse) then
-        self.dash.t = DASH_TIME
-        self.isDashing = true
-    end
-
-    self.dash.cooldown = math.max(self.dash.cooldown - dt, 0)
-    if (self.isDashing) then
-        self.dash.t = math.max(self.dash.t - dt, 0)
-    end
-
-    lastDashInput = input
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -99,9 +89,6 @@ function GameClient:reset()
     self.health = DEFAULT_HEALTH
     self.armor = 0
 
-    self.dash = {t = DASH_TIME, cooldown = 0} :: Counter
-    self.isDashing = false
-
     if (updateConn) then
         (updateConn :: RBXScriptConnection):Disconnect()
     end
@@ -109,5 +96,7 @@ function GameClient:reset()
         function(dt) self:update(dt) end
     )
 end
+
+GameClient.init()
 
 return GameClient

@@ -35,7 +35,7 @@ local PARAMS = table.freeze({
         0, 0, 1
     ),
     PLAYERMODEL_OFFSET_CF = CFrame.new(
-        0, 1, 0,
+        0, -0.3, 0, --0, 1, 0
         1, 0, 0,
         0, 1, 0,
         0, 0, 1
@@ -86,7 +86,7 @@ local function createParentedWeld(p0: BasePart, p1: BasePart): WeldConstraint
     return weldConstraint
 end
 
-local function createCharacter(playerModel: Model?): Model
+local function createCharacter(playermodel: Model?): Model
     if (not RunService:IsServer()) then
         error("createCharacter should only be called on the server")
     end
@@ -112,14 +112,14 @@ local function createCharacter(playerModel: Model?): Model
     -- end
 
     -- Playermodel with assigned PrimaryPart is required
-    if (not playerModel) then
-        error("No PlayerModel found", 2)
+    if (not playermodel) then
+        error("No Playermodel found", 2)
     end
-    if (not playerModel.PrimaryPart) then
-        error("PlayerModel has no set PrimaryPart", 2)
+    if (not playermodel.PrimaryPart) then
+        error("Playermodel has no set PrimaryPart", 2)
     end
 
-    local plrMdlClone = playerModel:Clone()
+    local plrMdlClone = playermodel:Clone()
     local plrMdlPrimPart = plrMdlClone.PrimaryPart
 
     for _, inst: Instance in pairs(plrMdlClone:GetDescendants()) do

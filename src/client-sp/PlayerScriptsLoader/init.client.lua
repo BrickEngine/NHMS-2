@@ -1,9 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local GameClient = require(ReplicatedStorage.Shared.GameClient)
-
-GameClient:reset()
-GameClient:InitPlayer()
+require(ReplicatedStorage.Shared.GameClient)
 
 -- TODO:
 -- request streaming position with RequestStreamAroundAsync(), which is returned from

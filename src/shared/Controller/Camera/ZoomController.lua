@@ -1,6 +1,6 @@
--- Controls the distance between the focus and the camera.
+--!nocheck
 
-local Players = game:GetService("Players")
+-- Controls the distance between the focus and the camera.
 
 local ZOOM_STIFFNESS = 4.5
 local ZOOM_DEFAULT = 12.5
@@ -11,10 +11,14 @@ local DIST_OPAQUE = 1
 
 local ZoomPopper = require(script.Parent.ZoomPopper)
 
-local PI_2 = math.pi * 2
+local clamp = math.clamp
+local exp = math.exp
+local min = math.min
+local max = math.max
+local pi = math.pi
 
 local cameraMinZoomDistance, cameraMaxZoomDistance do
-	local Player = Players.LocalPlayer
+	local Player = game:GetService("Players").LocalPlayer
 	assert(Player)
 
 	local function updateBounds()
@@ -32,7 +36,7 @@ local ConstrainedSpring = {} do
 	ConstrainedSpring.__index = ConstrainedSpring
 
 	function ConstrainedSpring.new(freq: number, x: number, minValue: number, maxValue: number)
-		x = math.clamp(x, minValue, maxValue)
+		x = clamp(x, minValue, maxValue)
 		return setmetatable({
 			freq = freq, -- Undamped frequency (Hz)
 			x = x, -- Current position
@@ -44,7 +48,7 @@ local ConstrainedSpring = {} do
 	end
 
 	function ConstrainedSpring:step(dt: number)
-		local freq = self.freq :: number * PI_2 -- Convert from Hz to rad/s
+		local freq = self.freq :: number * 2 * pi -- Convert from Hz to rad/s
 		local x: number = self.x
 		local v: number = self.v
 		local minValue: number = self.minValue
@@ -58,7 +62,7 @@ local ConstrainedSpring = {} do
 
 		local offset = goal - x
 		local step = freq*dt
-		local decay = math.exp(-step)
+		local decay = exp(-step)
 
 		local x1 = goal + (v*dt - offset*(step + 1))*decay
 		local v1 = ((offset*freq - v)*step + v)*decay
@@ -82,7 +86,7 @@ end
 local zoomSpring = ConstrainedSpring.new(ZOOM_STIFFNESS, ZOOM_DEFAULT, MIN_FOCUS_DIST, cameraMaxZoomDistance)
 
 local function stepTargetZoom(z: number, dz: number, zoomMin: number, zoomMax: number)
-	z = math.clamp(z + dz*(1 + z*ZOOM_ACCELERATION), zoomMin, zoomMax)
+	z = clamp(z + dz*(1 + z*ZOOM_ACCELERATION), zoomMin, zoomMax)
 	if z < DIST_OPAQUE then
 		z = dz <= 0 and zoomMin or DIST_OPAQUE
 	end
@@ -97,7 +101,7 @@ local Zoom = {} do
 		
 		if zoomSpring.goal > DIST_OPAQUE then
 			-- Make a pessimistic estimate of zoom distance for this step without accounting for poppercam
-			local maxPossibleZoom = math.max(
+			local maxPossibleZoom = max(
 				zoomSpring.x,
 				stepTargetZoom(zoomSpring.goal, zoomDelta, cameraMinZoomDistance, cameraMaxZoomDistance)
 			)
@@ -111,7 +115,7 @@ local Zoom = {} do
 		end
 
 		zoomSpring.minValue = MIN_FOCUS_DIST
-		zoomSpring.maxValue = math.min(cameraMaxZoomDistance, poppedZoom)
+		zoomSpring.maxValue = min(cameraMaxZoomDistance, poppedZoom)
 
 		return zoomSpring:step(renderDt)
 	end
