@@ -34,6 +34,11 @@ local MIN_REGISTER_RAYS = 4
 -- determines which coll group to use for wall detection (false = default)
 local USE_WALL_COLL_GROUP = true
 
+-- [[checkWater]]
+
+-- toggle for how the BuoyancySensor detects water
+local BUOY_FULLY_SUBMERGED = false
+
 -- [[Misc]]
 
 local PHI = 1.61803398875
@@ -51,6 +56,11 @@ local wallRayParams = RaycastParams.new()
 wallRayParams.CollisionGroup = CollisionGroup.PLAYER
 wallRayParams.FilterType = Enum.RaycastFilterType.Exclude
 wallRayParams.IgnoreWater = true
+
+local waterRayParams = RaycastParams.new()
+waterRayParams.CollisionGroup = CollisionGroup.PLAYER
+waterRayParams.FilterType = Enum.RaycastFilterType.Exclude
+waterRayParams.IgnoreWater = false
 
 ------------------------------------------------------------------------------------------------------------------------
 
@@ -210,6 +220,11 @@ type wallSide = {
 	normalsArr: {Vector3}
 }
 
+export type waterData = {
+	inWater: boolean
+}
+
+
 ------------------------------------------------------------------------------------------------------------------------
 -- Ground
 ------------------------------------------------------------------------------------------------------------------------
@@ -221,7 +236,7 @@ function PhysCheck.checkFloor(
 	hipHeight: number,
 	gndClearDist: number,
 	rayParams: RaycastParams?
-) : groundData
+): groundData
 
 	local grounded = false
 	local closestPos = VEC3_FARDOWN
@@ -381,7 +396,7 @@ function PhysCheck.checkWall(
 
 	for i=0, NUM_WALL_RAYS - 1, 1 do
 		local currPos =  lineStart + lineDir * lineDist(maxRadius, i, NUM_WALL_RAYS)
-		local ray = Workspace:Raycast(currPos, unitDir * WALL_RANGE, wallRayParams) :: RaycastResult
+		local ray = Workspace:Raycast(currPos, unitDir * WALL_RANGE, waterRayParams) :: RaycastResult
 		if (ray and ray.Instance and ray.Instance:IsA("BasePart")) then
 			local hitPart = ray.Instance :: BasePart
 
@@ -437,6 +452,33 @@ function PhysCheck.checkWall(
 		bankAngle = bankAngle,
 		maxAngleDiff = maxAngleDiff
 	} :: wallData
+end
+
+------------------------------------------------------------------------------------------------------------------------
+-- Water
+------------------------------------------------------------------------------------------------------------------------
+
+-- Line based raycast checks for walls in a given direction
+function PhysCheck.checkWater(
+	rootPos: Vector3,
+	maxRadius: number,
+	buoySens: BuoyancySensor
+): waterData
+
+	-- local inWater = false
+	-- local ray = Workspace:Spherecast(rootPos, maxRadius, -VEC3_UP * 2, waterRayParams)
+	-- if (ray) then 
+	-- 	if (ray.Material == Enum.Material.Water) then
+	-- 		inWater = true
+	-- 	end
+	-- end
+
+	local inWater =
+		(BUOY_FULLY_SUBMERGED) and buoySens.FullySubmerged or buoySens.TouchingSurface
+
+	return {
+		inWater = inWater
+	} :: waterData
 end
 
 return PhysCheck

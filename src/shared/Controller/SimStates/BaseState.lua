@@ -17,23 +17,7 @@ function BaseState.new(_simulation)
     self._simulation = _simulation
     self.id = PlayerStateId.NONE
 
-    self.grounded = false
-    self.inWater = false
-    self.isDashing = false
-    self.nearWall = false
-    self.isRightSideWall = false
-    self.wallTime = 0
-
     return self
-end
-
-function BaseState:resetData()
-    self.grounded = false
-    self.inWater = false
-    self.isDashing = false
-    self.nearWall = false
-    self.isRightSideWall = false
-    self.wallTime = 0
 end
 
 function BaseState:stateEnter(params: any?)

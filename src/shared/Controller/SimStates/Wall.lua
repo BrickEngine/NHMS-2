@@ -36,7 +36,7 @@ local MAX_LIN_VEL_FORCE = 400000
 local SLIDE_FAC = 1.25 -- distance scaling for how much a player slides per frame
 local START_SLIDE_VEL = 45.0 -- studs/s, velocity at which a player starts to slide
 local WALL_MAX_SPEED = 125.0 -- 105.0 -- studs/s, max speed on the wall
-local BOOST_FAC = 1.35 -- by how much to boost the wall velocity on enter
+local BOOST_FAC = 1.38 -- by how much to boost the wall velocity on enter
 local WALL_SPEED_LOSS_FAC = 9.5--4.75 -- how much speed is reduced each phys update on the wall
 
 local PLAY_WALL_SOUNDS = true
@@ -82,18 +82,6 @@ local function createForces(mdl: Model): {[string]: Instance}
     linVelocity.MaxForce = MAX_LIN_VEL_FORCE
     linVelocity.LineVelocity = 0
 
-    local rotForce = Instance.new("AlignOrientation", mdl.PrimaryPart)
-    rotForce.Name = "WallRotForce"
-    rotForce.Enabled = false
-    rotForce.Attachment0 = att
-    rotForce.Mode = Enum.OrientationAlignmentMode.OneAttachment
-    rotForce.AlignType = Enum.AlignType.PrimaryAxisParallel
-    rotForce.Responsiveness = 200
-    rotForce.MaxTorque = math.huge
-    rotForce.MaxAngularVelocity = math.huge
-    rotForce.ReactionTorqueEnabled = true
-    rotForce.PrimaryAxis = VEC3_UP
-
     local posForce = Instance.new("AlignPosition", mdl.PrimaryPart)
     posForce.Name = "VertWallPosForce"
     posForce.Enabled = false
@@ -109,7 +97,6 @@ local function createForces(mdl: Model): {[string]: Instance}
     return {
         moveForce = moveForce,
         linVelocity = linVelocity,
-        rotForce = rotForce,
         posForce = posForce
     } :: {[string]: Instance}
 end
@@ -167,9 +154,9 @@ function Wall.new(...)
 
     self.id = STATE_ID
 
+    self.shared = self._simulation.stateShared
     self.character = self._simulation.character :: Model
     self.forces = createForces(self.character)
-
     self.animation = self._simulation.animation
 
     return setmetatable(self, Wall)
@@ -202,14 +189,13 @@ function Wall:stateEnter(params: any?)
     self.forces.linVelocity.LineDirection = wallVel.Unit
     self.forces.linVelocity.LineVelocity = wallVel.Magnitude
 
-    self.isRightSideWall = isRightSideWall
+    self.shared.isRightSideWall = isRightSideWall
     jumpInpDebounce = JUNP_INP_COOLDOWN
 
     if (not self.forces) then
         warn("No forces to enable in state: 'Ground'"); return
     end
     self.forces.moveForce.Enabled = true
-    self.forces.rotForce.Enabled = true
     self.forces.linVelocity.Enabled = true
 
     -- check if jump key is pressed on state enter
@@ -240,7 +226,7 @@ function Wall:stateLeave()
     assert(primaryPart, `Missing PrimaryPart of character '{self.character.name}'`)
 
     peakedJumpAfterEntry = false
-    self.wallTime = 0
+    self.shared.wallTime = 0
 
     SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WALL_SLIDE, false)
 end
@@ -354,10 +340,10 @@ function Wall:update(dt: number)
         local scanDirVec = scanVecRotFunc(currHoriVel).Unit --currHoriVel.Unit) --primaryPart.CFrame.LookVector
         wallData = PhysCheck.checkWall(currPos, scanDirVec, PHYS_RADIUS, HIP_HEIGHT)
     end
-    self.grounded = groundData.grounded
-    self.nearWall = wallData.nearWall
+    self.shared.grounded = groundData.grounded
+    self.shared.nearWall = wallData.nearWall
 
-    if (self.nearWall and peakedJumpAfterEntry) then
+    if (self.shared.nearWall and peakedJumpAfterEntry) then
         self.forces.posForce.Enabled = true
     else
         self.forces.posForce.Enabled = false
@@ -367,10 +353,10 @@ function Wall:update(dt: number)
     do
         local bankAngleExceeded = wallData.bankAngle < BANK_MIN or wallData.bankAngle > BANK_MAX
 
-        if (self.inWater) then
+        if (self.shared.inWater) then
             self._simulation:transitionState(PlayerStateId.IN_WATER); return
         elseif (
-            self.grounded or (not self.nearWall) 
+            self.shared.grounded or not self.shared.nearWall
             or currHoriVel.Magnitude < DISMOUNT_SPEED or bankAngleExceeded
             or wallData.maxAngleDiff > MAX_ANGLE_DIFF
         ) then
@@ -395,7 +381,7 @@ function Wall:update(dt: number)
 
     jumpInpDebounce -= dt
     jumpInpDebounce = math.max(jumpInpDebounce, 0)
-    self.wallTime += dt
+    self.shared.wallTime += dt
 end
 
 function Wall:destroy()

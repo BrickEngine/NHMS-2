@@ -12,13 +12,39 @@ local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local Global = require(ReplicatedStorage.Shared.Global)
 local simStates = script.Parent.SimStates
 local BaseState = require(simStates.BaseState)
+local Universal = require(simStates.Universal) :: BaseState.BaseState
 local Ground = require(simStates.Ground) :: BaseState.BaseState
 local Water = require(simStates.Water) :: BaseState.BaseState
 local Wall = require(simStates.Wall) :: BaseState.BaseState
 
+local VEC3_UP = Vector3.new(0, 1, 0)
+
 -- Local vars
 local primaryPartListener: RBXScriptConnection
 local state_free = true
+
+local stateSharedVals = {
+    buoySensor = nil,
+    grounded = false,
+    inWater = false,
+    isDashing = false,
+    nearWall = false,
+    isRightSideWall = false,
+    wallTime = 0
+}
+
+local function createBuoySensor(mdl: Model): BuoyancySensor
+    assert(mdl.PrimaryPart)
+
+    local buoyAtt = Instance.new("Attachment", mdl.PrimaryPart)
+    buoyAtt.WorldAxis = VEC3_UP
+    buoyAtt.Name = "Buoy"
+
+    local buoySens = Instance.new("BuoyancySensor", mdl.PrimaryPart)
+    buoySens.UpdateType = Enum.SensorUpdateType.OnRead
+
+    return buoySens
+end
 
 ------------------------------------------------------------------------------------------------------------------------------
 -- Module
@@ -32,8 +58,11 @@ function Simulation.new()
     local self = setmetatable({}, Simulation) :: any
     self.states = {}
     self.currentState = nil
+    self.universalState = nil
     self.simUpdateConn = nil
     self.animation = nil
+
+    self.stateShared = stateSharedVals
 
     self.character = Players.LocalPlayer.Character
 
@@ -63,6 +92,7 @@ function Simulation:update(dt: number)
         return
     end
 
+    self.universalState:update(dt)
     self.currentState:update(dt)
     DebugVisualize.step()
 end
@@ -121,6 +151,20 @@ function Simulation:onRootPartChanged()
     end
 end
 
+function Simulation:resetStateShared()
+    assert(self.character, "character missing")
+    assert(self.character.PrimaryPart, "primary part missing")
+
+    if (not self.stateShared) then
+        return
+    end
+    if (self.stateShared.buoySensor) then
+        (self.stateShared.buoySensor :: BuoyancySensor):Destroy()
+    end
+    self.stateShared = stateSharedVals
+    self.stateShared.buoySensor = createBuoySensor(self.character)
+end
+
 function Simulation:resetSimulation()
     if (self.simUpdateConn :: RBXScriptConnection) then
         self.simUpdateConn:Disconnect()
@@ -131,12 +175,21 @@ function Simulation:resetSimulation()
 
     self.animation = Animation.new(self)
 
+    self:resetStateShared()
+
     if (self.states :: {[number]: BaseState.BaseState}) then
         for id: number, _ in pairs(self.states) do
             self.states[id]:destroy()
             self.states[id] = nil
         end
     end
+    if (self.universalState) then
+        self.universalState:destroy()
+        self.universalState = nil
+    end
+
+    self.universalState = Universal.new(self)
+    self.universalState:stateEnter()
 
     self.states = {
         [PlayerStateId.GROUNDED] = Ground.new(self),

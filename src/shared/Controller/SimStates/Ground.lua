@@ -7,7 +7,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local controller = script.Parent.Parent
-local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(controller.InputManager)
@@ -95,17 +94,6 @@ local function createForces(mdl: Model): {[string]: Instance}
     moveForce.ApplyAtCenterOfMass = true
     moveForce.RelativeTo = Enum.ActuatorRelativeTo.World
 
-    local rotForce = Instance.new("AlignOrientation", mdl.PrimaryPart)
-    rotForce.Enabled = false
-    rotForce.Attachment0 = att
-    rotForce.Mode = Enum.OrientationAlignmentMode.OneAttachment
-    rotForce.AlignType = Enum.AlignType.PrimaryAxisParallel
-    rotForce.Responsiveness = 200
-    rotForce.MaxTorque = math.huge
-    rotForce.MaxAngularVelocity = math.huge
-    rotForce.ReactionTorqueEnabled = true
-    rotForce.PrimaryAxis = VEC3_UP
-
     local posForce = Instance.new("AlignPosition", mdl.PrimaryPart)
     posForce.Enabled = false
     posForce.Attachment0 = att
@@ -119,7 +107,6 @@ local function createForces(mdl: Model): {[string]: Instance}
 
     return {
         moveForce = moveForce,
-        rotForce = rotForce,
         posForce = posForce,
     } :: {[string]: Instance}
 end
@@ -144,10 +131,9 @@ function Ground.new(...)
 
     self.id = STATE_ID
 
+    self.shared = self._simulation.stateShared
     self.character = self._simulation.character :: Model
     self.forces = createForces(self.character)
-    self.isDashing = false
-
     self.animation = self._simulation.animation
 
     --ray_params_gnd.FilterDescendantsInstances = self.character:GetChildren()
@@ -160,7 +146,6 @@ function Ground:stateEnter()
         warn("No forces to enable in state: 'Ground'"); return
     end
     self.forces.moveForce.Enabled = true
-    self.forces.rotForce.Enabled = true
 
     dash = {
         t = 0,
@@ -178,8 +163,7 @@ function Ground:stateLeave()
     for _, f in self.forces do
         f.Enabled = false
     end
-    self.isDashing = false
-    ClientRoot.setIsDashing(self.isDashing)
+    self.shared.isDashing = false
 
     wasGroundedOnce = false
 end
@@ -207,7 +191,7 @@ function Ground:updateJump(dt: number, override: boolean?)
     local primaryPart: BasePart = self.character.PrimaryPart
     local currRootPos = primaryPart.CFrame.Position
 
-    if (self.grounded) then
+    if (self.shared.grounded) then
         if ((j_Delay <= 0) or
             (jumped and currRootPos.Y < lastYPos)
         ) then
@@ -241,20 +225,20 @@ function Ground:updateDash(dt: number)
     if (dash.cooldown <= 0) then
         dashImpulse = input and not lastDashInput
 
-        if (self.isDashing and (not input or dash.t <= 0)) then
+        if (self.shared.isDashing and (not input or dash.t <= 0)) then
             dash.t = 0
             dash.cooldown = DASH_COOLDOWN_TIME
-            self.isDashing = false
+            self.shared.isDashing = false
         end
     end
 
     if (dashImpulse) then
         dash.t = DASH_TIME
-        self.isDashing = true
+        self.shared.isDashing = true
     end
 
     dash.cooldown = math.max(dash.cooldown - dt, 0)
-    if (self.isDashing) then
+    if (self.shared.isDashing) then
         dash.t = math.max(dash.t - dt, 0)
     end
 
@@ -271,7 +255,7 @@ function Ground:updateMove(dt: number, rawMoveDir: Vector3, normal: Vector3, nor
     local currHoriVel = Vector3.new(currVel.X, 0, currVel.Z)
 
     local accelVec, moveDirVec, target
-    if (self.isDashing and not (normAngle > MAX_INCLINE)) then
+    if (self.shared.isDashing and not (normAngle > MAX_INCLINE)) then
         moveDirVec = getCFrameRelMoveVec(camCFrame, VEC3_RIGHT)
         target = currPos - moveDirVec * DASH_SPEED
         accelVec = 2 * ((target - currPos) - currHoriVel * MOVE_DT)/(MOVE_DT * DASH_DAMP)
@@ -282,7 +266,7 @@ function Ground:updateMove(dt: number, rawMoveDir: Vector3, normal: Vector3, nor
     end
     self.forces.moveForce.Force = accelVec * mass
 
-    if (not self.grounded and not self.isDashing) then
+    if (not self.shared.grounded and not self.shared.isDashing) then
         self.forces.moveForce.Force *= 0.1
     end
 end
@@ -306,12 +290,12 @@ function Ground:update(dt: number)
     local groundData: PhysCheck.groundData = PhysCheck.checkFloor(
         currPos, PHYS_RADIUS, HIP_HEIGHT, GND_CLEAR_DIST
     )
+
     local wallData: PhysCheck.wallData
-    
     if (currHoriVel.Magnitude < 0.1) then
         wallData = PhysCheck.defaultWallData()
     else
-        local scanDir = self.isDashing and horiCamDir or currHoriVel
+        local scanDir = self.shared.isDashing and horiCamDir or currHoriVel
         wallData = PhysCheck.checkWall(currPos, scanDir, PHYS_RADIUS, HIP_HEIGHT)
 
         -- if scanDir delivers no results, check again with the raw input dir
@@ -322,12 +306,16 @@ function Ground:update(dt: number)
         end
     end
 
-    self.grounded = groundData.grounded
-    self.nearWall = wallData.nearWall
+    local buoySensor = self.shared.buoySensor
+    local waterData: PhysCheck.waterData = PhysCheck.checkWater(
+        currPos, PHYS_RADIUS, buoySensor
+    )
 
-    ClientRoot.setIsGrounded(self.grounded)
+    self.shared.grounded = groundData.grounded
+    self.shared.nearWall = wallData.nearWall
+    self.shared.inWater = waterData.inWater
 
-    if (self.grounded) then
+    if (self.shared.grounded) then
         local targetPosY = groundData.gndHeight + HIP_HEIGHT
 
         -- scale force with cubed vertical velocity to compensate for high falls
@@ -377,7 +365,6 @@ function Ground:update(dt: number)
 
     -- update dashing checks, set ClientRoot var
     self:updateDash(dt)
-    ClientRoot.setIsDashing(self.isDashing)
 
     -- update movement and switch to dash, if dashing
     self:updateMove(dt, rawMoveDir, groundData.normal, groundData.normalAngle)
@@ -417,12 +404,12 @@ function Ground:update(dt: number)
         end
 
         local wallConditions = 
-            not self.grounded and projWallVel.Magnitude >= MIN_WALL_MOUNT_SPEED 
+            not self.shared.grounded and projWallVel.Magnitude >= MIN_WALL_MOUNT_SPEED 
             and canMountWall and facingWall
 
-        if (self.inWater) then
-            self._simulation:transitionState(PlayerStateId.IN_WATER); return
-        elseif (self.nearWall and wallConditions) then
+        if (self.shared.inWater) then
+            --self._simulation:transitionState(PlayerStateId.IN_WATER); return
+        elseif (self.shared.nearWall and wallConditions) then
             self._simulation:transitionState(
                 PlayerStateId.ON_WALL, 
                 {
@@ -433,7 +420,7 @@ function Ground:update(dt: number)
         end 
     end
 
-    if (not self.grounded) then
+    if (not self.shared.grounded) then
         offGroundTime += dt
     else
         offGroundTime = 0

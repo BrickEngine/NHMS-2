@@ -149,10 +149,6 @@ local function createCharacter(playermodel: Model?): Model
     local animController = Instance.new("AnimationController", character)
     Instance.new("Animator", animController)
 
-    -- Create universal BuoyancySensor
-    local buoySens = Instance.new("BuoyancySensor", plrMdlPrimPart)
-    buoySens.UpdateType = Enum.SensorUpdateType.OnRead
-
     -- Player characters should never be streamed out for other clients
     if (Workspace.StreamingEnabled) then
         character.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
