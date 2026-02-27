@@ -53,7 +53,7 @@ function Universal.new(...)
     return setmetatable(self, Universal)
 end
 
-function Universal:stateEnter()
+function Universal:stateEnter(stateId: number, params: any?)
     self.rotForce.Enabled = true
 end
 

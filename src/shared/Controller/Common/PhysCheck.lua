@@ -221,7 +221,9 @@ type wallSide = {
 }
 
 export type waterData = {
-	inWater: boolean
+	inWater: boolean,
+	fullSubmerged: boolean,
+	waterSurfacePos: Vector3
 }
 
 
@@ -465,19 +467,21 @@ function PhysCheck.checkWater(
 	buoySens: BuoyancySensor
 ): waterData
 
-	-- local inWater = false
-	-- local ray = Workspace:Spherecast(rootPos, maxRadius, -VEC3_UP * 2, waterRayParams)
-	-- if (ray) then 
-	-- 	if (ray.Material == Enum.Material.Water) then
-	-- 		inWater = true
-	-- 	end
-	-- end
-
-	local inWater =
-		(BUOY_FULLY_SUBMERGED) and buoySens.FullySubmerged or buoySens.TouchingSurface
+	local surfacePos = math.huge
+	local fullySubmerged = buoySens.FullySubmerged
+	local inWater = (BUOY_FULLY_SUBMERGED) and fullySubmerged or buoySens.TouchingSurface
+	
+	local ray = Workspace:Spherecast(rootPos + VEC3_UP, maxRadius, -VEC3_UP * 2, waterRayParams)
+	if (ray) then 
+		if (ray.Material == Enum.Material.Water) then
+			surfacePos = ray.Position
+		end
+	end
 
 	return {
-		inWater = inWater
+		inWater = inWater,
+		fullSubmerged = fullySubmerged,
+		waterSurfacePos = surfacePos
 	} :: waterData
 end
 

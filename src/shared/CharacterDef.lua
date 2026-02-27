@@ -10,6 +10,8 @@ local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local PLAYERMDL_MASS_ENABLED = false
 local MAIN_ROOT_PRIO = 100
 
+local PRINT_PLRMDL_UNUSED_WARNING = false
+
 ------------------------------------------------------------------------------------------------------------------------
 -- character phys model parameters
 
@@ -18,9 +20,15 @@ local PARAMS = table.freeze({
     ROOTPART_SIZE = Vector3.new(1, 1, 1),
     MAINCOLL_SIZE = Vector3.new(3, 3, 3),
     LEGCOLL_SIZE = Vector3.new(2, 3, 3),
+
     ROOTPART_SHAPE = Enum.PartType.Block,
     MAINCOLL_SHAPE = Enum.PartType.Cylinder,
     LEGCOLL_SHAPE = Enum.PartType.Cylinder,
+
+    ROOTPART_NAME = "RootPart",
+    MAINCOLL_NAME = "MainColl",
+    LEGCOLL_NAME = "LegColl",
+
     ROOTPART_CF = CFrame.identity,
     MAINCOLL_CF = CFrame.new(
         0, 1.5, 0,
@@ -92,26 +100,22 @@ local function createCharacter(playermodel: Model?): Model
     end
 
     local character = Instance.new("Model")
-    local rootPart = createPart("RootPart", PARAMS.ROOTPART_SIZE, PARAMS.ROOTPART_CF, PARAMS.ROOTPART_SHAPE)
-    local mainColl = createPart("MainColl", PARAMS.MAINCOLL_SIZE, PARAMS.MAINCOLL_CF, PARAMS.MAINCOLL_SHAPE)
-    local legColl = createPart("LegColl", PARAMS.LEGCOLL_SIZE, PARAMS.LEGCOLL_CF, PARAMS.LEGCOLL_SHAPE)
+    local rootPart = createPart(PARAMS.ROOTPART_NAME, PARAMS.ROOTPART_SIZE, PARAMS.ROOTPART_CF, PARAMS.ROOTPART_SHAPE)
+    local mainColl = createPart(PARAMS.MAINCOLL_NAME, PARAMS.MAINCOLL_SIZE, PARAMS.MAINCOLL_CF, PARAMS.MAINCOLL_SHAPE)
+    local legColl = createPart(PARAMS.LEGCOLL_NAME, PARAMS.LEGCOLL_SIZE, PARAMS.LEGCOLL_CF, PARAMS.LEGCOLL_SHAPE)
 
     rootPart.Parent, mainColl.Parent, legColl.Parent = character, character, character
     rootPart.CanCollide, rootPart.CanQuery, rootPart.CanTouch = false, false, false
     createParentedWeld(rootPart, mainColl)
     createParentedWeld(rootPart, legColl)
+    legColl.CanCollide = false
+    
     rootPart.Massless = true
     rootPart.RootPriority = MAIN_ROOT_PRIO
-    legColl.CanCollide = false
     character.PrimaryPart = rootPart
     createParentedAttachment("Root", rootPart)
 
-    -- if (Global.GAME_CHAR_DEBUG) then
-    --     setMdlTransparency(character, 0.5)
-    --     mainColl.Color = DEBUG_COLL_COLOR3
-    -- end
-
-    -- Playermodel with assigned PrimaryPart is required
+    -- playermodel with assigned PrimaryPart is required
     if (not playermodel) then
         error("No Playermodel found", 2)
     end
@@ -138,18 +142,18 @@ local function createCharacter(playermodel: Model?): Model
     plrMdlPrimPart.CFrame = rootPart.CFrame * PARAMS.PLAYERMODEL_OFFSET_CF
     createParentedWeld(rootPart, plrMdlPrimPart)
 
-    -- Discard playermodel with remaining unused components
-    if (#(plrMdlClone:GetDescendants()) > 0) then
+    -- discard playermodel with remaining unused components
+    if (#(plrMdlClone:GetDescendants()) > 0 and PRINT_PLRMDL_UNUSED_WARNING) then
         warn("Playermodel included unused components, which were discarded:")
         warn(plrMdlClone:GetDescendants())
     end
     plrMdlClone:Destroy()
 
-    -- Create Animator and AnimationController
+    -- create Animator and AnimationController
     local animController = Instance.new("AnimationController", character)
     Instance.new("Animator", animController)
 
-    -- Player characters should never be streamed out for other clients
+    -- player characters should never be streamed out for other clients
     if (Workspace.StreamingEnabled) then
         character.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
     end
@@ -157,6 +161,8 @@ local function createCharacter(playermodel: Model?): Model
     return character
 end
 
+------------------------------------------------------------------------------------------------------------------------
+-- Module
 ------------------------------------------------------------------------------------------------------------------------
 
 local CharacterDef = {}

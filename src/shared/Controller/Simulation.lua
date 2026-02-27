@@ -27,6 +27,7 @@ local stateSharedVals = {
     buoySensor = nil,
     grounded = false,
     inWater = false,
+    underWater = false,
     isDashing = false,
     nearWall = false,
     isRightSideWall = false,
@@ -104,12 +105,13 @@ function Simulation:transitionState(newStateId: number, params: any?)
         print(`Transitioning from {self.currentState.id} to {newStateId}`)
     end
 
+    local oldStateId = self.currentState.id
     local newState = self.states[newStateId]
     assert(newState, "cannot transition to nonexistent state")
 
     self.currentState:stateLeave()
     self.currentState = newState
-    self.currentState:stateEnter(params)
+    self.currentState:stateEnter(oldStateId, params)
 
     ClientRoot.setPlayerState(newStateId)
 
@@ -192,13 +194,13 @@ function Simulation:resetSimulation()
     self.universalState:stateEnter()
 
     self.states = {
-        [PlayerStateId.GROUNDED] = Ground.new(self),
-        [PlayerStateId.IN_WATER] = Water.new(self),
-        [PlayerStateId.ON_WALL] = Wall.new(self)
+        [PlayerStateId.GROUND] = Ground.new(self),
+        [PlayerStateId.WATER] = Water.new(self),
+        [PlayerStateId.WALL] = Wall.new(self)
     }
-    self.currentState = self.states[PlayerStateId.GROUNDED]
-    self.currentState:stateEnter()
-    ClientRoot.setPlayerState(PlayerStateId.GROUNDED)
+    self.currentState = self.states[PlayerStateId.GROUND]
+    self.currentState:stateEnter(PlayerStateId.NONE)
+    ClientRoot.setPlayerState(PlayerStateId.GROUND)
 
     self.simUpdateConn = RunService.PostSimulation:Connect(function(dt)
         self:update(dt)

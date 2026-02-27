@@ -20,7 +20,12 @@ function BaseState.new(_simulation)
     return self
 end
 
-function BaseState:stateEnter(params: any?)
+--[[
+    Enters a state with the arg:
+    @param stateId - state id that was transitioned from
+    @param params - relevant additional data
+]]
+function BaseState:stateEnter(stateId: typeof(PlayerStateId.NONE), params: any?)
 end
 
 function BaseState:stateLeave()

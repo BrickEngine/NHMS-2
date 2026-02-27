@@ -12,17 +12,19 @@ local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(controller.InputManager)
 local SoundManager = require(ReplicatedStorage.Shared.SoundManager)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
+local AnimationStateId = require(ReplicatedStorage.Shared.Enums.AnimationStateId)
 local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 local BaseState = require(controller.SimStates.BaseState)
 local PhysCheck = require(controller.Common.PhysCheck)
 
-local STATE_ID = PlayerStateId.GROUNDED
+local STATE_ID = PlayerStateId.GROUND
 
--- General physics config
-local MOVE_SPEED = 1.75
+-- physics
+local MOVE_SPEED = 1.95--1.75
 local DASH_SPEED = 3.2
 local MIN_WALL_MOUNT_SPEED = 12.0 -- studs/s
 local ALLOW_IMM_WALL_MOUNT = true -- whether to allow repeated Wall state transitions
+local ALLOW_WATER_WALL_MOUNT = true -- whether to allow wall mounting after exiting water
 local MUST_LOOK_AT_WALL = false -- whether to allow wall mounting without looking at the wall
 local GND_CLEAR_DIST = 0.45
 local MAX_INCLINE = math.rad(70) -- radiants
@@ -32,17 +34,18 @@ local DASH_TIME = 1.6 -- seconds
 local DASH_COOLDOWN_TIME = 0.8 -- seconds
 local MOVE_DAMP = 0.4 -- lower value ~ more rigid movement (do not set too low; breaks at low framerates)
 local DASH_DAMP = 0.1 -- equivalent to MOVE_DAMP
-local MOVE_DT = 0.05 -- time delta for move accel
+local PHYS_DT = 0.05 -- time delta for move accel
 
 local FORCE_STEPUP = false -- whether the player will be forced up steep inclines, if too low to the ground
 local GND_FORCE_DIST = 0.1 -- height at which player will be forced up, if FORCE_STEUP is true
 
 local PLAY_JUMP_SOUND = true -- To be removed later
 
--- Animation
+-- animation
 local ANIM_THRESHHOLD = 0.1 -- Studs/s
 local ANIM_SPEED_FAC = 0.06
 
+-- constants
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
 local COLL_HEIGHT = CharacterDef.PARAMS.MAINCOLL_SIZE.X
@@ -64,6 +67,7 @@ ray_params_gnd.IgnoreWater = true
 ray_params_gnd.RespectCanCollide = true
 
 local wasGroundedOnce = false
+local wasOnDryLand = true
 
 local lastDashInput = false
 local dash = {
@@ -141,7 +145,7 @@ function Ground.new(...)
     return setmetatable(self, Ground)
 end
 
-function Ground:stateEnter()
+function Ground:stateEnter(stateId: number, params: any?)
     if (not self.forces) then
         warn("No forces to enable in state: 'Ground'"); return
     end
@@ -153,19 +157,23 @@ function Ground:stateEnter()
     }
     inStateTime = 0
 
-    self.animation:setState("Idle")
+    if (stateId == PlayerStateId.WATER and not ALLOW_WATER_WALL_MOUNT) then
+        wasOnDryLand = false
+    end
+
+    self.animation:setState(AnimationStateId.IDLE)
 end
 
 function Ground:stateLeave()
+    self.shared.isDashing = false
+    wasGroundedOnce = false
+
     if (not self.forces) then
         return
     end
     for _, f in self.forces do
         f.Enabled = false
     end
-    self.shared.isDashing = false
-
-    wasGroundedOnce = false
 end
 
 function Ground:updateJump(dt: number, override: boolean?)
@@ -258,11 +266,11 @@ function Ground:updateMove(dt: number, rawMoveDir: Vector3, normal: Vector3, nor
     if (self.shared.isDashing and not (normAngle > MAX_INCLINE)) then
         moveDirVec = getCFrameRelMoveVec(camCFrame, VEC3_RIGHT)
         target = currPos - moveDirVec * DASH_SPEED
-        accelVec = 2 * ((target - currPos) - currHoriVel * MOVE_DT)/(MOVE_DT * DASH_DAMP)
+        accelVec = 2 * ((target - currPos) - currHoriVel * PHYS_DT)/(PHYS_DT * DASH_DAMP)
     else
         moveDirVec = rawMoveDir
         target = currPos - moveDirVec * MOVE_SPEED
-        accelVec = 2 * ((target - currPos) - currHoriVel * MOVE_DT)/(MOVE_DT * MOVE_DAMP)
+        accelVec = 2 * ((target - currPos) - currHoriVel * PHYS_DT)/(PHYS_DT * MOVE_DAMP)
     end
     self.forces.moveForce.Force = accelVec * mass
 
@@ -279,7 +287,7 @@ function Ground:update(dt: number)
     local camera = Workspace.CurrentCamera
     local camDir = camera.CFrame.LookVector
     local rawMoveDir = getCFrameRelMoveVec(camera.CFrame, InputManager:getMoveVec())
-    local horiCamDir = Vector3.new(camDir.X, 0, camDir.Z)
+    local camHoriDir = Vector3.new(camDir.X, 0, camDir.Z)
     local currVel = primaryPart.AssemblyLinearVelocity
     local currHoriVel = Vector3.new(currVel.X, 0, currVel.Z)
     local currPos = primaryPart.CFrame.Position
@@ -295,7 +303,7 @@ function Ground:update(dt: number)
     if (currHoriVel.Magnitude < 0.1) then
         wallData = PhysCheck.defaultWallData()
     else
-        local scanDir = self.shared.isDashing and horiCamDir or currHoriVel
+        local scanDir = self.shared.isDashing and camHoriDir or currHoriVel
         wallData = PhysCheck.checkWall(currPos, scanDir, PHYS_RADIUS, HIP_HEIGHT)
 
         -- if scanDir delivers no results, check again with the raw input dir
@@ -371,16 +379,16 @@ function Ground:update(dt: number)
 
     -- update animation
     if (currHoriVel.Magnitude >= ANIM_THRESHHOLD) then
-        self.animation:setState("Walk")
+        self.animation:setState(AnimationStateId.WALK)
         self.animation:adjustSpeed(currHoriVel.Magnitude * ANIM_SPEED_FAC)
     else
-        self.animation:setState("Idle")
+        self.animation:setState(AnimationStateId.IDLE)
         self.animation:adjustSpeed(1)
     end
 
     -- update playermodel rotation
     primaryPart.CFrame = CFrame.lookAlong(
-        primaryPart.CFrame.Position, horiCamDir
+        primaryPart.CFrame.Position, camHoriDir
     )
     primaryPart.AssemblyAngularVelocity = VEC3_ZERO
 
@@ -393,11 +401,16 @@ function Ground:update(dt: number)
             canMountWall = wasGroundedOnce
         end
 
+        -- ensures a wall cannot be mounted from water
+        if (self.shared.grounded) then
+            wasOnDryLand = true
+        end
+
         local facingWall = false
         local projWallVel = VEC3_ZERO
         if (wallData.normal and wallData.normal ~= VEC3_ZERO) then
             projWallVel = MathUtil.projectOnPlaneVec3(currHoriVel, wallData.normal).Unit * currHoriVel.Magnitude
-            facingWall = wallData.normal:Dot(horiCamDir) < 0
+            facingWall = wallData.normal:Dot(camHoriDir) < 0
         end
         if (not MUST_LOOK_AT_WALL) then
             facingWall = true
@@ -405,13 +418,13 @@ function Ground:update(dt: number)
 
         local wallConditions = 
             not self.shared.grounded and projWallVel.Magnitude >= MIN_WALL_MOUNT_SPEED 
-            and canMountWall and facingWall
+            and canMountWall and facingWall and wasOnDryLand
 
         if (self.shared.inWater) then
-            --self._simulation:transitionState(PlayerStateId.IN_WATER); return
+            self._simulation:transitionState(PlayerStateId.WATER); return
         elseif (self.shared.nearWall and wallConditions) then
             self._simulation:transitionState(
-                PlayerStateId.ON_WALL, 
+                PlayerStateId.WALL, 
                 {
                     normal = wallData.normal, 
                     position = wallData.position

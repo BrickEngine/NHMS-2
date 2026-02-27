@@ -15,7 +15,7 @@ local BaseState = require(script.Parent.BaseState)
 local PhysCheck = require(controller.Common.PhysCheck)
 local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 
-local STATE_ID = PlayerStateId.ON_WALL
+local STATE_ID = PlayerStateId.WALL
 
 local DISMOUNT_SPEED = 0.01--2.4 -- studs/s (should be lower than mount speed in the Ground state)
 
@@ -162,7 +162,7 @@ function Wall.new(...)
     return setmetatable(self, Wall)
 end
 
-function Wall:stateEnter(params: any?)
+function Wall:stateEnter(stateId: number, params: any?)
     local primaryPart: BasePart = self.character.PrimaryPart
     local hitNormal: Vector3 = params.normal
     local hitPos: Vector3 = params.position
@@ -272,7 +272,7 @@ function Wall:handleDismount(dt: number, wallNorm: Vector3)
         SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.JUMP, true)
     end
 
-    self._simulation:transitionState(PlayerStateId.GROUNDED)
+    self._simulation:transitionState(PlayerStateId.GROUND)
 end
 
 -- Updates posForce
@@ -331,7 +331,7 @@ function Wall:update(dt: number)
     local currPos = primaryPart.CFrame.Position
     local currHoriVel = Vector3.new(currVel.X, 0, currVel.Z)
 
-    -- Physics checks
+    -- physics checks
     local groundData: PhysCheck.groundData = PhysCheck.checkFloor(currPos, PHYS_RADIUS, HIP_HEIGHT, 0.1)
     local wallData: PhysCheck.wallData
     if (currHoriVel.Magnitude < 0.1) then
@@ -340,8 +340,13 @@ function Wall:update(dt: number)
         local scanDirVec = scanVecRotFunc(currHoriVel).Unit --currHoriVel.Unit) --primaryPart.CFrame.LookVector
         wallData = PhysCheck.checkWall(currPos, scanDirVec, PHYS_RADIUS, HIP_HEIGHT)
     end
+
+    local waterData: PhysCheck.waterData = 
+        PhysCheck.checkWater(primaryPart.Position, PHYS_RADIUS, self.shared.buoySensor)
+
     self.shared.grounded = groundData.grounded
     self.shared.nearWall = wallData.nearWall
+    self.shared.inWater = waterData.inWater
 
     if (self.shared.nearWall and peakedJumpAfterEntry) then
         self.forces.posForce.Enabled = true
@@ -354,13 +359,13 @@ function Wall:update(dt: number)
         local bankAngleExceeded = wallData.bankAngle < BANK_MIN or wallData.bankAngle > BANK_MAX
 
         if (self.shared.inWater) then
-            self._simulation:transitionState(PlayerStateId.IN_WATER); return
+            self._simulation:transitionState(PlayerStateId.WATER); return
         elseif (
             self.shared.grounded or not self.shared.nearWall
             or currHoriVel.Magnitude < DISMOUNT_SPEED or bankAngleExceeded
             or wallData.maxAngleDiff > MAX_ANGLE_DIFF
         ) then
-            self._simulation:transitionState(PlayerStateId.GROUNDED); return
+            self._simulation:transitionState(PlayerStateId.GROUND); return
         end
     end
 

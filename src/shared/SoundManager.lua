@@ -41,7 +41,7 @@ local SOUND_DATA = table.freeze({
         PlaybackRegion = NumberRange.new(0, 0.15)
     },
     [SOUND_ITEMS.WATER_SPLASH] = {
-        SoundId = "rbxassetid://5466166437",
+        SoundId = "rbxassetid://72842661683082",
     },
     [SOUND_ITEMS.WATER_MOVEMENT] = {
         SoundId = "rbxassetid://5466166437",

@@ -1,25 +1,25 @@
 -- Main animation module. Instantiates all character dependent animation tracks
 
--- local function resetTrackVals(track: AnimationTrack)
--- 	track:AdjustSpeed(1)
--- 	track:AdjustWeight(1)
--- end
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local AnimStateId = require(ReplicatedStorage.Shared.Enums.AnimationStateId)
 
 local Animation = {}
 Animation.__index = Animation
 
 Animation.states = {
 	-- idle (0)
-	Death = {id = "rbxassetid://86228921476914", prio = 0},
-	--Idle = {id = "http://www.roblox.com/asset/?id=180435571", prio = 0},
-	Idle = {id = "rbxassetid://112935245839336", prio = 0},
+	[AnimStateId.DEATH] = {id = "rbxassetid://86228921476914", prio = 0},
+	[AnimStateId.IDLE] = {id = "rbxassetid://112935245839336", prio = 0},
+	--[AnimStateId.IDLE] = {id = "http://www.roblox.com/asset/?id=180435571", prio = 0},
 	-- movement (1)
-	Walk = {id = "rbxassetid://131022707317400", prio = 1},
-    --Walk = {id = "http://www.roblox.com/asset/?id=180426354", prio = 1},
+	[AnimStateId.WALK] = {id = "rbxassetid://131022707317400", prio = 1},
+    --[AnimStateId.WALK] = {id = "http://www.roblox.com/asset/?id=180426354", prio = 1},
+
+	--TODO
 	--SWIM = "",
 	--FALL = "",
 	-- actions (2-5)
-    --Sit = {id = "rbxassetid://86378703965993", prio = 2},
 }
 
 export type AnimationStateType = {
