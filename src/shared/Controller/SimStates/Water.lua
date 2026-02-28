@@ -26,6 +26,7 @@ local BUOY_FORCE_FAC = 0.765 -- scales compensated buoyancy force
 local INP_READ_DELAY = 0.15 -- by how many seconds to delay vertical swim input after entering the state
 local DIVE_CONE_ANG_LIM = math.rad(45) -- rad - angle limit for remapping swim direction when diving
 
+local GND_STATE_DELAY = 0 -- time to pass before making state transition possible
 local GND_CLEAR_DIST = 0.425 -- should be smaller than the one in the ground state
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local COMP_HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X * 0.9
@@ -173,7 +174,7 @@ function Water:updateSwim(dt: number, rawInpDir: Vector3)
     -- if near a ledge, add a little vertical force
     local nearLedge = false
     if (planeSwimDirVecXZ.Magnitude > EPSILON) then
-        nearLedge = PhysCheck.checkLedge(currPos, -planeSwimDirVecXZ * 2, PHYS_RADIUS)
+        nearLedge = PhysCheck.checkLedge(currPos, -planeSwimDirVecXZ.Unit * 2, PHYS_RADIUS)
     end
     if (nearLedge) then
         corrSwimDirVec += -gravity * VEC3_UP * 0.02
@@ -266,7 +267,12 @@ function Water:update(dt: number)
     self.animation:adjustSpeed(currVel.Magnitude * SWIM_ANIM_SPEED_FAC)
 
     -- state transitions
-    local groundConditions = self.shared.grounded and self.shared.onWaterSurface
+    local gndSurfDist = waterData.waterSurfacePos.Y - groundData.gndHeight
+    local groundConditions = 
+        self.shared.grounded and self.shared.onWaterSurface 
+        and (gndSurfDist < COMP_HIP_HEIGHT * 1.5)
+        or (not self.shared.inWater and self.shared.stateTime > GND_STATE_DELAY)
+
     if (not self.shared.inWater or groundConditions) then
         self._simulation:transitionState(PlayerStateId.GROUND); return
     end

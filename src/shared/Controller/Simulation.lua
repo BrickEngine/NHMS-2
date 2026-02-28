@@ -15,7 +15,7 @@ local Ground = require(simStates.Ground) :: BaseState.BaseState
 local Water = require(simStates.Water) :: BaseState.BaseState
 local Wall = require(simStates.Wall) :: BaseState.BaseState
 
-local PRINT_DEBUG = false
+local PRINT_DEBUG = true
 
 local VEC3_UP = Vector3.new(0, 1, 0)
 

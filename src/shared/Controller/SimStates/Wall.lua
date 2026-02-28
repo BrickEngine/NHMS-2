@@ -182,7 +182,7 @@ function Wall:stateEnter(stateId: number, params: any?)
     scanVecRotFunc, normVecRotFunc = getDirFuncFromWallSide(initialHoriVel, hitNormal)
 
     --local projInitialVel = MathUtil.projectOnPlaneVec3(initialHoriVel, hitNormal)
-    local wallVel: Vector3 = normVecRotFunc(hitNormal).Unit * initialHoriVel.Magnitude * BOOST_FAC
+    local wallVel: Vector3 = normVecRotFunc(hitNormal).Unit * initialVel.Magnitude * BOOST_FAC
 
     if (wallVel.Magnitude > WALL_MAX_SPEED) then
         wallVel = wallVel.Unit * WALL_MAX_SPEED

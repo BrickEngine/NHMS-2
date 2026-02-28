@@ -30,8 +30,8 @@ local GND_CLEAR_DIST = 0.45
 local MAX_INCLINE = math.rad(70) -- radiants
 local JUMP_HEIGHT = 6
 local JUMP_DELAY = 0.28
-local DASH_TIME = 1.6 -- seconds
-local DASH_COOLDOWN_TIME = 0.8 -- seconds
+local DASH_TIME = 1.6
+local DASH_COOLDOWN_TIME = 0.8
 local MOVE_DAMP = 0.4 -- lower value ~ more rigid movement (do not set too low; breaks at low framerates)
 local DASH_DAMP = 0.1 -- equivalent to MOVE_DAMP
 local PHYS_DT = 0.05 -- time delta for move accel
@@ -320,6 +320,7 @@ function Ground:update(dt: number)
     self.shared.grounded = groundData.grounded
     self.shared.nearWall = wallData.nearWall
     self.shared.inWater = waterData.inWater
+    self.shared.underWater = waterData.fullSubmerged
     self.shared.onWaterSurface = waterData.onSurface
 
     if (self.shared.grounded) then
@@ -414,13 +415,17 @@ function Ground:update(dt: number)
         if (not MUST_LOOK_AT_WALL) then
             facingWall = true
         end
-        
-        local waterConditions = not (self.shared.onWaterSurface and self.shared.grounded)
+
+        --self.shared.onWaterSurface and (primaryPart.Position.Y - waterData.waterSurfacePos.Y < 0.25)
+        local waterConditions =
+            self.shared.inWater and self.shared.onWaterSurface 
+            and (waterData.waterSurfacePos.Y - groundData.gndHeight > HIP_HEIGHT * 1.5)
+
         local wallConditions = 
             not self.shared.grounded and projWallVel.Magnitude >= MIN_WALL_MOUNT_SPEED 
             and canMountWall and facingWall and wasOnDryLand
 
-        if (self.shared.inWater and waterConditions) then
+        if (self.shared.underWater or waterConditions) then --self.shared.inWater and waterConditions
             self._simulation:transitionState(PlayerStateId.WATER); return
         elseif (self.shared.nearWall and wallConditions) then
             self._simulation:transitionState(

@@ -37,7 +37,7 @@ local USE_WALL_COLL_GROUP = true
 -- [[checkWater]]
 
 local WATER_SCAN_Y_OFFS = 2.55
-local WATER_SCAN_DIST = 10.0
+local WATER_SCAN_DIST = WATER_SCAN_Y_OFFS + 4
 -- offset for checking a ledge gap
 local GAP_SCAN_OFFS = 5.125
 
@@ -47,6 +47,7 @@ local BOUND_POINTS = math.round(2 * math.sqrt(NUM_GND_RAYS))
 local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1 ,0)
 local VEC3_FARDOWN = -999999999 * VEC3_UP
+local VEC3_ONE = Vector3.one
 local EPSILON = 0.001
 
 local floorRayParams = RaycastParams.new()
@@ -203,7 +204,7 @@ local PhysCheck = {}
 
 export type groundData = {
 	grounded: boolean,
-	pos: Vector3,
+	targetPos: Vector3,
 	closestPos: Vector3,
 	normal: Vector3,
 	gndHeight: number,
@@ -359,7 +360,7 @@ function PhysCheck.checkFloor(
 
 	return {
         grounded = grounded,
-		pos = targetPos,
+		targetPos = targetPos,
 		closestPos = closestPos,
 		normal = targetNorm.Unit,
         gndHeight = targetPos.Y,
@@ -471,7 +472,7 @@ function PhysCheck.checkWater(
 	buoySens: BuoyancySensor
 ): waterData
 
-	local surfacePos = math.huge
+	local surfacePos = -VEC3_ONE * math.huge
 	local fullySubmerged = buoySens.FullySubmerged
 	local inWater = fullySubmerged or buoySens.TouchingSurface
 	local onSurface = false
