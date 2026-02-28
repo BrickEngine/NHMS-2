@@ -417,12 +417,13 @@ function Ground:update(dt: number)
         if (not MUST_LOOK_AT_WALL) then
             facingWall = true
         end
-
+        
+        local waterConditions = not (self.shared.onWaterSurface and self.shared.grounded)
         local wallConditions = 
             not self.shared.grounded and projWallVel.Magnitude >= MIN_WALL_MOUNT_SPEED 
             and canMountWall and facingWall and wasOnDryLand
 
-        if (self.shared.inWater and not self.shared.onWaterSurface) then
+        if (self.shared.inWater and waterConditions) then
             self._simulation:transitionState(PlayerStateId.WATER); return
         elseif (self.shared.nearWall and wallConditions) then
             self._simulation:transitionState(
