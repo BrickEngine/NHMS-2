@@ -22,7 +22,7 @@ local STATE_ID = PlayerStateId.GROUND
 -- physics
 local MOVE_SPEED = 1.95--1.75
 local DASH_SPEED = 3.2
-local MIN_WALL_MOUNT_SPEED = 12.0 -- studs/s
+local MIN_WALL_MOUNT_SPEED = 7.5 -- studs/s
 local ALLOW_IMM_WALL_MOUNT = true -- whether to allow repeated Wall state transitions
 local ALLOW_WATER_WALL_MOUNT = true -- whether to allow wall mounting after exiting water
 local MUST_LOOK_AT_WALL = false -- whether to allow wall mounting without looking at the wall
@@ -36,6 +36,10 @@ local MOVE_DAMP = 0.4 -- lower value ~ more rigid movement (do not set too low; 
 local DASH_DAMP = 0.1 -- equivalent to MOVE_DAMP
 local PHYS_DT = 0.05 -- time delta for move accel
 
+local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
+local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
+local COLL_HEIGHT = CharacterDef.PARAMS.MAINCOLL_SIZE.X
+
 local FORCE_STEPUP = false -- whether the player will be forced up steep inclines, if too low to the ground
 local GND_FORCE_DIST = 0.1 -- height at which player will be forced up, if FORCE_STEUP is true
 
@@ -46,9 +50,6 @@ local ANIM_THRESHHOLD = 0.1 -- Studs/s
 local ANIM_SPEED_FAC = 0.06
 
 -- constants
-local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
-local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
-local COLL_HEIGHT = CharacterDef.PARAMS.MAINCOLL_SIZE.X
 local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1, 0)
 local VEC3_RIGHT = Vector3.new(0, 0, 1)
@@ -322,6 +323,7 @@ function Ground:update(dt: number)
     self.shared.grounded = groundData.grounded
     self.shared.nearWall = wallData.nearWall
     self.shared.inWater = waterData.inWater
+    self.shared.onWaterSurface = waterData.onSurface
 
     if (self.shared.grounded) then
         local targetPosY = groundData.gndHeight + HIP_HEIGHT
@@ -420,7 +422,7 @@ function Ground:update(dt: number)
             not self.shared.grounded and projWallVel.Magnitude >= MIN_WALL_MOUNT_SPEED 
             and canMountWall and facingWall and wasOnDryLand
 
-        if (self.shared.inWater) then
+        if (self.shared.inWater and not self.shared.onWaterSurface) then
             self._simulation:transitionState(PlayerStateId.WATER); return
         elseif (self.shared.nearWall and wallConditions) then
             self._simulation:transitionState(

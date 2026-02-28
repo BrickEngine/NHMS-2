@@ -21,6 +21,8 @@ local SOUND_ITEMS = table.freeze({
     DAMAGE = "DamageSound",
     WATER_SPLASH = "WaterSplashSound",
     WATER_MOVEMENT = "WaterMovementSound",
+    WATER_DIVE = "WaterDiveSound",
+    WATER_SURFACE = "WaterSurfaceSound",
     WALL_ENTER_0 = "WallEnter0Sound",
     WALL_ENTER_1 = "WallEnter1Sound",
     WALL_SLIDE = "WallSlideSound",
@@ -42,9 +44,22 @@ local SOUND_DATA = table.freeze({
     },
     [SOUND_ITEMS.WATER_SPLASH] = {
         SoundId = "rbxassetid://72842661683082",
+        Volume = 1.08,
+        PlaybackSpeed = 2,
     },
     [SOUND_ITEMS.WATER_MOVEMENT] = {
         SoundId = "rbxassetid://5466166437",
+        Looped = true,
+    },
+    [SOUND_ITEMS.WATER_DIVE] = {
+        SoundId = "rbxassetid://96244940601143",
+        Volume = 0.375,
+        PlaybackRegionsEnabled = true,
+        PlaybackRegion = NumberRange.new(0.62, 2),
+        PlaybackSpeed = 1.25
+    },
+    [SOUND_ITEMS.WATER_SURFACE] = {
+        SoundId = "rbxassetid://9114555843",
     },
     [SOUND_ITEMS.WALL_ENTER_0] = {
         SoundId = "rbxassetid://15764092592",

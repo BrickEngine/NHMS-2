@@ -26,6 +26,7 @@ local JUMP_DIST_FAC = 18.0
 local BANK_MIN = math.rad(75.0) -- min dismount wall angle
 local BANK_MAX = math.rad(105.0) -- max dismount wall angle
 local SCAN_ANGLE = math.rad(70.0) -- angle offset for left / right wall scans
+
 -- max angle difference between two out of all hit wall normals which, if exceeded, will result in a dismount
 local MAX_ANGLE_DIFF = math.rad(87.5)
 -- force scaling for how much force should be applied along the negative wall normal relative to movement speed
@@ -33,11 +34,12 @@ local WALL_FORCE_STRENGTH_FAC = 10.75
 -- max force to be applied by the linear velocity along the wall
 local MAX_LIN_VEL_FORCE = 400000
 
-local SLIDE_FAC = 1.25 -- distance scaling for how much a player slides per frame
-local START_SLIDE_VEL = 45.0 -- studs/s, velocity at which a player starts to slide
-local WALL_MAX_SPEED = 125.0 -- 105.0 -- studs/s, max speed on the wall
+local SLIDE_FAC = 50.25 -- distance scaling for how much a player slides per frame
+local MANEUV_FAC = 0.98 -- wall maneuverability factor scaled with velocity
+local START_SLIDE_VEL = 45.0 -- studs/s - velocity at which a player starts to slide
+local WALL_MAX_SPEED = 125.0 -- studs/s, max speed on the wall
 local BOOST_FAC = 1.38 -- by how much to boost the wall velocity on enter
-local WALL_SPEED_LOSS_FAC = 9.5--4.75 -- how much speed is reduced each phys update on the wall
+local WALL_SPEED_LOSS_FAC = 9.5 -- how much speed is reduced each phys update on the wall
 
 local PLAY_WALL_SOUNDS = true
 
@@ -285,13 +287,13 @@ function Wall:updateVerticalAnchor(dt: number)
         local camLooKVec = Workspace.CurrentCamera.CFrame.LookVector
         local cappedVelFac = math.min(currVel.Magnitude * 25, 600.0)
 
-        local camUpFac = math.clamp(VEC3_UP:Dot(camLooKVec), -0.4, 0.4) * 0.0084 * currVel.Magnitude
+        local camUpFac = math.clamp(VEC3_UP:Dot(camLooKVec), -0.4, 0.4) * MANEUV_FAC * currVel.Magnitude
         local forceDownFac = 0
         if (currHoriVel.Magnitude < START_SLIDE_VEL) then
             forceDownFac = Workspace.Gravity * SLIDE_FAC / cappedVelFac
         end
 
-        self.forces.posForce.Position = self.forces.posForce.Position + VEC3_UP * (camUpFac - forceDownFac)
+        self.forces.posForce.Position = self.forces.posForce.Position + VEC3_UP * (camUpFac - forceDownFac) * dt
         return
     end
     

@@ -7,15 +7,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Animation = require(script.Parent.Animation)
 local DebugVisualize = require(script.Parent.Common.DebugVisualize)
 
-local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
-local Global = require(ReplicatedStorage.Shared.Global)
 local simStates = script.Parent.SimStates
 local BaseState = require(simStates.BaseState)
 local Universal = require(simStates.Universal) :: BaseState.BaseState
 local Ground = require(simStates.Ground) :: BaseState.BaseState
 local Water = require(simStates.Water) :: BaseState.BaseState
 local Wall = require(simStates.Wall) :: BaseState.BaseState
+
+local PRINT_DEBUG = false
 
 local VEC3_UP = Vector3.new(0, 1, 0)
 
@@ -28,9 +28,11 @@ local stateSharedVals = {
     grounded = false,
     inWater = false,
     underWater = false,
+    onWaterSurface = false,
     isDashing = false,
     nearWall = false,
     isRightSideWall = false,
+    stateTime = 0,
     wallTime = 0
 }
 
@@ -95,25 +97,28 @@ function Simulation:update(dt: number)
 
     self.universalState:update(dt)
     self.currentState:update(dt)
+
+    self.stateShared.stateTime += dt
+
     DebugVisualize.step()
 end
 
 function Simulation:transitionState(newStateId: number, params: any?)
     state_free = false
 
-    if (Global.PRINT_SIM_DEBUG) then
+    if (PRINT_DEBUG) then
         print(`Transitioning from {self.currentState.id} to {newStateId}`)
     end
 
     local oldStateId = self.currentState.id
     local newState = self.states[newStateId]
-    assert(newState, "cannot transition to nonexistent state")
+    assert(newState, "Cannot transition to nonexistent state")
 
     self.currentState:stateLeave()
     self.currentState = newState
     self.currentState:stateEnter(oldStateId, params)
 
-    ClientRoot.setPlayerState(newStateId)
+    self.stateShared.stateTime = 0
 
     state_free = true
 end
@@ -141,7 +146,7 @@ end
 
 function Simulation:getNearWall(): (boolean, boolean)
     if (self.currentState) then
-        return self.currentState.nearWall, self.currentState.isRightSideWall
+        return self.stateShared.nearWall, self.stateShared.isRightSideWall
     end
     return false, false
 end
@@ -200,7 +205,6 @@ function Simulation:resetSimulation()
     }
     self.currentState = self.states[PlayerStateId.GROUND]
     self.currentState:stateEnter(PlayerStateId.NONE)
-    ClientRoot.setPlayerState(PlayerStateId.GROUND)
 
     self.simUpdateConn = RunService.PostSimulation:Connect(function(dt)
         self:update(dt)

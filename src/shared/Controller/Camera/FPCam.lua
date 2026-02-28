@@ -15,17 +15,19 @@ local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 --local INITIAL_CAM_ANG = CFrame.fromOrientation(math.rad(-15), 0, 0)
 local ROOT_OFFSET = Vector3.new(0, 2.5, 0)
 local DASH_OFFSET = Vector3.new(0, -1.8, 0)
-local WALL_TILT = math.rad(45)
 local INP_SENS_FAC = 34	-- input sensitivity factor
-local TILT_ANG = 6 -- max cam tilt angle in deg
-local TILT_DT = 0.2	-- constant time delta for camera tilt lerp
+local WALL_TILT = 5.5 -- deg - max cam wall tilt
+local INP_TILT = 6 -- deg - max cam input based tilt
+local TILT_DT = 0.2	-- time delta for tilt lerp functions
 local ROT_MIN_Y = -89 -- deg
 local ROT_MAX_Y = 89 -- deg
 
 local VEC3_ZERO = Vector3.zero
 
 local lastCamOffs = VEC3_ZERO
-local lastCamTilt = 0
+local camAngVec = VEC3_ZERO
+local lastWallTilt = 0
+local lastInpTilt = 0
 
 --------------------------------------------------------------------------------------------------
 -- Module
@@ -53,20 +55,17 @@ function FPCam:updateWallCam(dt: number)
 	local nearWall, rightSide = Simulation:getNearWall()
 	local fac = rightSide and -1 or 1
 	local effCamTilt = 
-		(nearWall and Simulation:getCurrentStateId() == PlayerStateId.ON_WALL) and WALL_TILT or 0
+		(nearWall and Simulation:getCurrentStateId() == PlayerStateId.WALL) and WALL_TILT or 0
 	effCamTilt *= fac
 
-	lastCamTilt = math.clamp(
-		MathUtil.flerp(lastCamTilt, effCamTilt, dt * 50), -WALL_TILT, WALL_TILT
+	lastWallTilt = math.clamp(
+		MathUtil.flerp(lastWallTilt, effCamTilt, TILT_DT), -WALL_TILT, WALL_TILT
 	)
 end
 
 --------------------------------------------------------------------------------------------------
 -- FPCam RenderStepped update
 --------------------------------------------------------------------------------------------------
-
-local camAngVec = VEC3_ZERO
-local lastTotalCamTilt = 0
 
 function FPCam:update(dt)
 	self.resetCameraAngle = true
@@ -114,9 +113,12 @@ function FPCam:update(dt)
 		self:updateWallCam(dt)
 
 		-- Mouse movement linked camera tilting
-		local limitedRotX = math.clamp(rotateInput.X * 45, -TILT_ANG, TILT_ANG)
-		local rot_z = MathUtil.flerp(lastTotalCamTilt, limitedRotX, TILT_DT)
-		lastTotalCamTilt = lastCamTilt + rot_z
+		local limitedRotInp = math.clamp(rotateInput.X * 45, -INP_TILT, INP_TILT)
+		-- local rot_z = MathUtil.flerp(lastInpTilt, limitedRotInp, TILT_DT)
+		-- print(rot_z)
+		-- lastInpTilt = lastWallTilt + rot_z
+		lastInpTilt = MathUtil.flerp(lastInpTilt, limitedRotInp, TILT_DT)
+		local rot_z = lastInpTilt + lastWallTilt
 
         camAngVec = Vector3.new(rot_x, rot_y, rot_z)
         newCamCFrame = CFrame.new(newCamFocus.Position + (ROOT_OFFSET + lastCamOffs))
