@@ -141,7 +141,7 @@ end
 
 
 -- Updates camera directed movement force
-function Water:updateSwim(dt: number, rawInpDir: Vector3, gravity: number, onSurface: boolean)
+function Water:updateSwim(dt: number, rawInpDir: Vector3)
     local primaryPart: BasePart = self.character.PrimaryPart
     local camera = Workspace.CurrentCamera
     local camDir = camera.CFrame.LookVector
@@ -149,15 +149,16 @@ function Water:updateSwim(dt: number, rawInpDir: Vector3, gravity: number, onSur
     local currVel = primaryPart.AssemblyLinearVelocity
     local currPos = primaryPart.CFrame.Position
     local mass = primaryPart.AssemblyMass
+    local gravity = Workspace.Gravity
+    local onSurface = self.shared.onWaterSurface
 
     local swimDirVec = getCamRelInpVec(camera.CFrame, rawInpDir)
+    local planeSwimDirVecXZ = MathUtil.projectOnPlaneVec3(swimDirVec, VEC3_UP)
     local camFacingDown = camera.CFrame.LookVector:Dot(VEC3_UP) < 0
     local movingDown = swimDirVec.Unit:Dot(VEC3_UP) > 0
-    --local cantSwimUpCond = not camFacingDown and onSurface
     local diving = camFacingDown and onSurface
     
     local corrSwimDirVec = swimDirVec
-
     if (diving and rawInpDir.Z > EPSILON) then
         corrSwimDirVec = MathUtil.compressVectorInCone(
             swimDirVec, 
@@ -166,9 +167,19 @@ function Water:updateSwim(dt: number, rawInpDir: Vector3, gravity: number, onSur
         )
     end
     if (not (canSwimUp or movingDown)) then --or cantSwimUpCond
-        corrSwimDirVec = MathUtil.projectOnPlaneVec3(swimDirVec, VEC3_UP)
+        corrSwimDirVec = planeSwimDirVecXZ
     end
 
+    -- if near a ledge, add a little vertical force
+    local nearLedge = false
+    if (planeSwimDirVecXZ.Magnitude > EPSILON) then
+        nearLedge = PhysCheck.checkLedge(currPos, -planeSwimDirVecXZ * 2, PHYS_RADIUS)
+    end
+    if (nearLedge) then
+        corrSwimDirVec += -gravity * VEC3_UP * 0.02
+    end
+
+    -- calc target force
     local target = currPos - corrSwimDirVec * SWIM_SPEED
     local accelVec = 2 * ((target - currPos) - currVel * PHYS_DT)/(PHYS_DT * SWIM_DAMP)
 
@@ -190,7 +201,7 @@ local diveSignal = false
 local lastOnSurface = false
 local uwTime = 0
 
--- TODO: move logic over time GameClient
+-- TODO: move sound logic over time GameClient
 function Water:updateSounds(dt: number)
     local inWater: boolean = self.shared.inWater
     local onSurface: boolean = self.shared.onWaterSurface 
@@ -231,7 +242,6 @@ function Water:update(dt: number)
     local inpVec = InputManager:getMoveVec()
     local currVel = primaryPart.AssemblyLinearVelocity
     local currPos = primaryPart.CFrame.Position
-    local grav = Workspace.Gravity
 
     -- phys checks
     local buoySensor = self.shared.buoySensor
@@ -241,6 +251,7 @@ function Water:update(dt: number)
     local groundData: PhysCheck.groundData = PhysCheck.checkFloor(
         currPos, PHYS_RADIUS, COMP_HIP_HEIGHT, GND_CLEAR_DIST
     )
+
     self.shared.grounded = groundData.grounded
     self.shared.inWater = waterData.inWater
     self.shared.underWater = waterData.fullSubmerged
@@ -248,7 +259,7 @@ function Water:update(dt: number)
 
     -- movement update
     canSwimUp = self.shared.stateTime > INP_READ_DELAY
-    self:updateSwim(dt, inpVec, grav, waterData.onSurface)
+    self:updateSwim(dt, inpVec)
     self:updateSounds(dt)
 
     -- animation

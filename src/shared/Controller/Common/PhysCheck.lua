@@ -38,14 +38,16 @@ local USE_WALL_COLL_GROUP = true
 
 local WATER_SCAN_Y_OFFS = 2.55
 local WATER_SCAN_DIST = 10.0
+-- offset for checking a ledge gap
+local GAP_SCAN_OFFS = 5.125
 
--- [[Misc]]
-
+-- constants
 local PHI = 1.61803398875
 local BOUND_POINTS = math.round(2 * math.sqrt(NUM_GND_RAYS))
 local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1 ,0)
 local VEC3_FARDOWN = -999999999 * VEC3_UP
+local EPSILON = 0.001
 
 local floorRayParams = RaycastParams.new()
 floorRayParams.CollisionGroup = CollisionGroup.PLAYER
@@ -490,6 +492,36 @@ function PhysCheck.checkWater(
 		fullSubmerged = fullySubmerged,
 		waterSurfacePos = surfacePos
 	} :: waterData
+end
+
+function PhysCheck.checkLedge(
+	rootPos: Vector3,
+	scanDir: Vector3,
+	bodyRadius: number
+): boolean
+
+	assert(scanDir.Magnitude > EPSILON, "scanDir Vector3 must be non-zero")
+	local nearLedge = false
+	local rootHit = false
+	local airHit = false
+
+	local rootRay = Workspace:Raycast(rootPos, scanDir * bodyRadius, floorRayParams)
+	local airRay = Workspace:Raycast(
+		rootPos, scanDir * bodyRadius + (VEC3_UP * GAP_SCAN_OFFS), floorRayParams
+	)
+	if (rootRay) then
+		rootHit = true
+		-- DEBUG
+		if (DebugVisualize.enabled) then DebugVisualize.point(rootRay.Position, Color3.new(1, 0, 1)) end
+	end
+	if (airRay) then
+		airHit = true
+		-- DEBUG
+		if (DebugVisualize.enabled) then DebugVisualize.point(airRay.Position, Color3.new(1, 0, 1)) end
+	end
+	nearLedge = rootHit and not airHit
+
+	return nearLedge
 end
 
 return PhysCheck

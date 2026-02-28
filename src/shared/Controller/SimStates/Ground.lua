@@ -53,6 +53,7 @@ local ANIM_SPEED_FAC = 0.06
 local VEC3_ZERO = Vector3.zero
 local VEC3_UP = Vector3.new(0, 1, 0)
 local VEC3_RIGHT = Vector3.new(0, 0, 1)
+local SMALL_MAG = 0.01
 
 type Counter = {
     t: number,
@@ -82,7 +83,6 @@ local lastYPos = 0
 local jumped = false
 local jumpSignal = false
 local offGroundTime = 0
-local inStateTime = 0
 
 -- Create required physics constraints
 local function createForces(mdl: Model): {[string]: Instance}
@@ -156,7 +156,6 @@ function Ground:stateEnter(stateId: number, params: any?)
         t = 0,
         cooldown = 0
     }
-    inStateTime = 0
 
     if (stateId == PlayerStateId.WATER and not ALLOW_WATER_WALL_MOUNT) then
         wasOnDryLand = false
@@ -301,16 +300,14 @@ function Ground:update(dt: number)
     )
 
     local wallData: PhysCheck.wallData
-    if (currHoriVel.Magnitude < 0.1) then
+    if (currHoriVel.Magnitude < SMALL_MAG) then
         wallData = PhysCheck.defaultWallData()
     else
         local scanDir = self.shared.isDashing and camHoriDir or currHoriVel
         wallData = PhysCheck.checkWall(currPos, scanDir, PHYS_RADIUS, HIP_HEIGHT)
 
         -- if scanDir delivers no results, check again with the raw input dir
-        if (not wallData.nearWall and rawMoveDir.Magnitude > 0.1 
-            and inStateTime > 0.5 and wasGroundedOnce
-        ) then
+        if (rawMoveDir.Magnitude > SMALL_MAG and self.shared.stateTime > 0.25) then
             wallData = PhysCheck.checkWall(currPos, -rawMoveDir, PHYS_RADIUS, HIP_HEIGHT)
         end
     end
@@ -441,7 +438,6 @@ function Ground:update(dt: number)
     else
         offGroundTime = 0
     end
-    inStateTime += dt
 end
 
 function Ground:destroy()
