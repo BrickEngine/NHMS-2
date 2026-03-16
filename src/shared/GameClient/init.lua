@@ -8,7 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
---local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
+local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local Network = require(ReplicatedStorage.Shared.Network)
 local CliApi = require(script.CliNetApi)
 local SoundManager = require(ReplicatedStorage.Shared.SoundManager)
@@ -17,19 +17,30 @@ local SoundManager = require(ReplicatedStorage.Shared.SoundManager)
 require(ReplicatedStorage.Shared.Controller)
 
 local clientEvents = Network.clientEvents
-
-local DEFAULT_HEALTH = 100
+local localPlr = Players.LocalPlayer
 
 local updateConn: RBXScriptConnection
 local charConn: RBXScriptConnection
 
+local localData = ClientRoot.getPlrData()
+
 ------------------------------------------------------------------------------------------------------------------------
 -- Network
-------------------------------------------------------------------------------------------------------------------------
+
+local function onSetHealth(plr: Player, val: number)
+    if (plr ~= localPlr) then
+        return
+    end
+    ClientRoot.setHealth(val)
+    ClientRoot.setIsDead(localData.health <= 0)
+end
 
 local cliREFunction = {
     [Network.serverEvents.playSound] = function(plr: Player, item: string, play: boolean)
         SoundManager:updatePlayerSound(plr, item, play)
+    end,
+    [Network.serverEvents.setHealth] = function(plr: Player, val: number)
+        onSetHealth(plr, val)
     end
 }
 
@@ -46,9 +57,7 @@ CliApi.implementFastREvents(cliFastREFunctions)
 -- Module
 ------------------------------------------------------------------------------------------------------------------------
 
-local GameClient = {
-    gameTime = 0,
-}
+local GameClient = {}
 
 function GameClient.init()
     GameClient:initPlayer()
@@ -70,9 +79,8 @@ function GameClient:initPlayer()
 end
 
 function GameClient:updateGameTime(dt: number, override: number?)
-    if (override) then self.gameTime = override end
-    print(self.gameTime)
-    self.gameTime += dt
+    local newTime = override or ClientRoot.getGameTime() + dt
+    ClientRoot.setGameTime(newTime)
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -84,11 +92,6 @@ end
 
 -- Sets player data default values and stops execution
 function GameClient:reset()
-    self.gameTime = 0
-    self.currentInvSlot = 0
-    self.health = DEFAULT_HEALTH
-    self.armor = 0
-
     if (updateConn) then
         (updateConn :: RBXScriptConnection):Disconnect()
     end

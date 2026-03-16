@@ -107,6 +107,7 @@ function Water.new(...)
     self.character = self._simulation.character :: Model
     self.forces = createForces(self.character)
     self.animation = self._simulation.animation
+    self.buoySensor = self._simulation.buoySensor
 
     --self.mainColl = (self.character :: Model):FindFirstChild(CharacterDef.PARAMS.MAINCOLL_NAME) :: BasePart
     --self.mainCollBuoySensor = createBuoySensForPart(self.mainColl) :: BuoyancySensor
@@ -245,7 +246,7 @@ function Water:update(dt: number)
     local currPos = primaryPart.CFrame.Position
 
     -- phys checks
-    local buoySensor = self.shared.buoySensor
+    local buoySensor = self.buoySensor
     local waterData: PhysCheck.waterData = PhysCheck.checkWater(
         currPos, PHYS_RADIUS, buoySensor
     )

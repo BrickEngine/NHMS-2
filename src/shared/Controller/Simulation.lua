@@ -17,14 +17,7 @@ local Wall = require(simStates.Wall) :: BaseState.BaseState
 
 local PRINT_DEBUG = true
 
-local VEC3_UP = Vector3.new(0, 1, 0)
-
--- Local vars
-local primaryPartListener: RBXScriptConnection
-local state_free = true
-
-local stateSharedVals = {
-    buoySensor = nil,
+local STATE_SHARED_VALS = table.freeze({
     grounded = false,
     inWater = false,
     underWater = false,
@@ -32,9 +25,14 @@ local stateSharedVals = {
     isDashing = false,
     nearWall = false,
     isRightSideWall = false,
-    stateTime = 0,
-    wallTime = 0
-}
+    stateTime = 0
+})
+
+local VEC3_UP = Vector3.new(0, 1, 0)
+
+-- Local vars
+local primaryPartListener: RBXScriptConnection
+local state_free = true
 
 local function createBuoySensor(mdl: Model): BuoyancySensor
     assert(mdl.PrimaryPart)
@@ -49,13 +47,29 @@ local function createBuoySensor(mdl: Model): BuoyancySensor
     return buoySens
 end
 
+local function deepCopy(tbl: {}): {}
+    local copy = {}
+    for k, v in pairs(tbl) do
+        if (type(v) == "table") then
+            -- Recursively copy nested tables
+            copy[k] = deepCopy(v)
+        else
+            -- Copy non-table values directly
+            copy[k] = v
+        end
+    end
+    return copy
+end
+
 ------------------------------------------------------------------------------------------------------------------------------
 -- Module
 ------------------------------------------------------------------------------------------------------------------------------
 local Simulation = {}
 Simulation.__index = Simulation
 
+-- types
 export type Simulation = typeof(Simulation)
+export type SharedVals = typeof(STATE_SHARED_VALS)
 
 function Simulation.new()
     local self = setmetatable({}, Simulation) :: any
@@ -65,7 +79,8 @@ function Simulation.new()
     self.simUpdateConn = nil
     self.animation = nil
 
-    self.stateShared = stateSharedVals
+    self.stateShared = nil
+    self.buoySensor = nil
 
     self.character = Players.LocalPlayer.Character
 
@@ -159,20 +174,13 @@ function Simulation:onRootPartChanged()
 end
 
 function Simulation:resetStateShared()
-    assert(self.character, "character missing")
-    assert(self.character.PrimaryPart, "primary part missing")
-
-    if (not self.stateShared) then
-        return
-    end
-    if (self.stateShared.buoySensor) then
-        (self.stateShared.buoySensor :: BuoyancySensor):Destroy()
-    end
-    self.stateShared = stateSharedVals
-    self.stateShared.buoySensor = createBuoySensor(self.character)
+    self.stateShared = deepCopy(STATE_SHARED_VALS)
 end
 
 function Simulation:resetSimulation()
+    assert(self.character, "character missing")
+    assert(self.character.PrimaryPart, "primary part missing")
+
     if (self.simUpdateConn :: RBXScriptConnection) then
         self.simUpdateConn:Disconnect()
     end
@@ -183,6 +191,11 @@ function Simulation:resetSimulation()
     self.animation = Animation.new(self)
 
     self:resetStateShared()
+
+    if (self.buoySensor) then
+        (self.buoySensor :: BuoyancySensor):Destroy()
+    end
+    self.buoySensor = createBuoySensor(self.character)
 
     if (self.states :: {[number]: BaseState.BaseState}) then
         for id: number, _ in pairs(self.states) do
@@ -205,10 +218,36 @@ function Simulation:resetSimulation()
     }
     self.currentState = self.states[PlayerStateId.GROUND]
     self.currentState:stateEnter(PlayerStateId.NONE)
+    self.stateTime = 0
 
     self.simUpdateConn = RunService.PostSimulation:Connect(function(dt)
         self:update(dt)
     end)
+end
+
+function Simulation:serialize(sharedVals: SharedVals): buffer
+    if (not self.stateShared) then error("stateShared vals not initialized") end
+
+    local shared: SharedVals = self.stateShared
+    local offset = 0
+    local flags = 0
+    if (shared.grounded)        then flags = bit32.bor(flags, bit32.lshift(1, 0)) end
+    if (shared.inWater)         then flags = bit32.bor(flags, bit32.lshift(1, 1)) end
+    if (shared.underWater)      then flags = bit32.bor(flags, bit32.lshift(1, 2)) end
+    if (shared.onWaterSurface)  then flags = bit32.bor(flags, bit32.lshift(1, 3)) end
+    if (shared.isDashing)       then flags = bit32.bor(flags, bit32.lshift(1, 4)) end
+    if (shared.nearWall)        then flags = bit32.bor(flags, bit32.lshift(1, 5)) end
+    if (shared.isRightSideWall) then flags = bit32.bor(flags, bit32.lshift(1, 6)) end
+
+    local buf = buffer.create(1)
+    buffer.writeu8(buf, offset, flags); offset += 1
+    buffer.writei8(buf, offset, self.currentState)
+
+    return buf
+end
+
+function Simulation:deserialize()
+    --TODO
 end
 
 -- TESTING PURPOSES

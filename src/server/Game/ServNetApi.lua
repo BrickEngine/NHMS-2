@@ -5,7 +5,7 @@ local Network = require(ReplicatedStorage.Shared.Network)
 local LOG_EVENTS = false
 local LOG_FAST_EVENTS = false
 
--- Create the folder for storing network objects, if it does not exist
+-- create the folder for storing network objects, if it does not exist
 local netContainer = ReplicatedStorage:FindFirstChild(Network.FOLDER_NAME)
 if (not netContainer) then
     netContainer = Instance.new("Folder", ReplicatedStorage)

@@ -1,4 +1,7 @@
-return table.freeze({
+local WeaponName = table.freeze({
+    SWORD = "Sword",
+    FIREBALL = "Fireball",
+    
     PISTOL = "Pistol",
     SMG = "SMG",
     SHOTGUN = "Shotgun",
@@ -6,3 +9,5 @@ return table.freeze({
     LMG = "LMG",
     RPG = "RPG",
 })
+
+return WeaponName

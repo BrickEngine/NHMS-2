@@ -30,8 +30,6 @@ function BaseMoveInput.new()
     self.isDashing = false
     self.moveVec = VEC3_ZERO
 
-    export type BaseInput = typeof(self)
-
     return self
 end
 

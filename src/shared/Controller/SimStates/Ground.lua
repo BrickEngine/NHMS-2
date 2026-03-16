@@ -20,8 +20,16 @@ local PhysCheck = require(controller.Common.PhysCheck)
 local STATE_ID = PlayerStateId.GROUND
 
 -- physics
-local MOVE_SPEED = 1.95--1.75
-local DASH_SPEED = 3.2
+local MOVE_SPEED_FAC = 1.95--1.75
+local DASH_SPEED_FAC = 3.2
+local MOVE_DAMP = 0.4 -- lower value ~ more rigid movement (do not set too low; breaks at low framerates)
+local DASH_DAMP = 0.1 -- equivalent to MOVE_DAMP
+local PHYS_DT = 0.05 -- time delta for move accel
+local AIR_FORCE_FAC = 0.1 -- lower value ~ less control (0 = no control)
+-- max reachable velocities
+local MAX_DASH_SPEED = DASH_SPEED_FAC / PHYS_DT
+local MAX_MOVE_SPEED = MOVE_SPEED_FAC / PHYS_DT
+
 local MIN_WALL_MOUNT_SPEED = 7.5 -- studs/s
 local ALLOW_IMM_WALL_MOUNT = true -- whether to allow repeated Wall state transitions
 local ALLOW_WATER_WALL_MOUNT = true -- whether to allow wall mounting after exiting water
@@ -32,9 +40,6 @@ local JUMP_HEIGHT = 6
 local JUMP_DELAY = 0.28
 local DASH_TIME = 1.6
 local DASH_COOLDOWN_TIME = 0.8
-local MOVE_DAMP = 0.4 -- lower value ~ more rigid movement (do not set too low; breaks at low framerates)
-local DASH_DAMP = 0.1 -- equivalent to MOVE_DAMP
-local PHYS_DT = 0.05 -- time delta for move accel
 
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
@@ -121,7 +126,7 @@ local function getCFrameRelMoveVec(camCFrame: CFrame, relativeVec: Vector3): Vec
         VEC3_ZERO,
         Vector3.new(
             camCFrame.LookVector.X, 0, camCFrame.LookVector.Z
-        ).Unit
+        )
     ):VectorToWorldSpace(relativeVec)
 end
 
@@ -140,6 +145,7 @@ function Ground.new(...)
     self.character = self._simulation.character :: Model
     self.forces = createForces(self.character)
     self.animation = self._simulation.animation
+    self.buoySensor = self._simulation.buoySensor
 
     --ray_params_gnd.FilterDescendantsInstances = self.character:GetChildren()
 
@@ -262,20 +268,30 @@ function Ground:updateMove(dt: number, rawMoveDir: Vector3, normal: Vector3, nor
     local mass = primaryPart.AssemblyMass
     local currHoriVel = Vector3.new(currVel.X, 0, currVel.Z)
 
-    local accelVec, moveDirVec, target
-    if (self.shared.isDashing and not (normAngle > MAX_INCLINE)) then
+    local execDash = self.shared.isDashing and not (normAngle > MAX_INCLINE)
+
+    local currMaxSpeed, currDamp =
+        execDash and MAX_DASH_SPEED or MAX_MOVE_SPEED,
+        execDash and DASH_DAMP or MOVE_DAMP
+
+    local moveDirVec, target, speedFac
+    if (execDash) then
         moveDirVec = getCFrameRelMoveVec(camCFrame, VEC3_RIGHT)
-        target = currPos - moveDirVec * DASH_SPEED
-        accelVec = 2 * ((target - currPos) - currHoriVel * PHYS_DT)/(PHYS_DT * DASH_DAMP)
+        if (currMaxSpeed < currHoriVel.Magnitude) then
+            speedFac = currHoriVel.Magnitude * PHYS_DT
+        else 
+            speedFac = DASH_SPEED_FAC
+        end
+        target = currPos - moveDirVec * speedFac
     else
         moveDirVec = rawMoveDir
-        target = currPos - moveDirVec * MOVE_SPEED
-        accelVec = 2 * ((target - currPos) - currHoriVel * PHYS_DT)/(PHYS_DT * MOVE_DAMP)
+        target = currPos - moveDirVec * MOVE_SPEED_FAC
     end
-    self.forces.moveForce.Force = accelVec * mass
+    local accelVec = 2 * ((target - currPos) - currHoriVel * PHYS_DT)/(PHYS_DT * currDamp)
 
+    self.forces.moveForce.Force = accelVec * mass
     if (not self.shared.grounded and not self.shared.isDashing) then
-        self.forces.moveForce.Force *= 0.1
+        self.forces.moveForce.Force *= AIR_FORCE_FAC
     end
 end
 
@@ -308,11 +324,11 @@ function Ground:update(dt: number)
 
         -- if scanDir delivers no results, check again with the raw input dir
         if (rawMoveDir.Magnitude > SMALL_MAG and self.shared.stateTime > 0.25) then
-            wallData = PhysCheck.checkWall(currPos, -rawMoveDir, PHYS_RADIUS, HIP_HEIGHT)
+            wallData = PhysCheck.checkWall(currPos, -rawMoveDir.Unit, PHYS_RADIUS, HIP_HEIGHT)
         end
     end
 
-    local buoySensor = self.shared.buoySensor
+    local buoySensor = self.buoySensor
     local waterData: PhysCheck.waterData = PhysCheck.checkWater(
         currPos, PHYS_RADIUS, buoySensor
     )

@@ -1,4 +1,4 @@
--- Main animation module. Instantiates all character dependent animation tracks
+-- Character animations module. Instantiates all defined animation tracks
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -7,24 +7,41 @@ local AnimStateId = require(ReplicatedStorage.Shared.Enums.AnimationStateId)
 local Animation = {}
 Animation.__index = Animation
 
+type AnimationState = {
+    id: string,
+	trackData: {[string]: any}
+}
+
 Animation.states = {
 	-- idle (0)
-	[AnimStateId.DEATH] = {id = "rbxassetid://86228921476914", prio = 0},
-	[AnimStateId.IDLE] = {id = "rbxassetid://112935245839336", prio = 0},
+	[AnimStateId.DEATH] = {
+		id = "rbxassetid://86228921476914", 
+		trackData = {
+			Priority = 0
+		}
+	},
+	[AnimStateId.IDLE] = {
+		id = "rbxassetid://112935245839336", 
+		trackData = {
+			Priority = 0,
+			Looped = true
+		}
+	},
 	--[AnimStateId.IDLE] = {id = "http://www.roblox.com/asset/?id=180435571", prio = 0},
 	-- movement (1)
-	[AnimStateId.WALK] = {id = "rbxassetid://131022707317400", prio = 1},
+	[AnimStateId.WALK] = {
+		id = "rbxassetid://133099883641674", 
+		trackData = {
+			Priority = 1,
+			Looped = true
+		}
+	},
     --[AnimStateId.WALK] = {id = "http://www.roblox.com/asset/?id=180426354", prio = 1},
 
 	--TODO
 	--SWIM = "",
 	--FALL = "",
 	-- actions (2-5)
-}
-
-export type AnimationStateType = {
-    id: string,
-	prio: number
 }
 
 function Animation.new(simulation)
@@ -37,13 +54,18 @@ function Animation.new(simulation)
 	self.currentState = "None"
 	self.animTracks = {} :: {[string]: AnimationTrack}
 
-	for animName: string, animData: AnimationStateType in pairs(self.states) do
+	for animName: string, animData: AnimationState in pairs(self.states) do
 		local animInst = Instance.new("Animation", self.animator)
-		animInst.AnimationId = animData.id
 		animInst.Name = animName
+		animInst.AnimationId = animData.id
 
 		self.animTracks[animName] = self.animator:LoadAnimation(animInst) :: AnimationTrack
-		self.animTracks[animName].Priority = animData.prio
+
+		-- set anim data
+		for str: string, val: any in pairs(animData.trackData) do
+			self.animTracks[animName][str] = val
+		end
+
 		self.animTracks[animName].Stopped:Connect(function()
 			--print(animName .. " WAS STOPPED")
 		end)

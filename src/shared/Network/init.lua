@@ -13,22 +13,33 @@ local NetApi = table.freeze({
     clientEvents = {
         requestSpawn = "RequestSpawn",
         requestDespawn = "RequestDespawn",
-        requestSound = "RequestSound"
+        requestSound = "RequestSound",
+        requestChangeHealth = "RequestChangeHealth",
+        requestWeaponSwitch = "RequestWeaponSwitch",
+        requestWeaponFire = "RequestWeaponFire",
+        requestAquirePickup = "RequestAquirePickup"
     },
     clientFastEvents = {
-        jointsDataToServer = "JointsDataToServer"
+        jointsDataToServer = "JointsDataToServer",
+        plrDataToServer = "PlrDataToServer",
     },
     -- server -> client
     serverEvents = {
         playSound = "PlaySound",
+        setHealth = "SetHealth",
+        giveWeapon = "GiveWeapon",
+        switchWeapon = "SwitchWeapon",
+        setEffect = "SetEffect",
+        addPickup = "AddPickup",
+        removePickup = "RemovePickup",
     },
     serverFastEvents = {
-        jointsDataToClient = "JointsDataToClient"
+        jointsDataToClient = "JointsDataToClient",
+        plrDataToClient = "PlrDataToClient",
     },
     -- client -> server -> client
-    remoteFunctions = {
-
-    }
+    -- TODO
+    remoteFunctions = {}
 })
 
 -- Assert all network object names are unique

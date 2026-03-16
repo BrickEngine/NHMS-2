@@ -7,8 +7,13 @@ local Workspace = game:GetService("Workspace")
 local Global = require(ReplicatedStorage.Shared.Global)
 local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
+local PlayerData = require(ReplicatedStorage.Shared.PlayerData)
 local Network = require(ReplicatedStorage.Shared.Network)
 local ServNetApi = require(script.ServNetApi)
+
+local DEATH_COOLDOWN = 1.5
+
+local eventCooldownList = {} :: {[Player]: number}
 
 ------------------------------------------------------------------------------------------------------
 -- Initialize Workspace
@@ -40,33 +45,21 @@ do
     end
 end
 
-------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
 
 local function removePlayerCharacter(plr: Player)
 	if (plr.Character) then plr.Character:Destroy() end
 end
 
--- local function setPlrReplicationFocus(plr: Player)
---     if (not Players[plr.Name]) then
---         error("player does not exist", 2)
---     end
+local function revivePlayer(plr: Player)
+    local currData = PlayerData.getPlayerData(plr)
+    currData.health = PlayerData.LIMITS.health
+    currData.isDead = false
 
---     local repPart: BasePart
---     local basePlate = Workspace:FindFirstChild("Baseplate")
+    ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, currData.health)
+end
 
---     if (basePlate) then
---         repPart = basePlate
---     else
---         repPart = Instance.new("Part", Workspace)
---         repPart.Anchored = true
---         repPart.CFrame = CFrame.identity
---         repPart.CanCollide, repPart.CanQuery, repPart.CanTouch = false, false, false
---         repPart.Transparency = 1
---     end
---     plr.ReplicationFocus = repPart
--- end
-
-local function spawnAndSetPlrChar(plr: Player)
+local function spawnPlayer(plr: Player)
     if (plr.Character) then
         warn(plr.Name.." attempted to spawn with active character")
         plr.Character:Destroy()
@@ -97,6 +90,36 @@ local function spawnAndSetPlrChar(plr: Player)
 	return newCharacter
 end
 
+local function killPlayer(plr: Player)
+    local currData = PlayerData.getPlayerData(plr)
+    currData.health = 0
+
+    ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, currData.health)
+    
+    task.wait(DEATH_COOLDOWN)
+    removePlayerCharacter(plr)
+    spawnPlayer(plr)
+end
+
+local function changePlrHealth(plr: Player, val: number, addBonus: boolean?)
+    local currData = PlayerData.getPlayerData(plr)
+    local limit = PlayerData.LIMITS.health
+    if (addBonus) then
+        limit = PlayerData.LIMITS.healthWithBonus
+    end
+    currData.health += val
+    math.clamp(currData.health, 0, limit)
+
+    ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, currData.health)
+
+    if (currData.health <= 0) then
+        killPlayer(plr)
+    end
+end
+
+------------------------------------------------------------------------------------------------------------------------
+-- Event methods
+
 local function onPlayerRequestSound(plr: Player, item: string?, play: boolean?)
     if (type(item) ~= "string" or type(play) ~= "boolean") then
         warn(`{plr.Name} sent illegal sound item arg`); return
@@ -104,32 +127,55 @@ local function onPlayerRequestSound(plr: Player, item: string?, play: boolean?)
     ServNetApi.events[Network.serverEvents.playSound]:FireAllClients(plr, item, play)
 end
 
-
-local function onPlayerAdded(plr: Player)
-    print(plr.Name .. " joined the game")
-    --setPlrReplicationFocus(plr)
+-- Changes player health, if the requested value is int and < 0
+local function onPlayerRequestChangeHealth(plr: Player, val: number?)
+    if (type(val) ~= "number") then
+        warn("not a number"); return
+    end
+    if (val < 0 and val % 1 == 0) then
+        changePlrHealth(plr, val)
+    end
 end
 
-local function onPlayerRemoving(plr: Player)
-    removePlayerCharacter(plr)
+local function onPlayerRequestSpawn(plr: Player)
+    if (eventCooldownList[plr] > 0) then
+        warn(`{plr} on cooldown`); return
+    end
+    PlayerData.getPlayerData(plr).health = PlayerData.LIMITS.health
+
+    spawnPlayer(plr)
+    revivePlayer(plr)
+
+    eventCooldownList[plr] = DEATH_COOLDOWN
 end
 
--- Network events management
+-- network events management
 local remEventFunctions = {
     [Network.clientEvents.requestSpawn] = function(plr: Player)
-        spawnAndSetPlrChar(plr)
+        onPlayerRequestSpawn(plr)
     end,
     [Network.clientEvents.requestDespawn] = function(plr: Player)
         removePlayerCharacter(plr)
-        -- TODO
     end,
     [Network.clientEvents.requestSound] = function(plr: Player, ...)
         onPlayerRequestSound(plr, ...)
+    end,
+    [Network.clientEvents.requestChangeHealth] = function(plr: Player, ...)
+        onPlayerRequestChangeHealth(plr, ...)
+    end,
+    [Network.clientEvents.requestWeaponFire] = function(plr: Player, ...)
+        -- TODO
+    end,
+    [Network.clientEvents.requestWeaponSwitch] = function(plr: Player, ...)
+        -- TODO
     end,
 }
 
 local fastRemEventFunctions = {
     [Network.clientFastEvents.jointsDataToServer] = function(plr: Player)
+        -- TODO
+    end,
+    [Network.clientFastEvents.plrDataToServer] = function(plr: Player)
         -- TODO
     end,
 }
@@ -139,6 +185,22 @@ local remFunctionFunctions = {}
 ServNetApi.implementREvents(remEventFunctions)
 ServNetApi.implementFastREvents(fastRemEventFunctions)
 ServNetApi.implementRFunctions(remFunctionFunctions)
+
+------------------------------------------------------------------------------------------------------------------------
+
+local function onPlayerAdded(plr: Player)
+    print(plr.Name .. " joined the game")
+    eventCooldownList[plr] = 0
+    PlayerData.createPlayerData(plr)
+end
+
+local function onPlayerRemoving(plr: Player)
+    print(plr.Name .. " left the game")
+    eventCooldownList[plr] = nil
+    PlayerData.removePlayerData(plr)
+
+    removePlayerCharacter(plr)
+end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
 Players.PlayerRemoving:Connect(onPlayerRemoving)

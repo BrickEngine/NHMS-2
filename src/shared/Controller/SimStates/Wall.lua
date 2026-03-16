@@ -23,12 +23,13 @@ local JUNP_INP_COOLDOWN = 0.1 -- seconds
 local JUMP_HEIGHT = 8.0
 local JUMP_DIST_FAC = 18.0
 
-local BANK_MIN = math.rad(75.0) -- min dismount wall angle
-local BANK_MAX = math.rad(105.0) -- max dismount wall angle
+local BANK_MIN = math.rad(75.0) -- min y-axis dismount wall angle
+local BANK_MAX = math.rad(105.0) -- max y-axis dismount wall angle
+
 local SCAN_ANGLE = math.rad(70.0) -- angle offset for left / right wall scans
 
 -- max angle difference between two out of all hit wall normals which, if exceeded, will result in a dismount
-local MAX_ANGLE_DIFF = math.rad(87.5)
+local MAX_ANGLE_DIFF = math.rad(45) --math.rad(87.5)
 -- force scaling for how much force should be applied along the negative wall normal relative to movement speed
 local WALL_FORCE_STRENGTH_FAC = 10.75
 -- max force to be applied by the linear velocity along the wall
@@ -160,6 +161,7 @@ function Wall.new(...)
     self.character = self._simulation.character :: Model
     self.forces = createForces(self.character)
     self.animation = self._simulation.animation
+    self.buoySensor = self._simulation.buoySensor
 
     return setmetatable(self, Wall)
 end
@@ -228,7 +230,6 @@ function Wall:stateLeave()
     assert(primaryPart, `Missing PrimaryPart of character '{self.character.name}'`)
 
     peakedJumpAfterEntry = false
-    self.shared.wallTime = 0
 
     SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WALL_SLIDE, false)
 end
@@ -344,7 +345,7 @@ function Wall:update(dt: number)
     end
 
     local waterData: PhysCheck.waterData = 
-        PhysCheck.checkWater(primaryPart.Position, PHYS_RADIUS, self.shared.buoySensor)
+        PhysCheck.checkWater(primaryPart.Position, PHYS_RADIUS, self.buoySensor)
 
     self.shared.grounded = groundData.grounded
     self.shared.nearWall = wallData.nearWall
@@ -388,7 +389,6 @@ function Wall:update(dt: number)
 
     jumpInpDebounce -= dt
     jumpInpDebounce = math.max(jumpInpDebounce, 0)
-    self.shared.wallTime += dt
 end
 
 function Wall:destroy()

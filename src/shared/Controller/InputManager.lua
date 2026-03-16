@@ -12,21 +12,6 @@ local ACTION_PRIO = 100
 local NORMALIZE_INPUT = true
 local VEC3_ZERO = Vector3.zero
 
--- local MOVEMENT_MODE_MAP = table.freeze({
--- 	[Enum.TouchMovementMode.DPad] = MoveTouch,
--- 	[Enum.DevTouchMovementMode.DPad] = MoveTouch,
--- 	[Enum.TouchMovementMode.Thumbpad] = MoveTouch,
--- 	[Enum.DevTouchMovementMode.Thumbpad] = MoveTouch,
--- 	[Enum.TouchMovementMode.Thumbstick] = MoveTouch,
--- 	[Enum.DevTouchMovementMode.Thumbstick] = MoveTouch,
--- 	[Enum.TouchMovementMode.DynamicThumbstick] = MoveTouch,
--- 	[Enum.DevTouchMovementMode.DynamicThumbstick] = MoveTouch,
--- 	[Enum.TouchMovementMode.Default] = MoveTouch,
--- 	[Enum.ComputerMovementMode.Default] = MoveKeyboard,
--- 	[Enum.ComputerMovementMode.KeyboardMouse] = MoveKeyboard,
--- 	[Enum.DevComputerMovementMode.KeyboardMouse] = MoveKeyboard,
--- 	[Enum.DevComputerMovementMode.Scriptable] = nil
--- })
 local PC_INPUT_TYPE_MAP = table.freeze({
 	[Enum.UserInputType.Keyboard] = MoveKeyboard,
 	[Enum.UserInputType.MouseButton1] = MoveKeyboard,
@@ -67,7 +52,7 @@ function InputManager.new()
 	if UserInputService.TouchEnabled then
         -- TODO
 		self.playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
-		if self.playerGui then
+		if (self.playerGui) then
 			self:createTouchGuiContainer()
 			self:onLastInputTypeChanged(UserInputService:GetLastInputType())
 		else
@@ -124,7 +109,7 @@ end
 
 -- create container for all touch device guis
 function InputManager:createTouchGuiContainer()
-    if self.touchGui then self.touchGui:Destroy() end
+    if (self.touchGui) then self.touchGui:Destroy() end
 
 	self.touchGui = Instance.new("ScreenGui")
 	self.touchGui.Name = "TouchGui"
