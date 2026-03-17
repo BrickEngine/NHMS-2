@@ -62,20 +62,26 @@ local SOUND_DATA = table.freeze({
         SoundId = "rbxassetid://9114555843",
     },
     [SOUND_ITEMS.WALL_ENTER_0] = {
-        SoundId = "rbxassetid://15764092592",
+        SoundId = "rbxassetid://81202220081219",
         PlaybackRegionsEnabled = true,
         PlaybackRegion = NumberRange.new(0.1, SOUND_PB_REG_HUGE) --0.1
     },
     [SOUND_ITEMS.WALL_ENTER_1] = {
-        SoundId = "rbxassetid://81202220081219",
+        SoundId = "rbxassetid://81202220081219", --15764092592
         PlaybackRegionsEnabled = true,
         PlaybackRegion = NumberRange.new(0.1, SOUND_PB_REG_HUGE)
     },
     [SOUND_ITEMS.WALL_SLIDE] = {
-        SoundId = "rbxassetid://81521378859476",
+        SoundId = "rbxassetid://81521378859476", --81521378859476 --140484482380066 --9125636618
+        --PlaybackRegionsEnabled = true,
+        Volume = 1,
+        --PlaybackRegion = NumberRange.new(12, 14),
         Looped = true
     },
 })
+
+--sensory: 1837629716
+--plasma: 140301279229381
 
 local soundEffectsMap = {} :: {[Sound]: {SoundEffect}}
 local playerSoundsMap = {} :: {[Player]: {[string]: Sound}}

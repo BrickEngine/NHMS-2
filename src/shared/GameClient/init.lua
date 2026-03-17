@@ -12,6 +12,8 @@ local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local Network = require(ReplicatedStorage.Shared.Network)
 local CliApi = require(script.CliNetApi)
 local SoundManager = require(ReplicatedStorage.Shared.SoundManager)
+local CorePlayerUI = require(script.UI.CorePlayerUI)
+local UIType = require(ReplicatedStorage.Shared.Enums.UIType)
 
 -- Init Controller singleton
 require(ReplicatedStorage.Shared.Controller)
@@ -101,5 +103,8 @@ function GameClient:reset()
 end
 
 GameClient.init()
+
+CorePlayerUI.init()
+CorePlayerUI.setActive(UIType.GAME)
 
 return GameClient

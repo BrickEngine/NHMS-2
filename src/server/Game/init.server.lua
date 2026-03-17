@@ -204,3 +204,18 @@ end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
 Players.PlayerRemoving:Connect(onPlayerRemoving)
+
+-- action loop [20 Hz]
+local loopDt = 0.05
+while (task.wait(loopDt)) do
+    -- decrement cooldown timers
+    for plr: Player, c: number in pairs(eventCooldownList) do
+        if (eventCooldownList[plr]) then
+            local newTime = c - loopDt
+            if (newTime < 0 ) then
+                newTime = 0
+            end
+            eventCooldownList[plr] = newTime
+        end
+    end
+end
