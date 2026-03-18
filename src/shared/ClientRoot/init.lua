@@ -13,7 +13,7 @@ local gameData = {
     gameTime = 0,
 }
 local simData = {
-    playerState = PlayerStateId.NONE,
+    playerStateId = PlayerStateId.NONE,
     isDashing = false,
     isGrounded = false,
 }
@@ -47,22 +47,17 @@ local ClientRoot = {
     },
 }
 
+export type SimData = typeof(simData)
+export type GameData = typeof(gameData)
+
 -- Getters
 
-function ClientRoot.getGameTime(): number
-    return gameData.gameTime
+function ClientRoot.getGameData(): GameData
+    return gameData
 end
 
-function ClientRoot.getPlayerState(): number
-    return simData.playerState
-end
-
-function ClientRoot.getIsDashing(): boolean
-    return simData.isDashing
-end
-
-function ClientRoot.getIsGrounded(): boolean
-    return simData.isGrounded
+function ClientRoot.getSimData(): SimData
+    return simData
 end
 
 function ClientRoot.getPlrData(): PlayerData.Data
@@ -85,9 +80,9 @@ function ClientRoot.setIsDead(val: boolean)
     plrData.isDead = val
 end
 
-function ClientRoot.setPlayerState(val: number)
-    eventOnValChanged(val, simData.playerState, ClientRoot.signals.simStateChanged)
-    simData.playerState = val
+function ClientRoot.setCurrentPlayerStateId(val: number)
+    eventOnValChanged(val, simData.playerStateId, ClientRoot.signals.simStateChanged)
+    simData.playerStateId = val
 end
 
 function ClientRoot.setIsDashing(val: boolean)

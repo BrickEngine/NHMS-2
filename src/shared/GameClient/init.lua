@@ -13,18 +13,31 @@ local Network = require(ReplicatedStorage.Shared.Network)
 local CliApi = require(script.CliNetApi)
 local SoundManager = require(ReplicatedStorage.Shared.SoundManager)
 local CorePlayerUI = require(script.UI.CorePlayerUI)
+local Controller = require(ReplicatedStorage.Shared.Controller)
+
+local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local UIType = require(ReplicatedStorage.Shared.Enums.UIType)
 
--- Init Controller singleton
-require(ReplicatedStorage.Shared.Controller)
+local MIN_FALL_DMG_VEL = 65.0
+local MIN_FALL_DMG = 5
+local FALL_DMG_COOLDOWN = 0.25
+local FALL_DMG_FAC = 0.0095
+local FALL_DMG_OFFSET = MIN_FALL_DMG_VEL * MIN_FALL_DMG_VEL
 
 local clientEvents = Network.clientEvents
 local localPlr = Players.LocalPlayer
 
-local updateConn: RBXScriptConnection
-local charConn: RBXScriptConnection
+local simulation = Controller:getSimulation()
+local rootPlrData = ClientRoot.getPlrData()
+local rootSimData = ClientRoot.getSimData()
+local rootGameData = ClientRoot.getGameData()
 
-local localData = ClientRoot.getPlrData()
+local lastFallVel = 0
+local fallCooldown = 0
+
+local updateConn: RBXScriptConnection
+local charAddedConn: RBXScriptConnection
+local charRemovingConn: RBXScriptConnection
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Network
@@ -33,8 +46,11 @@ local function onSetHealth(plr: Player, val: number)
     if (plr ~= localPlr) then
         return
     end
+
     ClientRoot.setHealth(val)
-    ClientRoot.setIsDead(localData.health <= 0)
+    if (rootPlrData.health <= 0) then
+        ClientRoot.setIsDead(true)
+    end
 end
 
 local cliREFunction = {
@@ -62,49 +78,103 @@ CliApi.implementFastREvents(cliFastREFunctions)
 local GameClient = {}
 
 function GameClient.init()
-    GameClient:initPlayer()
+    if (updateConn) then
+        (updateConn :: RBXScriptConnection):Disconnect()
+    end
+    updateConn = RunService.PreSimulation:Connect(function(dt) 
+        GameClient.update(dt) 
+    end)
+
+    GameClient.initPlayer()
+
+    return GameClient
 end
 
-function GameClient:initPlayer()
-    local function respawnAfterCharRemove(character: Model)
-        print(character.Name .. " was removed")
-        --task.wait(1.5)
+function GameClient.initPlayer()
+    local function onCharAdded(character: Model)
+        ClientRoot.setIsDead(false)
+    end
+
+    local function onCharRemoving(character: Model)
         CliApi.events[clientEvents.requestSpawn]:FireServer()
     end
 
     CliApi.events[clientEvents.requestSpawn]:FireServer()
 
-    if (charConn) then
-        charConn:Disconnect()
-    end
-    charConn = Players.LocalPlayer.CharacterRemoving:Connect(respawnAfterCharRemove)
+    if (charAddedConn) then charAddedConn:Disconnect() end
+    if (charRemovingConn) then charRemovingConn:Disconnect() end
+    charAddedConn = Players.LocalPlayer.CharacterAdded:Connect(onCharAdded)
+    charRemovingConn = Players.LocalPlayer.CharacterRemoving:Connect(onCharRemoving)
 end
 
-function GameClient:updateGameTime(dt: number, override: number?)
-    local newTime = override or ClientRoot.getGameTime() + dt
+function GameClient.changeHealth(newHp: number)
+    if (newHp == rootPlrData.health) then
+        return
+    end
+    newHp = math.max(0, newHp)
+    CliApi.events[clientEvents.requestChangeHealth]:FireServer(newHp)
+    ClientRoot.setHealth(newHp)
+end
+
+function GameClient.updateFallDamage(dt: number)
+    local character = Players.LocalPlayer.Character
+    local isDead = rootPlrData.isDead
+
+    if (not character or isDead) then
+        return
+    end
+
+    local primPart = character.PrimaryPart
+    assert(primPart, "No primary part")
+
+    local currFallVel = math.abs(math.min(primPart.AssemblyLinearVelocity.Y, 0))
+
+    local damageConditions = 
+        rootSimData.playerStateId == PlayerStateId.GROUND 
+        and rootSimData.isGrounded 
+        and lastFallVel >= MIN_FALL_DMG_VEL 
+        and fallCooldown <= 0
+
+    if (damageConditions) then
+        local damage = math.floor((lastFallVel * lastFallVel - FALL_DMG_OFFSET) * FALL_DMG_FAC + MIN_FALL_DMG)
+        local newHp = rootPlrData.health - damage
+        print(newHp)
+        GameClient.changeHealth(newHp)
+        fallCooldown = FALL_DMG_COOLDOWN
+    end
+
+    fallCooldown = math.max(0, fallCooldown - dt)
+    lastFallVel = currFallVel
+end
+
+function GameClient.updateGameTime(dt: number, override: number?)
+    local newTime = override or rootGameData.gameTime + dt
     ClientRoot.setGameTime(newTime)
+end
+
+function GameClient.updateSimData(dt: number)
+    local stateShared = simulation:getStateShared()
+    local currStateId = simulation:getCurrentStateId()
+
+    ClientRoot.setIsGrounded(stateShared.grounded)
+    ClientRoot.setIsDashing(stateShared.isDashing)
+    ClientRoot.setCurrentPlayerStateId(currStateId)
 end
 
 ------------------------------------------------------------------------------------------------------------------------
 -- GameClient update
 ------------------------------------------------------------------------------------------------------------------------
-function GameClient:update(dt: number)
-    self:updateGameTime(dt)
+function GameClient.update(dt: number)
+    GameClient.updateGameTime(dt)
+    GameClient.updateSimData(dt)
+    GameClient.updateFallDamage(dt)
 end
 
--- Sets player data default values and stops execution
-function GameClient:reset()
-    if (updateConn) then
-        (updateConn :: RBXScriptConnection):Disconnect()
-    end
-    updateConn = RunService.PreSimulation:Connect(
-        function(dt) self:update(dt) end
-    )
-end
+------------------------------------------------------------------------------------------------------------------------
 
 GameClient.init()
 
-CorePlayerUI.init()
+CorePlayerUI.disableAll()
 CorePlayerUI.setActive(UIType.GAME)
 
 return GameClient

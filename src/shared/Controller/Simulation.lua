@@ -4,6 +4,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 --local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
+local FuncUtil = require(ReplicatedStorage.Shared.Util.FuncUtil)
 local Animation = require(script.Parent.Animation)
 local DebugVisualize = require(script.Parent.Common.DebugVisualize)
 
@@ -30,9 +31,11 @@ local STATE_SHARED_VALS = table.freeze({
 
 local VEC3_UP = Vector3.new(0, 1, 0)
 
--- Local vars
+-- local vars
 local primaryPartListener: RBXScriptConnection
 local state_free = true
+
+local stateSharedDefaults = FuncUtil.deepCopy(STATE_SHARED_VALS)
 
 local function createBuoySensor(mdl: Model): BuoyancySensor
     assert(mdl.PrimaryPart)
@@ -47,20 +50,6 @@ local function createBuoySensor(mdl: Model): BuoyancySensor
     return buoySens
 end
 
-local function deepCopy(tbl: {}): {}
-    local copy = {}
-    for k, v in pairs(tbl) do
-        if (type(v) == "table") then
-            -- Recursively copy nested tables
-            copy[k] = deepCopy(v)
-        else
-            -- Copy non-table values directly
-            copy[k] = v
-        end
-    end
-    return copy
-end
-
 ------------------------------------------------------------------------------------------------------------------------------
 -- Module
 ------------------------------------------------------------------------------------------------------------------------------
@@ -71,7 +60,7 @@ Simulation.__index = Simulation
 export type Simulation = typeof(Simulation)
 export type SharedVals = typeof(STATE_SHARED_VALS)
 
-function Simulation.new()
+function Simulation.init()
     local self = setmetatable({}, Simulation) :: any
     self.states = {}
     self.currentState = nil
@@ -79,7 +68,7 @@ function Simulation.new()
     self.simUpdateConn = nil
     self.animation = nil
 
-    self.stateShared = nil
+    self.stateShared = stateSharedDefaults
     self.buoySensor = nil
 
     self.character = Players.LocalPlayer.Character
@@ -145,25 +134,8 @@ function Simulation:getCurrentStateId(): number
     return PlayerStateId.NONE
 end
 
-function Simulation:getNormal(): Vector3
-    if (self.currentState and self.currentState.normal) then
-        return self.currentState.normal
-    end
-    return Vector3.zero
-end
-
-function Simulation:getIsDashing(): boolean
-    if (self.currentState) then
-        return self.currentState.isDashing
-    end
-    return false
-end
-
-function Simulation:getNearWall(): (boolean, boolean)
-    if (self.currentState) then
-        return self.stateShared.nearWall, self.stateShared.isRightSideWall
-    end
-    return false, false
+function Simulation:getStateShared(): SharedVals
+    return self.stateShared
 end
 
 function Simulation:onRootPartChanged()
@@ -174,7 +146,7 @@ function Simulation:onRootPartChanged()
 end
 
 function Simulation:resetStateShared()
-    self.stateShared = deepCopy(STATE_SHARED_VALS)
+    self.stateShared = stateSharedDefaults
 end
 
 function Simulation:resetSimulation()
@@ -316,4 +288,4 @@ function Simulation:onCharRemoving(character: Model)
     end
 end
 
-return Simulation.new()
+return Simulation.init()

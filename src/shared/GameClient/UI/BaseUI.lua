@@ -16,6 +16,7 @@ function BaseUI.new()
 
     self.type = UIType.NONE
     self.enabled = false
+    self.loaded = false
 
     return self
 end

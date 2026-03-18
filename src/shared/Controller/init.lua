@@ -1,19 +1,26 @@
 -- Init module for character controller
 
+local Simulation = require(script.Simulation)
+local Camera = require(script.Camera)
+
 local Controller = {}
 Controller.__index = Controller
 
-function Controller.new()
+function Controller.init()
     local self = setmetatable({}, Controller)
 
-    self.simulation = require(script.Simulation)
-    self.camera = require(script.Camera)
+    self.simulation = Simulation :: Simulation.Simulation
+    self.camera = Camera
 
     return self
 end
 
-function Controller:getSimulation()
+function Controller:getSimulation(): Simulation.Simulation
     return self.simulation
 end
 
-return Controller.new()
+function Controller:getCamera()
+    return self.camera
+end
+
+return Controller.init()

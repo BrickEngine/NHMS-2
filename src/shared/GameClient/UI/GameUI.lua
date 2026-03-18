@@ -3,6 +3,7 @@ local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
+local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local BaseUI = require(script.Parent.BaseUI)
 local UIType = require(ReplicatedStorage.Shared.Enums.UIType)
 
@@ -65,16 +66,20 @@ function GameUI.init()
 
     self.type = UIType.GAME
     self.enabled = false
+    self.loaded = false
 
     self.activeGuiObj = nil
+
+    playerGui.ChildAdded:Connect(function(gui: Instance)
+        if (gui:IsA("ScreenGui") and gui.Name == GAME_UI_NAME) then
+            self.loaded = true
+        end
+    end)
 
     return setmetatable(self, GameUI)
 end
 
 function GameUI:enable(enable: boolean)
-    if (self.enabled == enable) then
-        return
-    end
     if (guiUpdateConn) then
         guiUpdateConn:Disconnect()
         guiUpdateConn = nil
@@ -83,15 +88,11 @@ function GameUI:enable(enable: boolean)
         guiUpdateConn = RunService.RenderStepped:Connect(function(dt: number)  
             self:update(dt)
         end)
-    else
-        if (self.activeGuiObj) then
-            
-        end
     end
 
-    local activeScreenGui = self.activeGuiObj :: ScreenGui
-    if (activeScreenGui) then
-        activeScreenGui.Enabled = enable
+    self.activeGuiObj = playerGui:WaitForChild(GAME_UI_NAME) :: ScreenGui
+    if (self.activeGuiObj) then
+        self.activeGuiObj.Enabled = enable
     end
 
     self.enabled = enable
@@ -114,4 +115,4 @@ end
 function GameUI:destroy()
 end
 
-return GameUI
+return GameUI.init()

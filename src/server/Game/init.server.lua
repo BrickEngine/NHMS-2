@@ -11,9 +11,10 @@ local PlayerData = require(ReplicatedStorage.Shared.PlayerData)
 local Network = require(ReplicatedStorage.Shared.Network)
 local ServNetApi = require(script.ServNetApi)
 
-local DEATH_COOLDOWN = 1.5
+local DEATH_TIME_BUFFER = 2.0
+local DEATH_EVENT_COOLDOWN = 3.0
 
-local eventCooldownList = {} :: {[Player]: number}
+local deathCooldownList = {} :: {[Player]: number}
 
 ------------------------------------------------------------------------------------------------------
 -- Initialize Workspace
@@ -48,7 +49,10 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 
 local function removePlayerCharacter(plr: Player)
-	if (plr.Character) then plr.Character:Destroy() end
+	if (plr.Character) then
+        plr.Character:Destroy() 
+        plr.Character = nil
+    end
 end
 
 local function revivePlayer(plr: Player)
@@ -63,7 +67,6 @@ local function spawnPlayer(plr: Player)
     if (plr.Character) then
         warn(plr.Name.." attempted to spawn with active character")
         plr.Character:Destroy()
-        plr.Character = nil
     end
     -- TODO: proper PlayerModel selection
     local plrMdl = StarterPlayer:FindFirstChild("Playermodel")
@@ -87,31 +90,39 @@ local function spawnPlayer(plr: Player)
         plr.ReplicationFocus = plr.Character.PrimaryPart
     end
 
+    revivePlayer(plr)
+
 	return newCharacter
 end
 
 local function killPlayer(plr: Player)
-    local currData = PlayerData.getPlayerData(plr)
-    currData.health = 0
+    local plrData = PlayerData.getPlayerData(plr)
 
-    ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, currData.health)
-    
-    task.wait(DEATH_COOLDOWN)
+    if (plrData.health ~= 0) then
+        plrData.health = 0
+        ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, 0)
+    end
+    plrData.isDead = true
+    task.wait(DEATH_TIME_BUFFER)
     removePlayerCharacter(plr)
-    spawnPlayer(plr)
+
+    -- client can only spawn after characterRemoving fired and spawn is requested
+    --removePlayerCharacter(plr)
+    --spawnPlayer(plr)
 end
 
-local function changePlrHealth(plr: Player, val: number, addBonus: boolean?)
+local function changePlrHealth(plr: Player, newHealth: number, addBonus: boolean?)
     local currData = PlayerData.getPlayerData(plr)
     local limit = PlayerData.LIMITS.health
     if (addBonus) then
         limit = PlayerData.LIMITS.healthWithBonus
     end
-    currData.health += val
+    currData.health = newHealth
     math.clamp(currData.health, 0, limit)
 
     ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, currData.health)
 
+    print(`Server HP of {plr}: {currData.health}`)
     if (currData.health <= 0) then
         killPlayer(plr)
     end
@@ -127,26 +138,24 @@ local function onPlayerRequestSound(plr: Player, item: string?, play: boolean?)
     ServNetApi.events[Network.serverEvents.playSound]:FireAllClients(plr, item, play)
 end
 
--- Changes player health, if the requested value is int and < 0
-local function onPlayerRequestChangeHealth(plr: Player, val: number?)
-    if (type(val) ~= "number") then
+-- Changes player health, if the requested value is int
+local function onPlayerRequestChangeHealth(plr: Player, newHp: number?)
+    if (type(newHp) ~= "number") then
         warn("not a number"); return
     end
-    if (val < 0 and val % 1 == 0) then
-        changePlrHealth(plr, val)
+    if (newHp % 1 == 0) then
+        changePlrHealth(plr, newHp)
     end
 end
 
 local function onPlayerRequestSpawn(plr: Player)
-    if (eventCooldownList[plr] > 0) then
+    if (deathCooldownList[plr] > 0) then
         warn(`{plr} on cooldown`); return
     end
-    PlayerData.getPlayerData(plr).health = PlayerData.LIMITS.health
 
     spawnPlayer(plr)
-    revivePlayer(plr)
 
-    eventCooldownList[plr] = DEATH_COOLDOWN
+    deathCooldownList[plr] = DEATH_EVENT_COOLDOWN
 end
 
 -- network events management
@@ -190,13 +199,13 @@ ServNetApi.implementRFunctions(remFunctionFunctions)
 
 local function onPlayerAdded(plr: Player)
     print(plr.Name .. " joined the game")
-    eventCooldownList[plr] = 0
+    deathCooldownList[plr] = 0
     PlayerData.createPlayerData(plr)
 end
 
 local function onPlayerRemoving(plr: Player)
     print(plr.Name .. " left the game")
-    eventCooldownList[plr] = nil
+    deathCooldownList[plr] = nil
     PlayerData.removePlayerData(plr)
 
     removePlayerCharacter(plr)
@@ -209,13 +218,13 @@ Players.PlayerRemoving:Connect(onPlayerRemoving)
 local loopDt = 0.05
 while (task.wait(loopDt)) do
     -- decrement cooldown timers
-    for plr: Player, c: number in pairs(eventCooldownList) do
-        if (eventCooldownList[plr]) then
+    for plr: Player, c: number in pairs(deathCooldownList) do
+        if (deathCooldownList[plr]) then
             local newTime = c - loopDt
             if (newTime < 0 ) then
                 newTime = 0
             end
-            eventCooldownList[plr] = newTime
+            deathCooldownList[plr] = newTime
         end
     end
 end

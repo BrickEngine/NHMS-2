@@ -81,7 +81,7 @@ PlayerData.DEFAULT_DATA = table.freeze({
 }) :: Data
 
 function PlayerData.removePlayerData(plr: Player)
-    if (not PlayerData[plr]) then
+    if (not data[plr]) then
         warn(`No playerdata of {plr} to clear`); return
     end
 

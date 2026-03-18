@@ -8,7 +8,6 @@ local Workspace = game:GetService("Workspace")
 local Simulation = require(script.Parent.Parent.Simulation)
 local CamInput = require(script.Parent.CamInput)
 local BaseCam = require(script.Parent.BaseCam)
---local GameClient = require(ReplicatedStorage.Shared.GameClient)
 local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 
@@ -23,6 +22,8 @@ local ROT_MIN_Y = -89 -- deg
 local ROT_MAX_Y = 89 -- deg
 
 local VEC3_ZERO = Vector3.zero
+
+local simData = Simulation:getStateShared() :: Simulation.SharedVals
 
 local lastCamOffs = VEC3_ZERO
 local camAngVec = VEC3_ZERO
@@ -45,14 +46,14 @@ function FPCam.new()
 end
 
 function FPCam:updateDashCam(dt: number)
-	local effCamOffset = (Simulation:getIsDashing()) and DASH_OFFSET or VEC3_ZERO
+	local effCamOffset = simData.isDashing and DASH_OFFSET or VEC3_ZERO
 	lastCamOffs = MathUtil.vec3Clamp(
 		MathUtil.vec3Flerp(lastCamOffs, effCamOffset, dt * 20), DASH_OFFSET, VEC3_ZERO
 	)
 end
 
 function FPCam:updateWallCam(dt: number)
-	local nearWall, rightSide = Simulation:getNearWall()
+	local nearWall, rightSide = simData.nearWall, simData.isRightSideWall
 	local fac = rightSide and -1 or 1
 	local effCamTilt = 
 		(nearWall and Simulation:getCurrentStateId() == PlayerStateId.WALL) and WALL_TILT or 0
@@ -115,7 +116,6 @@ function FPCam:update(dt)
 		-- Mouse movement linked camera tilting
 		local limitedRotInp = math.clamp(rotateInput.X * 45, -INP_TILT, INP_TILT)
 		-- local rot_z = MathUtil.flerp(lastInpTilt, limitedRotInp, TILT_DT)
-		-- print(rot_z)
 		-- lastInpTilt = lastWallTilt + rot_z
 		lastInpTilt = MathUtil.flerp(lastInpTilt, limitedRotInp, TILT_DT)
 		local rot_z = lastInpTilt + lastWallTilt
