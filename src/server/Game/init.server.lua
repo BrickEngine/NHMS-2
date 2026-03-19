@@ -7,6 +7,7 @@ local Workspace = game:GetService("Workspace")
 local Global = require(ReplicatedStorage.Shared.Global)
 local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
+local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
 local PlayerData = require(ReplicatedStorage.Shared.PlayerData)
 local Network = require(ReplicatedStorage.Shared.Network)
 local ServNetApi = require(script.ServNetApi)
@@ -111,19 +112,20 @@ local function killPlayer(plr: Player)
     --spawnPlayer(plr)
 end
 
-local function changePlrHealth(plr: Player, newHealth: number, addBonus: boolean?)
-    local currData = PlayerData.getPlayerData(plr)
+local function changePlrHealth(plr: Player, newHealth: number, damageType: string, addBonus: boolean?)
+    local currPlrData = PlayerData.getPlayerData(plr)
     local limit = PlayerData.LIMITS.health
     if (addBonus) then
         limit = PlayerData.LIMITS.healthWithBonus
     end
-    currData.health = newHealth
-    math.clamp(currData.health, 0, limit)
+    currPlrData.lastDamageType = damageType
+    currPlrData.health = newHealth
+    math.clamp(currPlrData.health, 0, limit)
 
-    ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, currData.health)
+    ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, currPlrData.health, damageType)
 
-    print(`Server HP of {plr}: {currData.health}`)
-    if (currData.health <= 0) then
+    print(`Server HP of {plr}: {currPlrData.health}`)
+    if (currPlrData.health <= 0) then
         killPlayer(plr)
     end
 end
@@ -139,12 +141,23 @@ local function onPlayerRequestSound(plr: Player, item: string?, play: boolean?)
 end
 
 -- Changes player health, if the requested value is int
-local function onPlayerRequestChangeHealth(plr: Player, newHp: number?)
+local function onPlayerRequestChangeHealth(plr: Player, newHp: number?, damageType: string?)
     if (type(newHp) ~= "number") then
         warn("not a number"); return
     end
+    local _damageType = DamageType.NONE
+    if (damageType) then
+        if (
+            damageType == DamageType.FALL
+            or damageType == DamageType.DROWN
+            or DamageType == DamageType.EXPLOSION
+        ) then
+            _damageType = damageType
+        end
+        print(_damageType)
+    end
     if (newHp % 1 == 0) then
-        changePlrHealth(plr, newHp)
+        changePlrHealth(plr, newHp, _damageType)
     end
 end
 

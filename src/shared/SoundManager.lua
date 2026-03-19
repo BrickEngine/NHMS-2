@@ -18,7 +18,13 @@ local SOUND_PB_REG_HUGE = 100
 local SOUND_ITEMS = table.freeze({
     JUMP = "JumpSound",
     FLOOR_HIT = "FloorHitSound",
-    DAMAGE = "DamageSound",
+    DAMAGE_0 = "Damage0Sound",
+    DAMAGE_1 = "Damage1Sound",
+    DAMAGE_2 = "Damage2Sound",
+    DAMAGE_3 = "Damage3Sound",
+    DEATH = "DeathSound",
+    DEATH_DROWN = "DeathDrownSound",
+    DEATH_FALL = "DeathFallSound",
     WATER_SPLASH = "WaterSplashSound",
     WATER_MOVEMENT = "WaterMovementSound",
     WATER_DIVE = "WaterDiveSound",
@@ -29,8 +35,26 @@ local SOUND_ITEMS = table.freeze({
 })
 
 local SOUND_DATA = table.freeze({
-    [SOUND_ITEMS.DAMAGE] = {
-        SoundId = "rbxassetid://5466166437", --5466166437
+    [SOUND_ITEMS.DAMAGE_0] = {
+        SoundId = "rbxassetid://115487703562071",
+    },
+    [SOUND_ITEMS.DAMAGE_1] = {
+        SoundId = "rbxassetid://135514575451369",
+    },
+    [SOUND_ITEMS.DAMAGE_2] = {
+        SoundId = "rbxassetid://97084250180421",
+    },
+    [SOUND_ITEMS.DAMAGE_3] = {
+        SoundId = "rbxassetid://76277846903686",
+    },
+    [SOUND_ITEMS.DEATH] = {
+        SoundId = "rbxassetid://95272958949487",
+    },
+    [SOUND_ITEMS.DEATH_DROWN] = {
+        SoundId = "rbxassetid://134069985010030",
+    },
+    [SOUND_ITEMS.DEATH_FALL] = {
+        SoundId = "rbxassetid://125793119459513",
     },
     [SOUND_ITEMS.JUMP] = {
         SoundId = "rbxassetid://143384769", --5466166437 86604727900745 143384769 128602720222961

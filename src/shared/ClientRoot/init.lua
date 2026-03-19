@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local PlayerData = require(ReplicatedStorage.Shared.PlayerData)
+local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
 
 local gameData = {
     gameTime = 0,
@@ -19,7 +20,7 @@ local simData = {
 }
 local plrData: PlayerData.Data = PlayerData.createPlayerData(Players.LocalPlayer)
 
-local function eventOnValChanged(newVal: any, oldVal: any, bindEvent: BindableEvent)
+local function singleValChangedEvent(newVal: any, oldVal: any, bindEvent: BindableEvent)
     if (newVal ~= oldVal) then
         bindEvent:Fire(newVal)
     end
@@ -70,23 +71,30 @@ function ClientRoot.setGameTime(val: number)
     gameData.gameTime = val
 end
 
-function ClientRoot.setHealth(val: number)
-    eventOnValChanged(val, plrData.health, ClientRoot.signals.healthChanged)
-    plrData.health = val
+function ClientRoot.setHealth(newHp: number, damageType: string?)
+    local _damageType = damageType or DamageType.NONE
+    if (newHp ~= plrData.health) then
+        ClientRoot.signals.healthChanged:Fire(newHp, _damageType)
+        plrData.lastDamageType = _damageType
+    end
+    plrData.health = newHp
 end
 
-function ClientRoot.setIsDead(val: boolean)
-    eventOnValChanged(val, plrData.isDead, ClientRoot.signals.deathStateChanged)
-    plrData.isDead = val
+function ClientRoot.setIsDead(isDead: boolean)
+    if (isDead ~= plrData.isDead) then
+        ClientRoot.signals.deathStateChanged:Fire(isDead, plrData.lastDamageType)
+    end
+    plrData.isDead = isDead
 end
 
-function ClientRoot.setCurrentPlayerStateId(val: number)
-    eventOnValChanged(val, simData.playerStateId, ClientRoot.signals.simStateChanged)
-    simData.playerStateId = val
+function ClientRoot.setCurrentPlayerStateId(newId: number)
+    singleValChangedEvent(newId, simData.playerStateId, ClientRoot.signals.simStateChanged)
+    simData.playerStateId = newId
 end
 
-function ClientRoot.setIsDashing(val: boolean)
-    simData.isDashing = val
+function ClientRoot.setIsDashing(isDashing: boolean)
+    singleValChangedEvent(isDashing, simData.isDashing, ClientRoot.signals.isDashingChanged)
+    simData.isDashing = isDashing
 end
 
 function ClientRoot.setIsGrounded(val: boolean)

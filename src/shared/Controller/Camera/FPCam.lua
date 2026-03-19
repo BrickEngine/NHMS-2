@@ -37,12 +37,23 @@ local lastInpTilt = 0
 local FPCam = setmetatable({}, BaseCam)
 FPCam.__index = FPCam
 
+export type FPCamModule = typeof(FPCam)
+
 function FPCam.new()
 	local self = setmetatable(BaseCam.new(), FPCam)
 
+	self.switchToDeathCam = false
 	self.lastUpdate = tick()
 
 	return self
+end
+
+function FPCam:toggleDeathCam(toggle: boolean)
+	self.switchToDeathCam = toggle
+end
+
+function FPCam:updateDeathCam(dt: number): (CFrame, CFrame)
+	return self.lastCameraTransform, self.lastCameraFocus
 end
 
 function FPCam:updateDashCam(dt: number)
@@ -69,6 +80,10 @@ end
 --------------------------------------------------------------------------------------------------
 
 function FPCam:update(dt)
+	if (self.switchToDeathCam) then
+		return self:updateDeathCam(dt)
+	end
+
 	self.resetCameraAngle = true
 	local now = tick()
 	local cam = Workspace.CurrentCamera

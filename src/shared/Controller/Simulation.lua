@@ -8,6 +8,7 @@ local FuncUtil = require(ReplicatedStorage.Shared.Util.FuncUtil)
 local Animation = require(script.Parent.Animation)
 local DebugVisualize = require(script.Parent.Common.DebugVisualize)
 
+local InputManager = require(script.Parent.InputManager)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local simStates = script.Parent.SimStates
 local BaseState = require(simStates.BaseState)
@@ -138,6 +139,10 @@ function Simulation:getStateShared(): SharedVals
     return self.stateShared
 end
 
+function Simulation:toggleReadInput(readInput: boolean)
+    InputManager:setControlsEnabled(readInput)
+end
+
 function Simulation:onRootPartChanged()
     if (not self.character.PrimaryPart) then
         warn("PrimaryPart of character removed -> halting simulation, removing character")
@@ -195,6 +200,8 @@ function Simulation:resetSimulation()
     self.simUpdateConn = RunService.PostSimulation:Connect(function(dt)
         self:update(dt)
     end)
+
+    InputManager:setControlsEnabled(true)
 end
 
 function Simulation:serialize(sharedVals: SharedVals): buffer

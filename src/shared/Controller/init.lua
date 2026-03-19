@@ -19,7 +19,7 @@ function Controller:getSimulation(): Simulation.Simulation
     return self.simulation
 end
 
-function Controller:getCamera()
+function Controller:getCamera(): Camera.CameraModule
     return self.camera
 end
 

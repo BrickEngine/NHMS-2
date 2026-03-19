@@ -5,5 +5,7 @@ return table.freeze({
     BULLET = "Bullet",
     EXPLOSION = "Explosion",
     NAPALM = "Napalm",
-    PLASMA = "Plasma"
+    PLASMA = "Plasma",
+    FALL = "Fall",
+    DROWN = "Drown",
 })

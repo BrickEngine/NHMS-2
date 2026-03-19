@@ -30,7 +30,7 @@ InputManager.__index = InputManager
 function InputManager.new()
     local self = setmetatable({}, InputManager)
 
-    self.controlsEnabled = true
+    self.controlsEnabled = false
 
     self.inputControllers = {}
     self.activeInputController = nil
@@ -72,6 +72,11 @@ function InputManager.new()
 end
 
 ------------------------------------------------------------------------------------------------------------------------
+
+function InputManager:setControlsEnabled(enable: boolean)
+    self.controlsEnabled = enable
+    self:updateActiveControlModuleEnabled()
+end
 
 function InputManager:getMoveVec(): Vector3
     if (not self.activeInputController) then
@@ -158,7 +163,7 @@ function InputManager:updateActiveControlModuleEnabled()
 	end
 
 	local enable = function()
-        if self.touchControlFrame then
+        if (self.touchControlFrame) then
 			self.activeInputController:enable(true, self.touchControlFrame)
 		else
 			self.activeInputController:enable(true)
@@ -166,11 +171,11 @@ function InputManager:updateActiveControlModuleEnabled()
 	end
 
 	-- there is no active controller
-	if not self.activeInputController then
+	if (not self.activeInputController) then
 		return
 	end
 
-	if not self.controlsEnabled then
+	if (not self.controlsEnabled) then
 		disable(); return
 	end
 

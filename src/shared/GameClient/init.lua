@@ -14,6 +14,7 @@ local CliApi = require(script.CliNetApi)
 local SoundManager = require(ReplicatedStorage.Shared.SoundManager)
 local CorePlayerUI = require(script.UI.CorePlayerUI)
 local Controller = require(ReplicatedStorage.Shared.Controller)
+local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
 
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local UIType = require(ReplicatedStorage.Shared.Enums.UIType)
@@ -24,10 +25,30 @@ local FALL_DMG_COOLDOWN = 0.25
 local FALL_DMG_FAC = 0.0095
 local FALL_DMG_OFFSET = MIN_FALL_DMG_VEL * MIN_FALL_DMG_VEL
 
+local DEATH_SOUND_MAP = {
+    [DamageType.NONE] = SoundManager.SOUND_ITEMS.DEATH,
+    [DamageType.BLADE] = SoundManager.SOUND_ITEMS.DEATH,
+    [DamageType.BLUNT] = SoundManager.SOUND_ITEMS.DEATH,
+    [DamageType.BULLET] = SoundManager.SOUND_ITEMS.DEATH,
+    [DamageType.EXPLOSION] = SoundManager.SOUND_ITEMS.DEATH,
+    [DamageType.NAPALM] = SoundManager.SOUND_ITEMS.DEATH,
+    [DamageType.PLASMA] = SoundManager.SOUND_ITEMS.DEATH,
+    [DamageType.FALL] = SoundManager.SOUND_ITEMS.DEATH_FALL,
+    [DamageType.DROWN] = SoundManager.SOUND_ITEMS.DEATH_DROWN,
+}
+
+local DMG_SOUND_ARR = {
+    SoundManager.SOUND_ITEMS.DAMAGE_0,
+    SoundManager.SOUND_ITEMS.DAMAGE_1,
+    SoundManager.SOUND_ITEMS.DAMAGE_2,
+    SoundManager.SOUND_ITEMS.DAMAGE_3,
+}
+
 local clientEvents = Network.clientEvents
 local localPlr = Players.LocalPlayer
 
 local simulation = Controller:getSimulation()
+local camera = Controller:getCamera()
 local rootPlrData = ClientRoot.getPlrData()
 local rootSimData = ClientRoot.getSimData()
 local rootGameData = ClientRoot.getGameData()
@@ -107,13 +128,34 @@ function GameClient.initPlayer()
     charRemovingConn = Players.LocalPlayer.CharacterRemoving:Connect(onCharRemoving)
 end
 
-function GameClient.changeHealth(newHp: number)
+function GameClient.changeHealth(newHp: number, damageType: string?)
     if (newHp == rootPlrData.health) then
         return
     end
+    local _damageType = damageType or DamageType.NONE
+
+    -- play sounds
+    if (newHp > 0 and newHp < rootPlrData.health) then
+        local rmdSoundItem = DMG_SOUND_ARR[math.random(1, #DMG_SOUND_ARR)]
+        SoundManager:updateGlobalSound(rmdSoundItem, true)
+    end
+
     newHp = math.max(0, newHp)
-    CliApi.events[clientEvents.requestChangeHealth]:FireServer(newHp)
-    ClientRoot.setHealth(newHp)
+    CliApi.events[clientEvents.requestChangeHealth]:FireServer(newHp, _damageType)
+    ClientRoot.setHealth(newHp, _damageType)
+end
+
+function GameClient.onDeathStateChanged(isDead: boolean, lastDamageType: string)
+    if (not isDead) then
+        -- TODO: spawn / revive effects
+        camera:activateFPDeathCam(false)
+        return
+    end
+    
+    simulation:toggleReadInput(false)
+    camera:activateFPDeathCam(true)
+    local deathSound = DEATH_SOUND_MAP[lastDamageType]
+    SoundManager:updateGlobalSound(deathSound, true)
 end
 
 function GameClient.updateFallDamage(dt: number)
@@ -138,8 +180,7 @@ function GameClient.updateFallDamage(dt: number)
     if (damageConditions) then
         local damage = math.floor((lastFallVel * lastFallVel - FALL_DMG_OFFSET) * FALL_DMG_FAC + MIN_FALL_DMG)
         local newHp = rootPlrData.health - damage
-        print(newHp)
-        GameClient.changeHealth(newHp)
+        GameClient.changeHealth(newHp, DamageType.FALL)
         fallCooldown = FALL_DMG_COOLDOWN
     end
 
@@ -169,6 +210,10 @@ function GameClient.update(dt: number)
     GameClient.updateSimData(dt)
     GameClient.updateFallDamage(dt)
 end
+
+------------------------------------------------------------------------------------------------------------------------
+-- Events
+ClientRoot.signals.deathStateChanged.Event:Connect(GameClient.onDeathStateChanged)
 
 ------------------------------------------------------------------------------------------------------------------------
 

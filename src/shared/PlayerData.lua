@@ -1,10 +1,10 @@
---!strict
 -- Helper module for managing data on client and server separately
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BaseWeapon = require(ReplicatedStorage.Shared.GameSystems.BaseWeapon)
 local AmmoType = require(ReplicatedStorage.Shared.Enums.AmmoType)
+local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
 local FuncUtil = require(ReplicatedStorage.Shared.Util.FuncUtil)
 
 local data = {}
@@ -20,6 +20,7 @@ export type Data = {
     ammoStorage: {[string]: number},
     inventory: {[number]: BaseWeapon.BaseWeapon?},
     currentInvSlot: number,
+    lastDamageType: string,
     isDead: boolean,
     kills: number,
     score: number,
@@ -75,6 +76,7 @@ PlayerData.DEFAULT_DATA = table.freeze({
     },
     inventory = PlayerData.DEFAULTS.inventory,
     currentInvSlot = PlayerData.DEFAULTS.currentInvSlot,
+    lastDamageType = DamageType.NONE,
     isDead = PlayerData.DEFAULTS.isDead,
     kills = PlayerData.DEFAULTS.kills,
     score = PlayerData.DEFAULTS.score,
@@ -85,13 +87,13 @@ function PlayerData.removePlayerData(plr: Player)
         warn(`No playerdata of {plr} to clear`); return
     end
 
-    local data = data[plr] :: Data
+    local plrData = data[plr] :: Data
     -- call destroy on weapons, if they exist
-    if (data.inventory) then
-        for i, weap: BaseWeapon.BaseWeapon? in pairs(data.inventory) do
+    if (plrData.inventory) then
+        for i, weap: BaseWeapon.BaseWeapon? in pairs(plrData.inventory) do
             if (weap) then
                 weap:destroy()
-                data.inventory[i] = nil
+                plrData.inventory[i] = nil
             end
         end
     end
@@ -104,7 +106,7 @@ function PlayerData.createPlayerData(plr: Player): Data
         warn(`existing data of {plr} was overwritten`); PlayerData.removePlayerData(plr)
     end
 
-    local newData = FuncUtil.deepCopy(PlayerData.DEFAULT_DATA) :: Data
+    local newData = FuncUtil.deepCopy(PlayerData.DEFAULT_DATA)
     data[plr] = newData
 
     return data[plr]
