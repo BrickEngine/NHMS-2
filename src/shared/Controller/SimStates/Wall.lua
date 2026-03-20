@@ -283,22 +283,24 @@ function Wall:updateVerticalAnchor(dt: number)
     local primaryPart: BasePart = self.character.PrimaryPart
     local currVel = primaryPart.AssemblyLinearVelocity
     local currHoriVel = Vector3.new(currVel.X, 0, currVel.Z)
+    local camLooKVec = Workspace.CurrentCamera.CFrame.LookVector
+    local camUpDot = VEC3_UP:Dot(camLooKVec)
+
+    local cappedVelFac = math.min(currVel.Magnitude * 25, 600)
+    local camUpFac = math.clamp(camUpDot, -0.4, 0.4) * MANEUV_FAC * currVel.Magnitude
+    local forceDownFac = 0
+    if (currHoriVel.Magnitude <= START_SLIDE_VEL) then
+        forceDownFac = Workspace.Gravity * SLIDE_FAC / cappedVelFac
+    end
+    local targetVertVel = (camUpFac - forceDownFac)
 
     if (peakedJumpAfterEntry) then
-        local camLooKVec = Workspace.CurrentCamera.CFrame.LookVector
-        local cappedVelFac = math.min(currVel.Magnitude * 25, 600.0)
-
-        local camUpFac = math.clamp(VEC3_UP:Dot(camLooKVec), -0.4, 0.4) * MANEUV_FAC * currVel.Magnitude
-        local forceDownFac = 0
-        if (currHoriVel.Magnitude < START_SLIDE_VEL) then
-            forceDownFac = Workspace.Gravity * SLIDE_FAC / cappedVelFac
-        end
-
-        self.forces.posForce.Position = self.forces.posForce.Position + VEC3_UP * (camUpFac - forceDownFac) * dt
+        self.forces.posForce.Position += VEC3_UP * targetVertVel * dt
         return
     end
     
-    peakedJumpAfterEntry = currVel.Y < 0.1
+    -- calc conditions for setting anchor to pos for first time
+    peakedJumpAfterEntry = targetVertVel > currVel.Y or currVel.Y < 0.1
 
     if (peakedJumpAfterEntry) then
         self.forces.posForce.Position = primaryPart.CFrame.Position
@@ -329,7 +331,6 @@ end
 
 function Wall:update(dt: number)
     local primaryPart: BasePart = self.character.PrimaryPart
-    local camCFrame = Workspace.CurrentCamera.CFrame
     local currVel = primaryPart.AssemblyLinearVelocity
     local currPos = primaryPart.CFrame.Position
     local currHoriVel = Vector3.new(currVel.X, 0, currVel.Z)
@@ -364,9 +365,12 @@ function Wall:update(dt: number)
         if (self.shared.inWater) then
             self._simulation:transitionState(PlayerStateId.WATER); return
         elseif (
-            self.shared.grounded or not self.shared.nearWall
-            or currHoriVel.Magnitude < DISMOUNT_SPEED or bankAngleExceeded
+            self.shared.grounded 
+            or not self.shared.nearWall
+            or currHoriVel.Magnitude < DISMOUNT_SPEED
+            or bankAngleExceeded
             or wallData.maxAngleDiff > MAX_ANGLE_DIFF
+            or self._simulation.isDead
         ) then
             self._simulation:transitionState(PlayerStateId.GROUND); return
         end
@@ -380,12 +384,12 @@ function Wall:update(dt: number)
     self:handleDismount(dt, wallData.normal)
 
     -- Update playermodel rotation
-    primaryPart.CFrame = CFrame.lookAlong(
-        primaryPart.CFrame.Position, Vector3.new(
-            camCFrame.LookVector.X, 0, camCFrame.LookVector.Z
-        )
-    )
-    primaryPart.AssemblyAngularVelocity = VEC3_ZERO
+    -- primaryPart.CFrame = CFrame.lookAlong(
+    --     primaryPart.CFrame.Position, Vector3.new(
+    --         camCFrame.LookVector.X, 0, camCFrame.LookVector.Z
+    --     )
+    -- )
+    -- primaryPart.AssemblyAngularVelocity = VEC3_ZERO
 
     jumpInpDebounce -= dt
     jumpInpDebounce = math.max(jumpInpDebounce, 0)

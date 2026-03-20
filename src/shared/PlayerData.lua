@@ -21,6 +21,7 @@ export type Data = {
     inventory: {[number]: BaseWeapon.BaseWeapon?},
     currentInvSlot: number,
     lastDamageType: string,
+    godModeActive: boolean,
     isDead: boolean,
     kills: number,
     score: number,
@@ -39,6 +40,7 @@ PlayerData.DEFAULTS = table.freeze({
     },
     inventory = table.create(9, nil) :: {BaseWeapon.BaseWeapon?},
     currentInvSlot = 0,
+    godModeActive = false,
     isDead = true,
     kills = 0,
     score = 0,
@@ -78,6 +80,7 @@ PlayerData.DEFAULT_DATA = table.freeze({
     currentInvSlot = PlayerData.DEFAULTS.currentInvSlot,
     lastDamageType = DamageType.NONE,
     isDead = PlayerData.DEFAULTS.isDead,
+    godModeActive = PlayerData.DEFAULTS.godModeActive,
     kills = PlayerData.DEFAULTS.kills,
     score = PlayerData.DEFAULTS.score,
 }) :: Data

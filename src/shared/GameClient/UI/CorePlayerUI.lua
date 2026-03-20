@@ -1,6 +1,4 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local StarterGui = game:GetService("StarterGui")
-local Players = game:GetService("Players")
 
 local UIType = require(ReplicatedStorage.Shared.Enums.UIType)
 --local BaseUI = require(script.Parent.BaseUI)
@@ -73,6 +71,11 @@ function CorePlayerUI.setActive(uiType: string)
     if (CorePlayerUI.currentActive) then
         CorePlayerUI.currentActive:enable(true)
     end
+end
+
+function CorePlayerUI.resetAll()
+    CorePlayerUI.gameUI:reset()
+    CorePlayerUI.menuUI:reset()
 end
 
 function CorePlayerUI.disableAll()

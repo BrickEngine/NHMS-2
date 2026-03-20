@@ -4,6 +4,7 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local controller = script.Parent.Parent
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
@@ -11,6 +12,7 @@ local BaseState = require(controller.SimStates.BaseState)
 
 local STATE_ID = PlayerStateId.NONE
 local VEC3_UP = Vector3.new(0, 1, 0)
+local VEC3_ZERO = Vector3.zero
 
 -- Creates a rotation force for keeping the character upright at all times
 local function createRotForce(mdl: Model): AlignOrientation
@@ -65,6 +67,17 @@ end
 -- Update
 ------------------------------------------------------------------------------------------------------------------------
 function Universal:update(dt: number)
+    local primaryPart: BasePart = self.character.PrimaryPart
+    local camCFrame = Workspace.CurrentCamera.CFrame
+    local camHoriDir = Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z)
+
+    -- update playermodel rotation
+    if (not self._simulation.isDead) then
+        primaryPart.CFrame = CFrame.lookAlong(
+            primaryPart.CFrame.Position, camHoriDir
+        ) 
+    end
+    primaryPart.AssemblyAngularVelocity = VEC3_ZERO
 end
 
 -- clean up created BuoyancySensor

@@ -395,7 +395,7 @@ function BaseCamera:getCameraLookVector(): Vector3
 	return game.Workspace.CurrentCamera and game.Workspace.CurrentCamera.CFrame.LookVector or UNIT_Z
 end
 
-function BaseCamera:getRootPart()
+function BaseCamera:getRootPart(): BasePart?
 	if (Players.LocalPlayer.Character) then
 		return Players.LocalPlayer.Character.PrimaryPart
 	end

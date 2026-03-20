@@ -31,7 +31,7 @@ function ClassicCamera:update(dt)
 	local newCameraFocus = camera.Focus
 
 	local overrideCameraLookVector = nil
-	if self.resetCameraAngle then
+	if (self.resetCameraAngle) then
 		local rootPart: BasePart = self:getRootPart()
 		if rootPart then
 			overrideCameraLookVector = (rootPart.CFrame * INITIAL_CAMERA_ANGLE).LookVector
@@ -54,7 +54,7 @@ function ClassicCamera:update(dt)
 	self:stepZoom()
 
 	-- Reset tween speed if user is panning
-	if rotateInput ~= Vector2.new() then
+	if (rotateInput ~= Vector2.new()) then
 		self.lastUserPanCamera = tick()
 	end
 
@@ -63,7 +63,7 @@ function ClassicCamera:update(dt)
 	if subjectPosition and player and camera then
 		local zoom = self:getCameraToSubjectDistance()
 
-		if zoom < 0.5 then
+		if (zoom < 0.5) then
 			zoom = 0.5
 		end
 

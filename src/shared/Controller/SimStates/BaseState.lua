@@ -32,6 +32,7 @@ function BaseState:stateLeave()
 end
 
 function BaseState:stun(impulse: Vector3)
+    error("cannot call stun of abstract BaseState", 2)
 end
 
 function BaseState:update(dt: number)

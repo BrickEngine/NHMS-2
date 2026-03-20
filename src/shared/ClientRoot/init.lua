@@ -73,8 +73,9 @@ end
 
 function ClientRoot.setHealth(newHp: number, damageType: string?)
     local _damageType = damageType or DamageType.NONE
+    local hpDiff = newHp - plrData.health
     if (newHp ~= plrData.health) then
-        ClientRoot.signals.healthChanged:Fire(newHp, _damageType)
+        ClientRoot.signals.healthChanged:Fire(newHp, hpDiff, _damageType)
         plrData.lastDamageType = _damageType
     end
     plrData.health = newHp
@@ -97,8 +98,9 @@ function ClientRoot.setIsDashing(isDashing: boolean)
     simData.isDashing = isDashing
 end
 
-function ClientRoot.setIsGrounded(val: boolean)
-    simData.isGrounded = val
+function ClientRoot.setIsGrounded(grounded: boolean)
+    singleValChangedEvent(grounded, simData.isGrounded, ClientRoot.signals.isGroundedChanged)
+    simData.isGrounded = grounded
 end
 
 return ClientRoot

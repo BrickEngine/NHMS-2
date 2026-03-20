@@ -215,7 +215,7 @@ function Ground:updateJump(dt: number, override: boolean?)
 
         -- execute jump
         if (jumpSignal or override) then
-            if (PLAY_JUMP_SOUND) then
+            if (PLAY_JUMP_SOUND and not override) then
                 SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.JUMP, true) 
             end
 
@@ -319,7 +319,7 @@ function Ground:update(dt: number)
     if (currHoriVel.Magnitude < SMALL_MAG) then
         wallData = PhysCheck.defaultWallData()
     else
-        local scanDir = self.shared.isDashing and camHoriDir or currHoriVel
+        local scanDir = self.shared.isDashing and camHoriDir.Unit or currHoriVel
         wallData = PhysCheck.checkWall(currPos, scanDir, PHYS_RADIUS, HIP_HEIGHT)
 
         -- if scanDir delivers no results, check again with the raw input dir
@@ -346,7 +346,7 @@ function Ground:update(dt: number)
         self.forces.posForce.MaxAxesForce = mass * (grav * 20 + currVel.Y * currVel.Y) * VEC3_UP
         self.forces.posForce.Position = Vector3.new(0, targetPosY, 0)
 
-        if (PLAY_JUMP_SOUND and offGroundTime >= 0.2) then
+        if (PLAY_JUMP_SOUND and offGroundTime >= 0.2 and not self._simulation.isDead) then
             SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.FLOOR_HIT, true)
         end
 
@@ -403,10 +403,10 @@ function Ground:update(dt: number)
     end
 
     -- update playermodel rotation
-    primaryPart.CFrame = CFrame.lookAlong(
-        primaryPart.CFrame.Position, camHoriDir
-    )
-    primaryPart.AssemblyAngularVelocity = VEC3_ZERO
+    -- primaryPart.CFrame = CFrame.lookAlong(
+    --     primaryPart.CFrame.Position, camHoriDir
+    -- )
+    -- primaryPart.AssemblyAngularVelocity = VEC3_ZERO
 
     -- state transitions
     do
@@ -443,7 +443,7 @@ function Ground:update(dt: number)
 
         if (self.shared.underWater or waterConditions) then --self.shared.inWater and waterConditions
             self._simulation:transitionState(PlayerStateId.WATER); return
-        elseif (self.shared.nearWall and wallConditions) then
+        elseif (self.shared.nearWall and wallConditions and not self._simulation.isDead) then
             self._simulation:transitionState(
                 PlayerStateId.WALL, 
                 {

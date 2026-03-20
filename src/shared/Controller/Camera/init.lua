@@ -16,6 +16,7 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Global = require(ReplicatedStorage.Shared.Global)
+local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local CamInput = require(script.CamInput)
 local ClassicCam = require(script.ClassicCam)
 local FPCam = require(script.FPCam)
@@ -71,7 +72,7 @@ function CameraModule.new()
 
 	-- Init mouse lock controller
 	self.activeMouseLockController = MouseLockController.new()
-	assert(self.activeMouseLockController, "Strict typing check")
+	assert(self.activeMouseLockController, "No mouse lock controller created")
 
 	local toggleEvent = self.activeMouseLockController:getBindableToggleEvent()
 	if toggleEvent then
@@ -85,10 +86,8 @@ function CameraModule.new()
 		UserInputService.InputBegan:Connect(function(input, gpe)
 
 			local function setCharTransparency(char: Instance, val: number)
-				for _,v: Instance in pairs(char:GetChildren()) do
-					if (v:IsA("BasePart") and v:HasTag(Global.PLAYER_CHARACTER_TAG_NAME)) then
-						v.Transparency = val
-					end
+				for _, v: BasePart in pairs(CharacterDef.getPlayermodelParts(char)) do
+					v.Transparency = val
 				end
 			end
 
@@ -114,7 +113,9 @@ function CameraModule.new()
 	end
 
 	self:onCurrentCameraChanged()
-	RunService:BindToRenderStep("cameraRenderUpdate", Enum.RenderPriority.Camera.Value, function(dt) self:update(dt) end)
+	RunService:BindToRenderStep("cameraRenderUpdate", Enum.RenderPriority.Camera.Value, function(dt) 
+		self:update(dt) 
+	end)
 
 	-- Connect listeners to camera-related properties
 	for _, propertyName in pairs(PLAYER_CAMERA_PROPERTIES) do

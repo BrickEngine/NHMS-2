@@ -1,6 +1,5 @@
 -- Default first person camera
 
-local PlayersService = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -11,13 +10,15 @@ local BaseCam = require(script.Parent.BaseCam)
 local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 
---local INITIAL_CAM_ANG = CFrame.fromOrientation(math.rad(-15), 0, 0)
 local ROOT_OFFSET = Vector3.new(0, 2.5, 0)
+local DEATH_OFFSET = Vector3.new(0, -3, 0)
+local DEATH_ROT_CF_OFFSET = CFrame.fromEulerAnglesXYZ(math.rad(0), math.rad(85), math.rad(-70))
 local DASH_OFFSET = Vector3.new(0, -1.8, 0)
 local INP_SENS_FAC = 34	-- input sensitivity factor
 local WALL_TILT = 5.5 -- deg - max cam wall tilt
 local INP_TILT = 6 -- deg - max cam input based tilt
 local TILT_DT = 0.2	-- time delta for tilt lerp functions
+local DEATH_LERP_FAC = 15
 local ROT_MIN_Y = -89 -- deg
 local ROT_MAX_Y = 89 -- deg
 
@@ -53,6 +54,25 @@ function FPCam:toggleDeathCam(toggle: boolean)
 end
 
 function FPCam:updateDeathCam(dt: number): (CFrame, CFrame)
+
+	local now = tick()
+	local cam = Workspace.CurrentCamera
+	local camCFrame = cam.CFrame
+	local camFocus = cam.Focus
+	local rootPart: BasePart = self:getRootPart()
+
+	if (rootPart) then
+		camFocus = rootPart.CFrame
+		lastCamOffs = MathUtil.vec3Flerp(lastCamOffs, DEATH_OFFSET, dt * DEATH_LERP_FAC)
+		local targetRotCFrame = rootPart.CFrame.Rotation * DEATH_ROT_CF_OFFSET
+		camCFrame =
+			CFrame.new(camFocus.Position + (ROOT_OFFSET + lastCamOffs))
+			* camCFrame.Rotation:Lerp(targetRotCFrame, dt * DEATH_LERP_FAC)
+	end
+	self.lastCameraTransform = camCFrame
+	self.lastCameraFocus = camFocus
+
+	self.lastUpdate = now
 	return self.lastCameraTransform, self.lastCameraFocus
 end
 
@@ -84,24 +104,11 @@ function FPCam:update(dt)
 		return self:updateDeathCam(dt)
 	end
 
-	self.resetCameraAngle = true
+	--self.resetCameraAngle = true
 	local now = tick()
 	local cam = Workspace.CurrentCamera
 	local newCamCFrame = cam.CFrame
 	local newCamFocus = cam.Focus
-
-	-- local overrideCameraLookVector
-	-- if self.resetCameraAngle then
-	-- 	local rootPart: BasePart = self:getRootPart()
-	-- 	if rootPart then
-	-- 		overrideCameraLookVector = (rootPart.CFrame * INITIAL_CAM_ANG).LookVector
-	-- 	else
-	-- 		overrideCameraLookVector = INITIAL_CAM_ANG.LookVector
-	-- 	end
-	-- 	self.resetCameraAngle = false
-	-- end
-
-	local player = PlayersService.LocalPlayer
 
 	if (self.lastUpdate == nil or dt > 1) then
 		self.lastCameraTransform = nil
@@ -110,14 +117,27 @@ function FPCam:update(dt)
 	local subjCFrame: CFrame = self:getSubjectCFrame()
     --local subjVel: Vector3 = self:getSubjectVelocity()
 
-    -- Get rotation input
+    -- get rotation input
     local rotateInput = CamInput.getRotation(dt)
     if (rotateInput.Magnitude > 1) then
         rotateInput = rotateInput.Unit
     end
 
-    -- Calculate camera CFrame
-	if (subjCFrame and player and cam) then
+	-- reset Cam on respawn
+	if (self.resetCameraAngle) then
+		local rootPart: BasePart = self:getRootPart()
+		camAngVec = VEC3_ZERO
+		if (rootPart) then
+			camAngVec = Vector3.new(0, rootPart.Orientation.Y, 0)
+		end
+		lastInpTilt = 0
+		lastWallTilt = 0
+
+		self.resetCameraAngle = false
+	end
+
+    -- calculate camera CFrame
+	if (subjCFrame) then
         local adjInputVec = rotateInput * INP_SENS_FAC
         local x = (camAngVec.X - adjInputVec.Y)
 
@@ -130,8 +150,6 @@ function FPCam:update(dt)
 
 		-- Mouse movement linked camera tilting
 		local limitedRotInp = math.clamp(rotateInput.X * 45, -INP_TILT, INP_TILT)
-		-- local rot_z = MathUtil.flerp(lastInpTilt, limitedRotInp, TILT_DT)
-		-- lastInpTilt = lastWallTilt + rot_z
 		lastInpTilt = MathUtil.flerp(lastInpTilt, limitedRotInp, TILT_DT)
 		local rot_z = lastInpTilt + lastWallTilt
 
@@ -149,7 +167,7 @@ function FPCam:update(dt)
 	end
 
 	self.lastUpdate = now
-	return newCamCFrame, newCamFocus
+	return self.lastCameraTransform, self.lastCameraFocus
 end
 
 return FPCam

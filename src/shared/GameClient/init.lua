@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local Network = require(ReplicatedStorage.Shared.Network)
 local CliApi = require(script.CliNetApi)
+local PlayerData = require(script.Parent.PlayerData)
 local SoundManager = require(ReplicatedStorage.Shared.SoundManager)
 local CorePlayerUI = require(script.UI.CorePlayerUI)
 local Controller = require(ReplicatedStorage.Shared.Controller)
@@ -19,7 +20,7 @@ local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local UIType = require(ReplicatedStorage.Shared.Enums.UIType)
 
-local MIN_FALL_DMG_VEL = 65.0
+local MIN_FALL_DMG_VEL = 50.0
 local MIN_FALL_DMG = 5
 local FALL_DMG_COOLDOWN = 0.25
 local FALL_DMG_FAC = 0.0095
@@ -48,7 +49,7 @@ local clientEvents = Network.clientEvents
 local localPlr = Players.LocalPlayer
 
 local simulation = Controller:getSimulation()
-local camera = Controller:getCamera()
+local controllerCamera = Controller:getCamera()
 local rootPlrData = ClientRoot.getPlrData()
 local rootSimData = ClientRoot.getSimData()
 local rootGameData = ClientRoot.getGameData()
@@ -61,41 +62,8 @@ local charAddedConn: RBXScriptConnection
 local charRemovingConn: RBXScriptConnection
 
 ------------------------------------------------------------------------------------------------------------------------
--- Network
-
-local function onSetHealth(plr: Player, val: number)
-    if (plr ~= localPlr) then
-        return
-    end
-
-    ClientRoot.setHealth(val)
-    if (rootPlrData.health <= 0) then
-        ClientRoot.setIsDead(true)
-    end
-end
-
-local cliREFunction = {
-    [Network.serverEvents.playSound] = function(plr: Player, item: string, play: boolean)
-        SoundManager:updatePlayerSound(plr, item, play)
-    end,
-    [Network.serverEvents.setHealth] = function(plr: Player, val: number)
-        onSetHealth(plr, val)
-    end
-}
-
-local cliFastREFunctions = {
-    [Network.serverFastEvents.jointsDataToClient] = function(plr: Player, ...)
-        -- TODO
-    end,
-}
-
-CliApi.implementREvents(cliREFunction)
-CliApi.implementFastREvents(cliFastREFunctions)
-
-------------------------------------------------------------------------------------------------------------------------
 -- Module
 ------------------------------------------------------------------------------------------------------------------------
-
 local GameClient = {}
 
 function GameClient.init()
@@ -114,6 +82,7 @@ end
 function GameClient.initPlayer()
     local function onCharAdded(character: Model)
         ClientRoot.setIsDead(false)
+        ClientRoot.setHealth(PlayerData.LIMITS.health)
     end
 
     local function onCharRemoving(character: Model)
@@ -128,32 +97,40 @@ function GameClient.initPlayer()
     charRemovingConn = Players.LocalPlayer.CharacterRemoving:Connect(onCharRemoving)
 end
 
-function GameClient.changeHealth(newHp: number, damageType: string?)
+-- Locally changes health and fires a health change request
+function GameClient.changeHealth(newHp: number, damageType: string)
     if (newHp == rootPlrData.health) then
         return
     end
-    local _damageType = damageType or DamageType.NONE
-
-    -- play sounds
-    if (newHp > 0 and newHp < rootPlrData.health) then
-        local rmdSoundItem = DMG_SOUND_ARR[math.random(1, #DMG_SOUND_ARR)]
-        SoundManager:updateGlobalSound(rmdSoundItem, true)
+    --ClientRoot.setIsDead(newHp <= 0)
+    if (newHp <= 0) then
+        ClientRoot.setIsDead(true)
     end
 
     newHp = math.max(0, newHp)
-    CliApi.events[clientEvents.requestChangeHealth]:FireServer(newHp, _damageType)
-    ClientRoot.setHealth(newHp, _damageType)
+    CliApi.events[clientEvents.requestChangeHealth]:FireServer(newHp, damageType)
+    ClientRoot.setHealth(newHp, damageType)
+end
+
+-- Things to execute when the ClientRoot Event fires
+function GameClient.onHealthChanged(newHp: number, hpDiff: number, damageType: string)
+    -- play sounds
+    if (newHp > 0 and hpDiff < 0) then
+        local rmdSoundItem = DMG_SOUND_ARR[math.random(1, #DMG_SOUND_ARR)]
+        SoundManager:updateGlobalSound(rmdSoundItem, true)
+    end
 end
 
 function GameClient.onDeathStateChanged(isDead: boolean, lastDamageType: string)
     if (not isDead) then
         -- TODO: spawn / revive effects
-        camera:activateFPDeathCam(false)
+        CorePlayerUI:resetAll()
+        controllerCamera:activateFPDeathCam(false)
         return
     end
     
     simulation:toggleReadInput(false)
-    camera:activateFPDeathCam(true)
+    controllerCamera:activateFPDeathCam(true)
     local deathSound = DEATH_SOUND_MAP[lastDamageType]
     SoundManager:updateGlobalSound(deathSound, true)
 end
@@ -212,8 +189,42 @@ function GameClient.update(dt: number)
 end
 
 ------------------------------------------------------------------------------------------------------------------------
--- Events
+-- Network
+
+local function onSetHealthRemote(plr: Player, newHp: number, damageType: string)
+    if (plr ~= localPlr) then
+        return
+    end
+    GameClient.changeHealth(newHp, damageType)
+
+    -- ClientRoot.setHealth(newHp)
+    -- if (rootPlrData.health <= 0) then
+    --     ClientRoot.setIsDead(true)
+    -- end
+end
+
+local cliREFunction = {
+    [Network.serverEvents.playSound] = function(plr: Player, item: string, play: boolean)
+        SoundManager:updatePlayerSound(plr, item, play)
+    end,
+    [Network.serverEvents.setHealth] = function(plr: Player, hp: number, damageType: string)
+        onSetHealthRemote(plr, hp, damageType)
+    end
+}
+
+local cliFastREFunctions = {
+    [Network.serverFastEvents.jointsDataToClient] = function(plr: Player, ...)
+        -- TODO
+    end,
+}
+
+CliApi.implementREvents(cliREFunction)
+CliApi.implementFastREvents(cliFastREFunctions)
+
+------------------------------------------------------------------------------------------------------------------------
+-- Local events
 ClientRoot.signals.deathStateChanged.Event:Connect(GameClient.onDeathStateChanged)
+ClientRoot.signals.healthChanged.Event:Connect(GameClient.onHealthChanged)
 
 ------------------------------------------------------------------------------------------------------------------------
 

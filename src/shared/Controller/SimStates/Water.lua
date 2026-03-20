@@ -146,8 +146,6 @@ end
 function Water:updateSwim(dt: number, rawInpDir: Vector3)
     local primaryPart: BasePart = self.character.PrimaryPart
     local camera = Workspace.CurrentCamera
-    local camDir = camera.CFrame.LookVector
-    local camHoriDir = Vector3.new(camDir.X, 0, camDir.Z)
     local currVel = primaryPart.AssemblyLinearVelocity
     local currPos = primaryPart.CFrame.Position
     local mass = primaryPart.AssemblyMass
@@ -193,10 +191,10 @@ function Water:updateSwim(dt: number, rawInpDir: Vector3)
     self.forces.moveForce.Force = (accelVec + unitBuoyForce) * mass
 
     -- update playermodel rotation
-    primaryPart.CFrame = CFrame.lookAlong(
-        primaryPart.CFrame.Position, camHoriDir
-    )
-    primaryPart.AssemblyAngularVelocity = VEC3_ZERO
+    -- primaryPart.CFrame = CFrame.lookAlong(
+    --     primaryPart.CFrame.Position, camHoriDir
+    -- )
+    -- primaryPart.AssemblyAngularVelocity = VEC3_ZERO
 end
 
 local diveSignal = false

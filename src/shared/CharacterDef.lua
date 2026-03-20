@@ -2,13 +2,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local Global = require(ReplicatedStorage.Shared.Global)
 local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 
 -- local DEBUG_COLL_COLOR3 = Color3.fromRGB(0, 0, 255)
 
 local PLAYERMDL_MASS_ENABLED = false
 local MAIN_ROOT_PRIO = 100
+local CHARACTER_PART_TAG_NAME = "PlrCharPart"
 
 local PRINT_PLRMDL_UNUSED_WARNING = false
 
@@ -130,7 +130,9 @@ local function createCharacter(playermodel: Model?): Model
         if (inst:IsA("BasePart")) then
             inst.Parent = character
             inst.CanCollide = false
-            inst:AddTag(Global.PLAYER_CHARACTER_TAG_NAME)
+            inst.CanTouch = false
+            inst.CanQuery = false
+            inst:AddTag(CHARACTER_PART_TAG_NAME)
 
             if (not PLAYERMDL_MASS_ENABLED) then
                 inst.Massless = true
@@ -186,6 +188,16 @@ function CharacterDef.createCharacter(playerModel: Model): Model
     setCollGroup(character)
 
     return character
+end
+
+function CharacterDef.getPlayermodelParts(character: Model): {BasePart}
+    local partArr = {}
+    for _, inst: Instance in pairs(character:GetDescendants()) do
+        if (inst:IsA("BasePart") and inst:HasTag(CHARACTER_PART_TAG_NAME)) then
+            partArr[#partArr + 1] = inst
+        end
+    end
+    return partArr
 end
 
 return CharacterDef.new()

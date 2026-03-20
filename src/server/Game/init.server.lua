@@ -154,7 +154,6 @@ local function onPlayerRequestChangeHealth(plr: Player, newHp: number?, damageTy
         ) then
             _damageType = damageType
         end
-        print(_damageType)
     end
     if (newHp % 1 == 0) then
         changePlrHealth(plr, newHp, _damageType)

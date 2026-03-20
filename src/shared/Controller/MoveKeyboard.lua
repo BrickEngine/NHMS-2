@@ -2,7 +2,7 @@
 
 local ContextActionService = game:GetService("ContextActionService")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+--local RunService = game:GetService("RunService")
 
 local BaseInput = require(script.Parent.BaseInput)
 local ContextActions = require(script.Parent.ContextActions)
@@ -92,8 +92,12 @@ function MoveKeyboard:bindActions()
 		self:updateJump()
 		return Enum.ContextActionResult.Pass
 	end
-	local handleDashAction = function(inputObject)
-		self.dashInp = UserInputService:IsKeyDown(inputObject)
+	-- local handleDashAction = function(inputObject)
+	-- 	self.dashInp = UserInputService:IsKeyDown(inputObject)
+	-- 	self:updateDash()
+	-- end
+	local handleDashAction = function(actionName, inputState, inputObject)
+		self.dashInp = (inputState == Enum.UserInputState.Begin)
 		self:updateDash()
 	end
 
@@ -108,7 +112,9 @@ function MoveKeyboard:bindActions()
 	ContextActionService:BindActionAtPriority(
 		ContextActions.JUMP, handleJumpAction, false, self.CONTROL_PRIORITY, KEY_JUMP)
 	--ContextActionService:BindActionAtPriority(ContextActions.RUN, handleRunAction, false, self.CONTROL_PRIORITY, KEY_RUN)
-	RunService:BindToRenderStep(ContextActions.DASH, self.CONTROL_PRIORITY, function() handleDashAction(KEY_DASH) end)
+	ContextActionService:BindActionAtPriority(
+		ContextActions.DASH, handleDashAction, false, self.CONTROL_PRIORITY, KEY_DASH)
+	--RunService:BindToRenderStep(ContextActions.DASH, self.CONTROL_PRIORITY, function() handleDashAction(KEY_DASH) end)
 
 	self._connectionUtil:trackBoundFunction(
 		ContextActions.MOVE_F, function() ContextActionService:UnbindAction(ContextActions.MOVE_F) end)
@@ -122,7 +128,8 @@ function MoveKeyboard:bindActions()
 		ContextActions.JUMP, function() ContextActionService:UnbindAction(ContextActions.JUMP) end)
 	--self._connectionUtil:trackBoundFunction(ContextActions.RUN, function() ContextActionService:UnbindAction(ContextActions.RUN) end)
 	self._connectionUtil:trackBoundFunction(
-		ContextActions.DASH, function() RunService:UnbindFromRenderStep(ContextActions.DASH) end)
+		-- ContextActions.DASH, function() RunService:UnbindFromRenderStep(ContextActions.DASH) end)
+		ContextActions.DASH, function() ContextActionService:UnbindAction(ContextActions.DASH) end)
 end
 
 function MoveKeyboard:connectFocusEventListeners()

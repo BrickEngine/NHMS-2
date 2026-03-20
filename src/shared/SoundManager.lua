@@ -49,16 +49,18 @@ local SOUND_DATA = table.freeze({
     },
     [SOUND_ITEMS.DEATH] = {
         SoundId = "rbxassetid://95272958949487",
+        Volume = 1.3,
     },
     [SOUND_ITEMS.DEATH_DROWN] = {
         SoundId = "rbxassetid://134069985010030",
     },
     [SOUND_ITEMS.DEATH_FALL] = {
-        SoundId = "rbxassetid://125793119459513",
+        SoundId = "rbxassetid://95272958949487", --125793119459513
+        Volume = 1.3,
     },
     [SOUND_ITEMS.JUMP] = {
         SoundId = "rbxassetid://143384769", --5466166437 86604727900745 143384769 128602720222961
-        Volume = 0.5,
+        Volume = 1.2,
     },
     [SOUND_ITEMS.FLOOR_HIT] = {
         SoundId = "rbxassetid://127822240770734", --135370882594044

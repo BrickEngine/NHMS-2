@@ -69,7 +69,9 @@ function Simulation.init()
     self.simUpdateConn = nil
     self.animation = nil
 
+    self.allowTransitions = true
     self.stateShared = stateSharedDefaults
+    self.isDead = false
     self.buoySensor = nil
 
     self.character = Players.LocalPlayer.Character
@@ -139,8 +141,21 @@ function Simulation:getStateShared(): SharedVals
     return self.stateShared
 end
 
+function Simulation:resetStateShared()
+    self.stateShared = stateSharedDefaults
+end
+
 function Simulation:toggleReadInput(readInput: boolean)
+    self.isDead = not readInput
     InputManager:setControlsEnabled(readInput)
+end
+
+-- Stuns the player by forcing state transitions or other effects, depending on the current state
+function Simulation:stun()
+    if (not self.currentState) then
+        warn("No active state"); return
+    end
+    self.currentState:stun()
 end
 
 function Simulation:onRootPartChanged()
@@ -148,10 +163,6 @@ function Simulation:onRootPartChanged()
         warn("PrimaryPart of character removed -> halting simulation, removing character")
         self:onCharRemoving(Players.LocalPlayer.Character)
     end
-end
-
-function Simulation:resetStateShared()
-    self.stateShared = stateSharedDefaults
 end
 
 function Simulation:resetSimulation()
@@ -168,6 +179,7 @@ function Simulation:resetSimulation()
     self.animation = Animation.new(self)
 
     self:resetStateShared()
+    self:toggleReadInput(true)
 
     if (self.buoySensor) then
         (self.buoySensor :: BuoyancySensor):Destroy()
