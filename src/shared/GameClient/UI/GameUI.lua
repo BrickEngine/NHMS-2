@@ -15,7 +15,9 @@ local DMG_OVERL_TRANSP_MAX = 0.8
 local DMG_OVERL_CHANGE_RATE = 0.8
 local DMG_COLOR3 = Color3.new(1, 0, 0)
 local HEAL_COLOR3 = Color3.new(0, 1, 0)
+local COLOR3_FULLBLACK = Color3.new(0, 0, 0)
 local DISPLAY_BLINK_TIME = 0.2
+local DEATH_FADE_DELAY = 0.6
 
 local playerGui = Players.LocalPlayer.PlayerGui
 local starterGameGui = StarterGui.GameUI
@@ -26,6 +28,8 @@ local eventConns = {} :: {RBXScriptConnection}
 -- for ez ref finding
 local activeGuiObj = starterGameGui:Clone()
 local activeFilterMesh: BasePart
+
+local timeSinceDeath = 0
 
 local function setActiveFilterMesh(mesh: BasePart): BasePart
     if (activeFilterMesh) then
@@ -40,19 +44,29 @@ local function onHealthChanged(newHP: number, diff: number, dmgType: string)
     local hpTextBox = activeGuiObj.Vitals.HealthTB
     local dmgOverlay = activeGuiObj.DamageOverlay
 
+    hpTextBox.Text = tostring(newHP)
+
+    -- modify damage overlay
+    if (newHP == 0) then
+        dmgOverlay.Transparency = 1
+        dmgOverlay.BackgroundColor3 = COLOR3_FULLBLACK
+        return
+    end
     dmgOverlay.BackgroundColor3 = (diff < 0) and DMG_COLOR3 or HEAL_COLOR3
     dmgOverlay.Transparency = 1 - math.clamp(
         math.abs(diff) * 0.01, DMG_OVERL_TRANSP_MIN, DMG_OVERL_TRANSP_MAX
     )
-    hpTextBox.Text = tostring(newHP)
 end
 
-local function updateDmgOverlay(dt: number)
+local function updateDmgOverlayTransp(dt: number)
     local dmgOverlay = activeGuiObj.DamageOverlay
 
     local currHp = ClientRoot.getPlrData().health
     if (currHp <= 0) then
-        dmgOverlay.Transparency = 1 -- - DMG_OVERL_TRANSP_MAX
+        if (timeSinceDeath > DEATH_FADE_DELAY) then
+            local newTransp = math.max(0, dmgOverlay.Transparency - dt * 0.55)
+            dmgOverlay.Transparency = newTransp
+        end
         return
     end
     dmgOverlay.Transparency += dt * DMG_OVERL_CHANGE_RATE
@@ -114,7 +128,6 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Module
 ------------------------------------------------------------------------------------------------------------------------
-
 local GameUI = {}
 GameUI.__index = GameUI
 
@@ -173,8 +186,14 @@ end
 
 function GameUI:update(dt: number)
     updateDisplays(dt)
-    updateDmgOverlay(dt)
+    updateDmgOverlayTransp(dt)
     updateFilter()
+
+    if (ClientRoot.getPlrData().isDead) then
+        timeSinceDeath += dt
+    else
+        timeSinceDeath = 0
+    end
 end
  
 function GameUI:destroy()

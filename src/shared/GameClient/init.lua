@@ -87,7 +87,7 @@ function GameClient.initPlayer()
     end
 
     local function onCharRemoving(character: Model)
-        CliApi.events[clientEvents.requestSpawn]:FireServer()
+        --CliApi.events[clientEvents.requestSpawn]:FireServer()
     end
 
     CliApi.events[clientEvents.requestSpawn]:FireServer()
@@ -119,9 +119,14 @@ end
 -- Things to execute when the ClientRoot Event fires
 function GameClient.onHealthChanged(newHp: number, hpDiff: number, damageType: string)
     -- play sounds
-    if (newHp > 0 and hpDiff < 0) then
-        local rmdSoundItem = DMG_SOUND_ARR[math.random(1, #DMG_SOUND_ARR)]
-        SoundManager:updateGlobalSound(rmdSoundItem, true)
+    if (hpDiff < 0) then
+        if (newHp > 0) then
+            local rmdSoundItem = DMG_SOUND_ARR[math.random(1, #DMG_SOUND_ARR)]
+            SoundManager:updateGlobalSound(rmdSoundItem, true)
+        elseif (newHp == 0) then
+            local deathSound = DEATH_SOUND_MAP[damageType]
+            SoundManager:updateGlobalSound(deathSound, true)
+        end
     end
 end
 
@@ -133,8 +138,6 @@ function GameClient.onDeathStateChanged(isDead: boolean, lastDamageType: string)
     else
         simulation:toggleReadInput(false)
         controllerCamera:activateFPDeathCam(true)
-        local deathSound = DEATH_SOUND_MAP[lastDamageType]
-        SoundManager:updateGlobalSound(deathSound, true)
         task.wait(DEATH_RESPAWN_DELAY)
         CliApi.events[clientEvents.requestSpawn]:FireServer()
     end
@@ -162,6 +165,7 @@ function GameClient.updateFallDamage(dt: number)
     if (damageConditions) then
         local damage = math.floor((lastFallVel * lastFallVel - FALL_DMG_OFFSET) * FALL_DMG_FAC + MIN_FALL_DMG)
         local newHp = rootPlrData.health - damage
+        newHp = math.max(0, newHp)
         GameClient.changeHealth(newHp, DamageType.FALL)
         fallCooldown = FALL_DMG_COOLDOWN
     end
