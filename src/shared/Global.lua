@@ -1,7 +1,7 @@
 -- Global constants for client and server side modules.
 
 return table.freeze({
-    GAME_PHYS_DEBUG = true,
+    GAME_PHYS_DEBUG = false,
     GAME_CHAR_DEBUG = true,
     GAME_UI_DEBUG = false,
 

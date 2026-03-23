@@ -51,6 +51,9 @@ end
 
 local function removePlayerCharacter(plr: Player)
 	if (plr.Character) then
+        -- if (plr.Character.PrimaryPart) then
+        --     plr.Character.PrimaryPart:SetNetworkOwner(nil)
+        -- end
         plr.Character:Destroy() 
         plr.Character = nil
     end
@@ -60,6 +63,7 @@ local function revivePlayer(plr: Player)
     local currData = PlayerData.getPlayerData(plr)
     currData.health = PlayerData.LIMITS.health
     currData.isDead = false
+    deathCooldownList[plr] = DEATH_EVENT_COOLDOWN
 
     ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, currData.health)
 end
@@ -67,7 +71,8 @@ end
 local function spawnPlayer(plr: Player)
     if (plr.Character) then
         warn(plr.Name.." attempted to spawn with active character")
-        plr.Character:Destroy()
+        removePlayerCharacter(plr)
+        return
     end
     -- TODO: proper PlayerModel selection
     local plrMdl = StarterPlayer:FindFirstChild("Playermodel")
@@ -122,12 +127,13 @@ local function changePlrHealth(plr: Player, newHealth: number, damageType: strin
     currPlrData.health = newHealth
     math.clamp(currPlrData.health, 0, limit)
 
-    ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, currPlrData.health, damageType)
-
-    print(`Server HP of {plr}: {currPlrData.health}`)
-    if (currPlrData.health <= 0) then
+    if (currPlrData.health == 0) then
         killPlayer(plr)
     end
+
+    print(`Server HP of {plr}: {currPlrData.health}`)
+
+    ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, currPlrData.health, damageType)
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -142,22 +148,15 @@ end
 
 -- Changes player health, if the requested value is int
 local function onPlayerRequestChangeHealth(plr: Player, newHp: number?, damageType: string?)
-    if (type(newHp) ~= "number") then
-        warn("not a number"); return
+    if (type(newHp) ~= "number") then 
+        warn("Hp not a number"); return 
     end
-    local _damageType = DamageType.NONE
-    if (damageType) then
-        if (
-            damageType == DamageType.FALL
-            or damageType == DamageType.DROWN
-            or DamageType == DamageType.EXPLOSION
-        ) then
-            _damageType = damageType
-        end
+    if (newHp % 1 ~= 0) then 
+        warn("Hp not an integer"); return 
     end
-    if (newHp % 1 == 0) then
-        changePlrHealth(plr, newHp, _damageType)
-    end
+
+    local _damageType = if (damageType) then damageType else DamageType.NONE
+    changePlrHealth(plr, newHp, _damageType)
 end
 
 local function onPlayerRequestSpawn(plr: Player)
@@ -166,8 +165,6 @@ local function onPlayerRequestSpawn(plr: Player)
     end
 
     spawnPlayer(plr)
-
-    deathCooldownList[plr] = DEATH_EVENT_COOLDOWN
 end
 
 -- network events management

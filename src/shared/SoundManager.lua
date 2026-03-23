@@ -14,6 +14,7 @@ local Network = require(ReplicatedStorage.Shared.Network)
 local CliNetApi = require(ReplicatedStorage.Shared.GameClient.CliNetApi)
 
 local SOUND_PB_REG_HUGE = 100
+--local SOUND_POOL_SIZE = 3 -- number of instances to create for each sound
 
 local SOUND_ITEMS = table.freeze({
     JUMP = "JumpSound",
@@ -137,12 +138,12 @@ local function createSounds(plr: Player, char: Model, item: string)
     playerSoundsMap[plr][item] = sound
 end
 
-local function resetSound(sound: Sound)
-    sound:Stop()
-    sound:Play()
-end
-
 local function updateSound(sound: Sound, play: boolean)
+    local function resetSound(sound: Sound)
+        sound:Stop()
+        sound:Play()
+    end
+
     if (not play) then
         if (sound.IsPlaying) then
             sound:Stop()

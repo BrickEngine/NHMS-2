@@ -12,13 +12,13 @@ local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 
 local ROOT_OFFSET = Vector3.new(0, 2.5, 0)
 local DEATH_OFFSET = Vector3.new(0, -3, 0)
-local DEATH_ROT_CF_OFFSET = CFrame.fromEulerAnglesXYZ(math.rad(0), math.rad(85), math.rad(-70))
+local DEATH_ROT_CF_OFFSET = CFrame.fromEulerAnglesXYZ(math.rad(15), 0, math.rad(-60))
 local DASH_OFFSET = Vector3.new(0, -1.8, 0)
 local INP_SENS_FAC = 34	-- input sensitivity factor
 local WALL_TILT = 5.5 -- deg - max cam wall tilt
 local INP_TILT = 6 -- deg - max cam input based tilt
 local TILT_DT = 0.2	-- time delta for tilt lerp functions
-local DEATH_LERP_FAC = 15
+local DEATH_LERP_FAC = 5.45
 local ROT_MIN_Y = -89 -- deg
 local ROT_MAX_Y = 89 -- deg
 

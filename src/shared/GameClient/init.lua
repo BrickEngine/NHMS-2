@@ -25,6 +25,7 @@ local MIN_FALL_DMG = 5
 local FALL_DMG_COOLDOWN = 0.25
 local FALL_DMG_FAC = 0.0095
 local FALL_DMG_OFFSET = MIN_FALL_DMG_VEL * MIN_FALL_DMG_VEL
+local DEATH_RESPAWN_DELAY = 2.5
 
 local DEATH_SOUND_MAP = {
     [DamageType.NONE] = SoundManager.SOUND_ITEMS.DEATH,
@@ -97,19 +98,22 @@ function GameClient.initPlayer()
     charRemovingConn = Players.LocalPlayer.CharacterRemoving:Connect(onCharRemoving)
 end
 
--- Locally changes health and fires a health change request
-function GameClient.changeHealth(newHp: number, damageType: string)
+-- Changes health and related data locally
+function GameClient.changeHealthLocal(newHp: number, damageType: string)
     if (newHp == rootPlrData.health) then
         return
     end
+    ClientRoot.setHealth(newHp, damageType)
     --ClientRoot.setIsDead(newHp <= 0)
     if (newHp <= 0) then
         ClientRoot.setIsDead(true)
     end
+end
 
-    newHp = math.max(0, newHp)
+-- Requests health change on the server
+function GameClient.changeHealth(newHp: number, damageType: string)
+    GameClient.changeHealthLocal(newHp, damageType)
     CliApi.events[clientEvents.requestChangeHealth]:FireServer(newHp, damageType)
-    ClientRoot.setHealth(newHp, damageType)
 end
 
 -- Things to execute when the ClientRoot Event fires
@@ -126,13 +130,14 @@ function GameClient.onDeathStateChanged(isDead: boolean, lastDamageType: string)
         -- TODO: spawn / revive effects
         CorePlayerUI:resetAll()
         controllerCamera:activateFPDeathCam(false)
-        return
+    else
+        simulation:toggleReadInput(false)
+        controllerCamera:activateFPDeathCam(true)
+        local deathSound = DEATH_SOUND_MAP[lastDamageType]
+        SoundManager:updateGlobalSound(deathSound, true)
+        task.wait(DEATH_RESPAWN_DELAY)
+        CliApi.events[clientEvents.requestSpawn]:FireServer()
     end
-    
-    simulation:toggleReadInput(false)
-    controllerCamera:activateFPDeathCam(true)
-    local deathSound = DEATH_SOUND_MAP[lastDamageType]
-    SoundManager:updateGlobalSound(deathSound, true)
 end
 
 function GameClient.updateFallDamage(dt: number)
@@ -191,11 +196,12 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- Network
 
-local function onSetHealthRemote(plr: Player, newHp: number, damageType: string)
+local function onSetHealthRemote(plr: Player, newHp: number, damageType: string?)
     if (plr ~= localPlr) then
         return
     end
-    GameClient.changeHealth(newHp, damageType)
+    local _damageType = if (damageType) then damageType else DamageType.NONE
+    GameClient.changeHealthLocal(newHp, _damageType)
 
     -- ClientRoot.setHealth(newHp)
     -- if (rootPlrData.health <= 0) then
