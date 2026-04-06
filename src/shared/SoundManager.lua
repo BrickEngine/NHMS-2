@@ -249,7 +249,7 @@ end
 -- Plays the specified sound item locally
 function SoundManager:updateLocal(item: string, play: boolean)
     local sound = playerSoundsMap[localPlr][item]
-    if (not sound) then error(`Nonexisten sound for '{item}'`) end
+    if (not sound) then error(`Nonexistent sound for '{item}'`) end
 
     updateSound(sound, play)
 end

@@ -1,6 +1,6 @@
 local WeaponName = table.freeze({
     SWORD = "Sword",
-    FIREBALL = "Fireball",
+    PLASMA_SPELL = "Plasma Spell",
     
     PISTOL = "Pistol",
     SMG = "SMG",

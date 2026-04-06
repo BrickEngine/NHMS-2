@@ -8,7 +8,6 @@ local min = math.min
 local tan = math.tan
 local rad = math.rad
 local inf = math.huge
-local ray = Ray.new
 
 local excludeParams = RaycastParams.new()
 excludeParams.IgnoreWater = true
@@ -164,8 +163,6 @@ end
 
 local function queryPoint(origin, unitDir, dist, lastPos)
 	debug.profilebegin("queryPoint")
-
-	local originalSize = #excludeList
 
 	dist = dist + nearPlaneZ
 	local target = origin + unitDir*dist

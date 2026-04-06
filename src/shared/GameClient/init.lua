@@ -25,7 +25,6 @@ local MIN_FALL_DMG = 5
 local FALL_DMG_COOLDOWN = 0.25
 local FALL_DMG_FAC = 0.0095
 local FALL_DMG_OFFSET = MIN_FALL_DMG_VEL * MIN_FALL_DMG_VEL
-local DEATH_RESPAWN_DELAY = 2.5
 
 local DEATH_SOUND_MAP = {
     [DamageType.NONE] = SoundManager.SOUND_ITEMS.DEATH,
@@ -87,7 +86,7 @@ function GameClient.initPlayer()
     end
 
     local function onCharRemoving(character: Model)
-        --CliApi.events[clientEvents.requestSpawn]:FireServer()
+        CliApi.events[clientEvents.requestSpawn]:FireServer()
     end
 
     CliApi.events[clientEvents.requestSpawn]:FireServer()
@@ -117,14 +116,15 @@ function GameClient.changeHealth(newHp: number, damageType: string)
 end
 
 -- Things to execute when the ClientRoot Event fires
-function GameClient.onHealthChanged(newHp: number, hpDiff: number, damageType: string)
+function GameClient.onHealthChanged(newHp: number, hpDiff: number, damageType: string?)
+    local _damageType = if (damageType) then damageType else DamageType.NONE
     -- play sounds
     if (hpDiff < 0) then
         if (newHp > 0) then
             local rmdSoundItem = DMG_SOUND_ARR[math.random(1, #DMG_SOUND_ARR)]
             SoundManager:updateGlobalSound(rmdSoundItem, true)
         elseif (newHp == 0) then
-            local deathSound = DEATH_SOUND_MAP[damageType]
+            local deathSound = DEATH_SOUND_MAP[_damageType]
             SoundManager:updateGlobalSound(deathSound, true)
         end
     end
@@ -135,11 +135,10 @@ function GameClient.onDeathStateChanged(isDead: boolean, lastDamageType: string)
         -- TODO: spawn / revive effects
         CorePlayerUI:resetAll()
         controllerCamera:activateFPDeathCam(false)
+        -- todo move aimation logic to GameClient and do death anim here
     else
         simulation:toggleReadInput(false)
         controllerCamera:activateFPDeathCam(true)
-        task.wait(DEATH_RESPAWN_DELAY)
-        CliApi.events[clientEvents.requestSpawn]:FireServer()
     end
 end
 

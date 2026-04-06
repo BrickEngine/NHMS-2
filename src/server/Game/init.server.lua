@@ -72,7 +72,7 @@ local function spawnPlayer(plr: Player)
     if (plr.Character) then
         warn(plr.Name.." attempted to spawn with active character")
         removePlayerCharacter(plr)
-        return
+        --return
     end
     -- TODO: proper PlayerModel selection
     local plrMdl = StarterPlayer:FindFirstChild("Playermodel")
@@ -86,8 +86,8 @@ local function spawnPlayer(plr: Player)
         newCharacter.Parent = Workspace:FindFirstChild(Global.PLAYERS_INST_FOLDER_NAME)
         newCharacter:MoveTo(spawnPos)
 
-        plr.Character = newCharacter
         newCharacter.PrimaryPart:SetNetworkOwner(plr)
+        plr.Character = newCharacter
     end
 
     assert(plr.Character and plr.Character.PrimaryPart, "Player character must exist and have a primary part")
