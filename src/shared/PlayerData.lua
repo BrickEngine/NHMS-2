@@ -2,7 +2,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BaseWeapon = require(ReplicatedStorage.Shared.GameSystems.BaseWeapon)
+local BaseWeapon = require(ReplicatedStorage.Shared.GameSystems.Weapons.Arsenal.BaseWeapon)
 local AmmoType = require(ReplicatedStorage.Shared.Enums.AmmoType)
 local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
 local FuncUtil = require(ReplicatedStorage.Shared.Util.FuncUtil)
@@ -19,7 +19,7 @@ export type Data = {
     armor: number,
     ammoStorage: {[string]: number},
     inventory: {[number]: BaseWeapon.BaseWeapon?},
-    currentInvSlot: number,
+    activeInvSlot: number,
     lastDamageType: string,
     godModeActive: boolean,
     isDead: boolean,
@@ -39,7 +39,7 @@ PlayerData.DEFAULTS = table.freeze({
         [AmmoType.PLASMA_ORBS] = 0,
     },
     inventory = table.create(9, nil) :: {BaseWeapon.BaseWeapon?},
-    currentInvSlot = 0,
+    activeInvSlot = 0,
     godModeActive = false,
     isDead = true,
     kills = 0,
@@ -77,7 +77,7 @@ PlayerData.DEFAULT_DATA = table.freeze({
         [AmmoType.PLASMA_ORBS]      = PlayerData.DEFAULTS.starterAmmo[AmmoType.PLASMA_ORBS],
     },
     inventory = PlayerData.DEFAULTS.inventory,
-    currentInvSlot = PlayerData.DEFAULTS.currentInvSlot,
+    activeInvSlot = PlayerData.DEFAULTS.activeInvSlot,
     lastDamageType = DamageType.NONE,
     isDead = PlayerData.DEFAULTS.isDead,
     godModeActive = PlayerData.DEFAULTS.godModeActive,

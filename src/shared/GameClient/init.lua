@@ -33,7 +33,6 @@ local DEATH_SOUND_MAP = {
     [DamageType.BULLET] = SoundManager.SOUND_ITEMS.DEATH,
     [DamageType.EXPLOSION] = SoundManager.SOUND_ITEMS.DEATH,
     [DamageType.NAPALM] = SoundManager.SOUND_ITEMS.DEATH,
-    [DamageType.PLASMA] = SoundManager.SOUND_ITEMS.DEATH,
     [DamageType.FALL] = SoundManager.SOUND_ITEMS.DEATH_FALL,
     [DamageType.DROWN] = SoundManager.SOUND_ITEMS.DEATH_DROWN,
 }

@@ -46,10 +46,15 @@ local function onHealthChanged(newHP: number, diff: number, dmgType: string)
 
     hpTextBox.Text = tostring(newHP)
 
+    print(dmgType)
+
     -- modify damage overlay
     if (newHP == 0) then
         dmgOverlay.Transparency = 1
         dmgOverlay.BackgroundColor3 = COLOR3_FULLBLACK
+        return
+    end
+    if (newHP - diff <= 0) then
         return
     end
     dmgOverlay.BackgroundColor3 = (diff < 0) and DMG_COLOR3 or HEAL_COLOR3
@@ -62,6 +67,8 @@ local function updateDmgOverlayTransp(dt: number)
     local dmgOverlay = activeGuiObj.DamageOverlay
 
     local currHp = ClientRoot.getPlrData().health
+
+    -- fade to black screen after dying
     if (currHp <= 0) then
         if (timeSinceDeath > DEATH_FADE_DELAY) then
             local newTransp = math.max(0, dmgOverlay.Transparency - dt * 0.55)

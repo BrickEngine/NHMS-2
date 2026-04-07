@@ -2,22 +2,32 @@ local PhysicsService = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local Players = game:GetService("Players")
+local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
 local Global = require(ReplicatedStorage.Shared.Global)
+local ServerRoot = require(ServerScriptService.ServerRoot)
 local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
-local PlayerData = require(ReplicatedStorage.Shared.PlayerData)
+local WeaponManager = require(ReplicatedStorage.Shared.GameSystems.Weapons.WeaponManager)
 local Network = require(ReplicatedStorage.Shared.Network)
 local ServNetApi = require(script.ServNetApi)
 
-local DEATH_TIME_BUFFER = 2.0
+local LOOP_DT = 0.05
+local DEATH_REMOVE_DELAY = 2.0
 local DEATH_EVENT_COOLDOWN = 3.0
+
+local VALID_CLIENT_DAMAGE_TYPES = {
+    [DamageType.FALL] = true,
+    [DamageType.NAPALM] = true,
+    [DamageType.EXPLOSION] = true,
+    [DamageType.DROWN] = true
+}
 
 local deathCooldownList = {} :: {[Player]: number}
 
-------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
 -- Initialize Workspace
 do
     -- Create Workspace folder for runtime player characters
@@ -48,30 +58,27 @@ do
 end
 
 ------------------------------------------------------------------------------------------------------------------------
+-- Game table
+------------------------------------------------------------------------------------------------------------------------
+local Game = {}
+Game.__index = Game
 
-local function removePlayerCharacter(plr: Player)
+function Game.removePlayerCharacter(plr: Player)
 	if (plr.Character) then
-        -- if (plr.Character.PrimaryPart) then
-        --     plr.Character.PrimaryPart:SetNetworkOwner(nil)
-        -- end
         plr.Character:Destroy() 
         plr.Character = nil
     end
 end
 
-local function revivePlayer(plr: Player)
-    local currData = PlayerData.getPlayerData(plr)
-    currData.health = PlayerData.LIMITS.health
-    currData.isDead = false
+function Game.revivePlayer(plr: Player)
+    ServerRoot.fullyHealPlayer(plr)
     deathCooldownList[plr] = DEATH_EVENT_COOLDOWN
-
-    ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, currData.health)
 end
 
-local function spawnPlayer(plr: Player)
+function Game.spawnPlayer(plr: Player)
     if (plr.Character) then
         warn(plr.Name.." attempted to spawn with active character")
-        removePlayerCharacter(plr)
+        Game.removePlayerCharacter(plr)
         --return
     end
     -- TODO: proper PlayerModel selection
@@ -96,48 +103,53 @@ local function spawnPlayer(plr: Player)
         plr.ReplicationFocus = plr.Character.PrimaryPart
     end
 
-    revivePlayer(plr)
+    Game.revivePlayer(plr)
 
 	return newCharacter
 end
 
-local function killPlayer(plr: Player)
-    local plrData = PlayerData.getPlayerData(plr)
-
-    if (plrData.health ~= 0) then
-        plrData.health = 0
-        ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, 0)
+function Game.removeWeaponFromPlayerInventory(plr: Player, slot: number)
+    local plrData = ServerRoot.getPlayerData(plr)
+    if (not plrData.inventory[slot]) then
+        error(`No existing weapon in {plr}'s inventory at slot {slot}`)
     end
-    plrData.isDead = true
-    task.wait(DEATH_TIME_BUFFER)
-    removePlayerCharacter(plr)
 
-    -- client can only spawn after characterRemoving fired and spawn is requested
-    --removePlayerCharacter(plr)
-    --spawnPlayer(plr)
+    plrData.inventory[slot]:destroy()
+    plrData.inventory[slot] = nil
 end
 
-local function changePlrHealth(plr: Player, newHealth: number, damageType: string, addBonus: boolean?)
-    local currPlrData = PlayerData.getPlayerData(plr)
-    local limit = PlayerData.LIMITS.health
-    if (addBonus) then
-        limit = PlayerData.LIMITS.healthWithBonus
+-- Adds a new weapon to the player's inventory, or overwrites an occupied inventory slot
+function Game.addWeaponToPlayerInventory(plr: Player, weaponName: string)
+    local newWeapObj = WeaponManager.createWeapon(plr.Character, weaponName)
+    local weapSlot = newWeapObj.slot
+    local plrData = ServerRoot.getPlayerData(plr)
+
+    if (plrData.inventory[weapSlot]) then
+        plrData.inventory[weapSlot]:destroy()
+        plrData.inventory[weapSlot] = nil
     end
-    currPlrData.lastDamageType = damageType
-    currPlrData.health = newHealth
-    math.clamp(currPlrData.health, 0, limit)
+    plrData.inventory[weapSlot] = newWeapObj
+end
 
-    if (currPlrData.health == 0) then
-        killPlayer(plr)
-    end
-
-    print(`Server HP of {plr}: {currPlrData.health}`)
-
-    ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, currPlrData.health, damageType)
+function Game.equipPlayerStaterGear(plr: Player)
+    
 end
 
 ------------------------------------------------------------------------------------------------------------------------
+-- Network
+------------------------------------------------------------------------------------------------------------------------
 -- Event methods
+
+local function onPlayerRequestSpawn(plr: Player)
+    if (deathCooldownList[plr] > 0) then
+        warn(`{plr} on cooldown`); return
+    end
+    Game.spawnPlayer(plr)
+end
+
+local function onPlayerRequestDespawn(plr: Player)
+    Game.removePlayerCharacter(plr)
+end
 
 local function onPlayerRequestSound(plr: Player, item: string?, play: boolean?)
     if (type(item) ~= "string" or type(play) ~= "boolean") then
@@ -148,32 +160,56 @@ end
 
 -- Changes player health, if the requested value is int
 local function onPlayerRequestChangeHealth(plr: Player, newHp: number?, damageType: string?)
+    local currHp = ServerRoot.getPlayerData(plr).health
     if (type(newHp) ~= "number") then 
-        warn("Hp not a number"); return 
+        warn(`{plr} sent invalid newHp parameter`); return 
     end
-    if (newHp % 1 ~= 0) then 
-        warn("Hp not an integer"); return 
+    -- players can only request health reduction
+    if (newHp % 1 ~= 0 or newHp > currHp) then 
+        warn(`{plr} sent incorrect newHp format`); return 
+    end
+    if (not (damageType and VALID_CLIENT_DAMAGE_TYPES[damageType])) then
+        print(VALID_CLIENT_DAMAGE_TYPES[damageType])
+        warn("Invalid damage type"); return
     end
 
-    local _damageType = if (damageType) then damageType else DamageType.NONE
-    changePlrHealth(plr, newHp, _damageType)
+    --changePlrHealth(plr, newHp, _damageType)
+    ServerRoot.changePlrHealth(plr, newHp, damageType)
 end
 
-local function onPlayerRequestSpawn(plr: Player)
-    if (deathCooldownList[plr] > 0) then
-        warn(`{plr} on cooldown`); return
+local function onPlayerRequestActiveWeaponSwitch(plr: Player, newSlot: number?)
+    local plrData = ServerRoot.getPlayerData(plr)
+    if (typeof(newSlot) ~= "number") then
+        warn(`{plr} sent invalid newSlot parameter`); return
     end
-
-    spawnPlayer(plr)
+    if (plrData.activeInvSlot == newSlot) then
+        warn(`{plr} already has slot {newSlot} active`); return
+    end
+    
+    local invSlotWeapon = plrData.inventory[newSlot]
+    if (not invSlotWeapon) then
+        warn(`{plr} has no weapon in slot {newSlot}`); return
+    end
+    plrData.activeInvSlot = newSlot
 end
 
--- network events management
+local function onPlayerRequestWeaponFire(plr: Player)
+    local plrData = ServerRoot.getPlayerData(plr)
+    local targetWeapon = plrData.inventory[plrData.activeInvSlot]
+    local targetWeaponName = targetWeapon.name
+
+    if (not targetWeapon) then
+        warn(`{plr} has no weapon in active slot {plrData.activeInvSlot}`)
+    end
+    ServNetApi.events[Network.serverEvents.fireWeapon]:FireAllClients(plr, targetWeaponName)
+end
+
 local remEventFunctions = {
     [Network.clientEvents.requestSpawn] = function(plr: Player)
         onPlayerRequestSpawn(plr)
     end,
     [Network.clientEvents.requestDespawn] = function(plr: Player)
-        removePlayerCharacter(plr)
+        onPlayerRequestDespawn(plr)
     end,
     [Network.clientEvents.requestSound] = function(plr: Player, ...)
         onPlayerRequestSound(plr, ...)
@@ -181,11 +217,11 @@ local remEventFunctions = {
     [Network.clientEvents.requestChangeHealth] = function(plr: Player, ...)
         onPlayerRequestChangeHealth(plr, ...)
     end,
-    [Network.clientEvents.requestWeaponFire] = function(plr: Player, ...)
-        -- TODO
+    [Network.clientEvents.requestWeaponFire] = function(plr: Player)
+        onPlayerRequestWeaponFire(plr)
     end,
-    [Network.clientEvents.requestWeaponSwitch] = function(plr: Player, ...)
-        -- TODO
+    [Network.clientEvents.requestActiveWeaponSwitch] = function(plr: Player, ...)
+        onPlayerRequestActiveWeaponSwitch(plr, ...)
     end,
 }
 
@@ -205,31 +241,41 @@ ServNetApi.implementFastREvents(fastRemEventFunctions)
 ServNetApi.implementRFunctions(remFunctionFunctions)
 
 ------------------------------------------------------------------------------------------------------------------------
+-- Bindable events (signals)
+
+local function onPlayerDied(plr: Player)
+    task.wait(DEATH_REMOVE_DELAY)
+    Game.removePlayerCharacter(plr)
+end
+
+ServerRoot.signals.playerDied.Event:Connect(onPlayerDied)
+
+------------------------------------------------------------------------------------------------------------------------
+-- Connections
 
 local function onPlayerAdded(plr: Player)
     print(plr.Name .. " joined the game")
     deathCooldownList[plr] = 0
-    PlayerData.createPlayerData(plr)
+    ServerRoot.createPlayerData(plr)
 end
 
 local function onPlayerRemoving(plr: Player)
     print(plr.Name .. " left the game")
     deathCooldownList[plr] = nil
-    PlayerData.removePlayerData(plr)
+    ServerRoot.removePlayerData(plr)
 
-    removePlayerCharacter(plr)
+    Game.removePlayerCharacter(plr)
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
 Players.PlayerRemoving:Connect(onPlayerRemoving)
 
 -- action loop [20 Hz]
-local loopDt = 0.05
-while (task.wait(loopDt)) do
+while (task.wait(LOOP_DT)) do
     -- decrement cooldown timers
     for plr: Player, c: number in pairs(deathCooldownList) do
         if (deathCooldownList[plr]) then
-            local newTime = c - loopDt
+            local newTime = c - LOOP_DT
             if (newTime < 0 ) then
                 newTime = 0
             end
