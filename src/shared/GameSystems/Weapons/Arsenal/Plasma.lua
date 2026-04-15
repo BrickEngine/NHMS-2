@@ -7,13 +7,13 @@ local AmmoType = require(ReplicatedStorage.Shared.Enums.AmmoType)
 local WeaponName = require(ReplicatedStorage.Shared.Enums.WeaponName)
 local BaseWeapon = require(weaponsFolder.Arsenal.BaseWeapon)
 
-local Sword = setmetatable({} :: BaseWeapon.Weapon, BaseWeapon)
-Sword.__index = Sword
+local Plasma = setmetatable({}, BaseWeapon)
+Plasma.__index = Plasma
 
-function Sword.new(uid: number)
+function Plasma.new(uid: number)
     local self = BaseWeapon.new(
         uid,
-        WeaponName.PLASMA_SPELL,
+        WeaponName.SWORD,
         "rbxassetid://0",
         nil,
         nil,
@@ -25,37 +25,37 @@ function Sword.new(uid: number)
         0
     )
 
-    return setmetatable(self, Sword) :: any
+    return setmetatable(self, Plasma) :: any
 end
 
-function Sword:equip()
+function Plasma:equip()
 end
 
-function Sword:unequip()
+function Plasma:unequip()
 end
 
-function Sword:reload()
+function Plasma:reload()
 end
 
-function Sword:fire()
-    print("ARARARAR")
+function Plasma:fire()
+    print("PLASMAAAA")
 end
 
-function Sword:createPickup(): any
+function Plasma:createPickup(): any
     return nil
 end
 
-function Sword:onHit()
+function Plasma:onHit()
 end
 
-function Sword:reset()
+function Plasma:reset()
 end
 
-function Sword:update(dt: number)
-    print("update sword")
+function Plasma:update(dt: number)
+    print("update plasma")
 end
 
-function Sword:destroy()
+function Plasma:destroy()
 end
 
-return Sword
+return Plasma

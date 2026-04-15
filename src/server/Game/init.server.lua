@@ -10,6 +10,7 @@ local ServerRoot = require(ServerScriptService.ServerRoot)
 local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
+local WeaponName = require(ReplicatedStorage.Shared.Enums.WeaponName)
 local WeaponManager = require(ReplicatedStorage.Shared.GameSystems.Weapons.WeaponManager)
 local Network = require(ReplicatedStorage.Shared.Network)
 local ServNetApi = require(script.ServNetApi)
@@ -119,8 +120,8 @@ function Game.removeWeaponFromPlayerInventory(plr: Player, slot: number)
 end
 
 -- Adds a new weapon to the player's inventory, or overwrites an occupied inventory slot
-function Game.addWeaponToPlayerInventory(plr: Player, weaponName: string)
-    local newWeapObj = WeaponManager.createWeapon(plr.Character, weaponName)
+function Game.addWeaponToPlayerInventory(plr: Player, weapName: string)
+    local newWeapObj, weapId = WeaponManager.createWeapon(plr.Character, weapName)
     local weapSlot = newWeapObj.slot
     local plrData = ServerRoot.getPlayerData(plr)
 
@@ -129,10 +130,12 @@ function Game.addWeaponToPlayerInventory(plr: Player, weaponName: string)
         plrData.inventory[weapSlot] = nil
     end
     plrData.inventory[weapSlot] = newWeapObj
+
+    ServNetApi.events[Network.serverEvents.createWeapon]:FireAllClients(plr, weapName, weapId)
 end
 
 function Game.equipPlayerStaterGear(plr: Player)
-    
+    Game.addWeaponToPlayerInventory(plr, WeaponName.SWORD)
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -145,6 +148,7 @@ local function onPlayerRequestSpawn(plr: Player)
         warn(`{plr} on cooldown`); return
     end
     Game.spawnPlayer(plr)
+    Game.equipPlayerStaterGear(plr)
 end
 
 local function onPlayerRequestDespawn(plr: Player)

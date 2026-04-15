@@ -61,7 +61,7 @@ function ClientRoot.getSimData(): SimData
     return simData
 end
 
-function ClientRoot.getPlrData(): PlayerData.Data
+function ClientRoot.getPlayerData(): PlayerData.Data
     return plrData
 end
 

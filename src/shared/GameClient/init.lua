@@ -12,7 +12,7 @@ local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local Network = require(ReplicatedStorage.Shared.Network)
 local CliApi = require(script.CliNetApi)
 local PlayerData = require(script.Parent.PlayerData)
-local SoundManager = require(ReplicatedStorage.Shared.SoundManager)
+local CharacterSounds = require(ReplicatedStorage.Shared.CharacterSounds)
 local CorePlayerUI = require(script.UI.CorePlayerUI)
 local Controller = require(ReplicatedStorage.Shared.Controller)
 local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
@@ -20,28 +20,26 @@ local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local UIType = require(ReplicatedStorage.Shared.Enums.UIType)
 
-local MIN_FALL_DMG_VEL = 50.0
-local MIN_FALL_DMG = 5
+local MIN_FALL_DMG_VEL = 65.0
+local MIN_FALL_DMG = 2
 local FALL_DMG_COOLDOWN = 0.25
-local FALL_DMG_FAC = 0.0095
-local FALL_DMG_OFFSET = MIN_FALL_DMG_VEL * MIN_FALL_DMG_VEL
+local FALL_DMG_FAC = 1.5
 
 local DEATH_SOUND_MAP = {
-    [DamageType.NONE] = SoundManager.SOUND_ITEMS.DEATH,
-    [DamageType.BLADE] = SoundManager.SOUND_ITEMS.DEATH,
-    [DamageType.BLUNT] = SoundManager.SOUND_ITEMS.DEATH,
-    [DamageType.BULLET] = SoundManager.SOUND_ITEMS.DEATH,
-    [DamageType.EXPLOSION] = SoundManager.SOUND_ITEMS.DEATH,
-    [DamageType.NAPALM] = SoundManager.SOUND_ITEMS.DEATH,
-    [DamageType.FALL] = SoundManager.SOUND_ITEMS.DEATH_FALL,
-    [DamageType.DROWN] = SoundManager.SOUND_ITEMS.DEATH_DROWN,
+    [DamageType.NONE] = CharacterSounds.SOUND_ITEMS.DEATH,
+    [DamageType.BLADE] = CharacterSounds.SOUND_ITEMS.DEATH,
+    [DamageType.BLUNT] = CharacterSounds.SOUND_ITEMS.DEATH,
+    [DamageType.BULLET] = CharacterSounds.SOUND_ITEMS.DEATH,
+    [DamageType.EXPLOSION] = CharacterSounds.SOUND_ITEMS.DEATH,
+    [DamageType.NAPALM] = CharacterSounds.SOUND_ITEMS.DEATH,
+    [DamageType.FALL] = CharacterSounds.SOUND_ITEMS.DEATH_FALL,
+    [DamageType.DROWN] = CharacterSounds.SOUND_ITEMS.DEATH_DROWN,
 }
 
 local DMG_SOUND_ARR = {
-    SoundManager.SOUND_ITEMS.DAMAGE_0,
-    SoundManager.SOUND_ITEMS.DAMAGE_1,
-    SoundManager.SOUND_ITEMS.DAMAGE_2,
-    SoundManager.SOUND_ITEMS.DAMAGE_3,
+    CharacterSounds.SOUND_ITEMS.DAMAGE_0,
+    CharacterSounds.SOUND_ITEMS.DAMAGE_1,
+    CharacterSounds.SOUND_ITEMS.DAMAGE_2,
 }
 
 local clientEvents = Network.clientEvents
@@ -49,7 +47,7 @@ local localPlr = Players.LocalPlayer
 
 local simulation = Controller:getSimulation()
 local controllerCamera = Controller:getCamera()
-local rootPlrData = ClientRoot.getPlrData()
+local rootPlrData = ClientRoot.getPlayerData()
 local rootSimData = ClientRoot.getSimData()
 local rootGameData = ClientRoot.getGameData()
 
@@ -121,10 +119,10 @@ function GameClient.onHealthChanged(newHp: number, hpDiff: number, damageType: s
     if (hpDiff < 0) then
         if (newHp > 0) then
             local rmdSoundItem = DMG_SOUND_ARR[math.random(1, #DMG_SOUND_ARR)]
-            SoundManager:updateGlobalSound(rmdSoundItem, true)
+            CharacterSounds:updateGlobalSound(rmdSoundItem, true)
         elseif (newHp == 0) then
             local deathSound = DEATH_SOUND_MAP[_damageType]
-            SoundManager:updateGlobalSound(deathSound, true)
+            CharacterSounds:updateGlobalSound(deathSound, true)
         end
     end
 end
@@ -161,7 +159,7 @@ function GameClient.updateFallDamage(dt: number)
         and fallCooldown <= 0
 
     if (damageConditions) then
-        local damage = math.floor((lastFallVel * lastFallVel - FALL_DMG_OFFSET) * FALL_DMG_FAC + MIN_FALL_DMG)
+        local damage = math.floor((lastFallVel - MIN_FALL_DMG_VEL) * FALL_DMG_FAC + MIN_FALL_DMG)
         local newHp = rootPlrData.health - damage
         newHp = math.max(0, newHp)
         GameClient.changeHealth(newHp, DamageType.FALL)
@@ -213,7 +211,7 @@ end
 
 local cliREFunction = {
     [Network.serverEvents.playSound] = function(plr: Player, item: string, play: boolean)
-        SoundManager:updatePlayerSound(plr, item, play)
+        CharacterSounds:updatePlayerSound(plr, item, play)
     end,
     [Network.serverEvents.setHealth] = function(plr: Player, hp: number, damageType: string)
         onSetHealthRemote(plr, hp, damageType)

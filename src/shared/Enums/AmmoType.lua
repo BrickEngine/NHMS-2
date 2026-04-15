@@ -1,4 +1,5 @@
 return table.freeze({
+    NONE = "None",
     BULLETS = "Bullets",
     SHOTGUN_SHELLS = "Shotgun Shells",
     GRENADES = "Grenades",

@@ -12,7 +12,7 @@ local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local AnimationStateId = require(ReplicatedStorage.Shared.Enums.AnimationStateId)
 local InputManager = require(controller.InputManager)
-local SoundManager = require(ReplicatedStorage.Shared.SoundManager)
+local SoundManager = require(ReplicatedStorage.Shared.CharacterSounds)
 local PhysCheck = require(controller.Common.PhysCheck)
 local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 

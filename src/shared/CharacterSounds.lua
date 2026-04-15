@@ -9,11 +9,14 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
+local Workspace = game:GetService("Workspace")
 
 local Network = require(ReplicatedStorage.Shared.Network)
 local CliNetApi = require(ReplicatedStorage.Shared.GameClient.CliNetApi)
 
 local SOUND_PB_REG_HUGE = 100
+local PLAY_LOCAL = true -- whether to play non-looped sounds for the client locally
 --local SOUND_POOL_SIZE = 3 -- number of instances to create for each sound
 
 local SOUND_ITEMS = table.freeze({
@@ -22,7 +25,6 @@ local SOUND_ITEMS = table.freeze({
     DAMAGE_0 = "Damage0Sound",
     DAMAGE_1 = "Damage1Sound",
     DAMAGE_2 = "Damage2Sound",
-    DAMAGE_3 = "Damage3Sound",
     DEATH = "DeathSound",
     DEATH_DROWN = "DeathDrownSound",
     DEATH_FALL = "DeathFallSound",
@@ -36,17 +38,17 @@ local SOUND_ITEMS = table.freeze({
 })
 
 local SOUND_DATA = table.freeze({
-    [SOUND_ITEMS.DAMAGE_0] = {
-        SoundId = "rbxassetid://115487703562071",
-    },
-    [SOUND_ITEMS.DAMAGE_1] = {
+    [SOUND_ITEMS.DAMAGE_0] = { -- "yuauuu"
         SoundId = "rbxassetid://135514575451369",
+        Volume = 0.8,
     },
-    [SOUND_ITEMS.DAMAGE_2] = {
+    [SOUND_ITEMS.DAMAGE_1] = { -- "haaa"
         SoundId = "rbxassetid://97084250180421",
+        Volume = 0.8,
     },
-    [SOUND_ITEMS.DAMAGE_3] = {
+    [SOUND_ITEMS.DAMAGE_2] = { -- "uuuiii"
         SoundId = "rbxassetid://76277846903686",
+        Volume = 0.8,
     },
     [SOUND_ITEMS.DEATH] = {
         SoundId = "rbxassetid://98940142026447",
@@ -119,16 +121,23 @@ local localPlr = Players.LocalPlayer
 ------------------------------------------------------------------------------------------------------------------------
 
 -- Creates a sound instance that is parented to a player's primary part, maps sound item to player
-local function createSounds(plr: Player, char: Model, item: string)
+local function createSound(plr: Player, char: Model, item: string)
     local primaryPart = char.PrimaryPart
     assert(primaryPart, `Missing primary part of '{plr.Name}'`)
 
-    local sound = Instance.new("Sound", primaryPart)
+    local sound = Instance.new("Sound")
     sound.Name = item
 
-    -- set all predefined sound properties
+    -- set all predefined sound properties and parent
     for propName: string, propVal: any in pairs(SOUND_DATA[item]) do
         sound[propName] = propVal
+    end
+
+    -- set sound parent
+    if (plr == localPlr) then
+        sound.Parent = Workspace.CurrentCamera
+    else
+        sound.Parent = primaryPart
     end
 
     -- map sound item to player
@@ -138,6 +147,7 @@ local function createSounds(plr: Player, char: Model, item: string)
     playerSoundsMap[plr][item] = sound
 end
 
+-- Updates looped and non-looped 3D-Sounds
 local function updateSound(sound: Sound, play: boolean)
     local function resetSound(sound: Sound)
         sound:Stop()
@@ -163,6 +173,12 @@ local function updateSound(sound: Sound, play: boolean)
     end
 end
 
+local function playLocalSound(sound: Sound, play: boolean)
+    if (play) then
+        SoundService:PlayLocalSound(sound)
+    end
+end
+
 ------------------------------------------------------------------------------------------------------------------------
 -- Module
 ------------------------------------------------------------------------------------------------------------------------
@@ -178,7 +194,7 @@ function SoundManager.init()
 
     local function addPlrSounds(plr: Player, char: Model)
         for _, soundName: string in pairs(SOUND_ITEMS) do
-            createSounds(plr, char, soundName)
+            createSound(plr, char, soundName)
         end
     end
 
@@ -246,12 +262,20 @@ function SoundManager:updatePlayerSound(plr: Player, item: string, play: boolean
     updateSound(playerSoundsMap[plr][item], play)
 end
 
--- Plays the specified sound item locally
+-- Plays the specified sound item for (on) the local player
 function SoundManager:updateLocal(item: string, play: boolean)
     local sound = playerSoundsMap[localPlr][item]
     if (not sound) then error(`Nonexistent sound for '{item}'`) end
 
-    updateSound(sound, play)
+    if (PLAY_LOCAL) then
+        if (sound.Looped) then
+            updateSound(sound, play)
+        else
+            playLocalSound(sound, play)
+        end
+    else
+        updateSound(sound, play)
+    end
 end
 
 function SoundManager:updateGlobalSound(item: string, play: boolean)
