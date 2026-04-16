@@ -17,7 +17,7 @@ local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 
 local STATE_ID = PlayerStateId.WALL
 
-local DISMOUNT_SPEED = 0.01--2.4 -- studs/s (should be lower than mount speed in the Ground state)
+local DISMOUNT_SPEED = 0.1--2.4 -- studs/s (should be lower than mount speed in the Ground state)
 
 local JUNP_INP_COOLDOWN = 0.1 -- seconds
 local JUMP_HEIGHT = 8.0
@@ -38,8 +38,8 @@ local MAX_LIN_VEL_FORCE = 400000
 local SLIDE_FAC = 50.25 -- distance scaling for how much a player slides per frame
 local MANEUV_FAC = 0.98 -- wall maneuverability factor scaled with velocity
 local START_SLIDE_VEL = 45.0 -- studs/s - velocity at which a player starts to slide
-local WALL_MAX_SPEED = 125.0 -- studs/s, max speed on the wall
-local BOOST_FAC = 1.38 -- by how much to boost the wall velocity on enter
+local WALL_MAX_SPEED = 135.0 -- studs/s, max speed on the wall
+local BOOST_FAC = 1.32 -- by how much to boost the wall velocity on enter
 local WALL_SPEED_LOSS_FAC = 9.5 -- how much speed is reduced each phys update on the wall
 
 local PLAY_WALL_SOUNDS = true
@@ -249,6 +249,7 @@ function Wall:handleDismount(dt: number, wallNorm: Vector3)
     local mass = primaryPart.AssemblyMass
     local camDir =  Workspace.CurrentCamera.CFrame.lookVector
     local horiCamDir = Vector3.new(camDir.X, 0, camDir.Z).Unit
+    local dashExit = InputManager:getDashKeyDown()
 
     local impulse do
         --local movDir = normVecRotFunc(wallNorm).Unit
@@ -256,6 +257,10 @@ function Wall:handleDismount(dt: number, wallNorm: Vector3)
         local dirFac = 1.0 + math.clamp(wallNorm:Dot(horiCamDir), 0, 1)
         local horiAccel = wallNorm * dirFac * JUMP_DIST_FAC
         local targetJumpFac = math.clamp(VEC3_UP:Dot(camDir), -0.4, 0.4) * 1.65
+
+        if (dashExit) then
+            horiAccel *= 2
+        end
 
         local vertAccel = 
             math.sqrt(Workspace.Gravity * 2 * JUMP_HEIGHT) * targetJumpFac
@@ -272,7 +277,11 @@ function Wall:handleDismount(dt: number, wallNorm: Vector3)
 
     -- play dismount sound
     if (PLAY_WALL_SOUNDS) then
-        SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.JUMP, true)
+        if (dashExit) then
+            SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.JUMP_BLAST, true)
+        else
+            SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.JUMP, true) 
+        end
     end
 
     self._simulation:transitionState(PlayerStateId.GROUND)

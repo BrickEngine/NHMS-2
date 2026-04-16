@@ -71,7 +71,7 @@ function Simulation.init()
 
     self.allowTransitions = true
     self.stateShared = stateSharedDefaults
-    self.isDead = false
+    self.isDead = true
     self.buoySensor = nil
 
     self.character = Players.LocalPlayer.Character
@@ -86,28 +86,49 @@ function Simulation.init()
     return self
 end
 
-------------------------------------------------------------------------------------------------------------------------------
--- Simulation update
-------------------------------------------------------------------------------------------------------------------------------
+function Simulation:onCharAdded(character: Model)
+    self.character = character
 
--- Should be bound to RunService.PostSimulation
-function Simulation:update(dt: number)
+    if (primaryPartListener) then
+        primaryPartListener:Disconnect()
+    end
     if (not self.character.PrimaryPart) then
-        warn("Missing PrimaryPart of character, disconnecting simulation update func")
-        self.simUpdateConn:Disconnect(); return
+        error("character missing PrimaryPart")
+    end
+    --self.character.PrimaryPart.Removing
+    primaryPartListener = self.character.DescendantRemoving:Connect(function()
+        self:onRootPartChanged()
+    end)
+
+    -- make playermodel invisible
+    for _, p: Instance in pairs(self.character:GetDescendants()) do
+        if p:IsA("BasePart") then
+            p.Transparency = 1
+        end
     end
 
-    -- Skip the update cycle, if state transition not complete
-    if (not state_free) then
-        return
+    -- copy over Instances from StarterCharacterScripts
+    -- TODO: move logic over to GameClient
+    for _, s: Instance in pairs(StarterPlayer.StarterCharacterScripts:GetChildren()) do
+        if (s.ClassName ~= ("LocalScript" or "Script" or "ModuleScript")) then
+            warn("instance within StarterCharacterScripts is not a script")
+        end
+        local sClone = s:Clone()
+        sClone.Parent = self.character
     end
 
-    self.universalState:update(dt)
-    self.currentState:update(dt)
+    self:resetSimulation()
 
-    self.stateShared.stateTime += dt
+    --TEST_DESPAWNING()
+end
 
-    DebugVisualize.step()
+function Simulation:onCharRemoving(character: Model)
+    self.simUpdateConn:Disconnect()
+
+    if (Players.LocalPlayer.Character) then
+        Players.LocalPlayer.Character:Destroy()
+        Players.LocalPlayer.Character = nil
+    end
 end
 
 function Simulation:transitionState(newStateId: number, params: any?)
@@ -179,7 +200,6 @@ function Simulation:resetSimulation()
     self.animation = Animation.new(self)
 
     self:resetStateShared()
-    self:toggleReadInput(true)
 
     if (self.buoySensor) then
         (self.buoySensor :: BuoyancySensor):Destroy()
@@ -262,49 +282,28 @@ end
 --     end)
 -- end
 
-function Simulation:onCharAdded(character: Model)
-    self.character = character
+------------------------------------------------------------------------------------------------------------------------------
+-- Simulation update
+------------------------------------------------------------------------------------------------------------------------------
 
-    if (primaryPartListener) then
-        primaryPartListener:Disconnect()
-    end
+-- Should be bound to RunService.PostSimulation
+function Simulation:update(dt: number)
     if (not self.character.PrimaryPart) then
-        error("character missing PrimaryPart")
-    end
-    --self.character.PrimaryPart.Removing
-    primaryPartListener = self.character.DescendantRemoving:Connect(function()
-        self:onRootPartChanged()
-    end)
-
-    -- Make playermodel invisible
-    for _, p: Instance in pairs(self.character:GetDescendants()) do
-        if p:IsA("BasePart") then
-            p.Transparency = 1
-        end
+        warn("Missing PrimaryPart of character, disconnecting simulation update func")
+        self.simUpdateConn:Disconnect(); return
     end
 
-    -- Copy over Instances from StarterCharacterScripts
-    -- TODO: move logic over to GameClient
-    for _, s: Instance in pairs(StarterPlayer.StarterCharacterScripts:GetChildren()) do
-        if (s.ClassName ~= ("LocalScript" or "Script" or "ModuleScript")) then
-            warn("instance within StarterCharacterScripts is not a script")
-        end
-        local sClone = s:Clone()
-        sClone.Parent = self.character
+    -- Skip the update cycle, if state transition not complete
+    if (not state_free) then
+        return
     end
 
-    self:resetSimulation()
+    self.universalState:update(dt)
+    self.currentState:update(dt)
 
-    --TEST_DESPAWNING()
-end
+    self.stateShared.stateTime += dt
 
-function Simulation:onCharRemoving(character: Model)
-    self.simUpdateConn:Disconnect()
-
-    if (Players.LocalPlayer.Character) then
-        Players.LocalPlayer.Character:Destroy()
-        Players.LocalPlayer.Character = nil
-    end
+    DebugVisualize.step()
 end
 
 return Simulation.init()

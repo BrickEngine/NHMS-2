@@ -21,6 +21,7 @@ local PLAY_LOCAL = true -- whether to play non-looped sounds for the client loca
 
 local SOUND_ITEMS = table.freeze({
     JUMP = "JumpSound",
+    JUMP_BLAST = "JumpBlastSound",
     FLOOR_HIT = "FloorHitSound",
     DAMAGE_0 = "Damage0Sound",
     DAMAGE_1 = "Damage1Sound",
@@ -65,9 +66,14 @@ local SOUND_DATA = table.freeze({
         SoundId = "rbxassetid://143384769", --5466166437 86604727900745 143384769 128602720222961
         Volume = 1.2,
     },
+    [SOUND_ITEMS.JUMP_BLAST] = {
+        SoundId = "rbxassetid://139959216605813", --139514133073777
+        Volume = 1.2,
+        PlaybackSpeed = 1.2
+    },
     [SOUND_ITEMS.FLOOR_HIT] = {
         SoundId = "rbxassetid://127822240770734", --135370882594044
-        Volume = 1.2,
+        Volume = 1,
         PlaybackRegionsEnabled = true,
         PlaybackRegion = NumberRange.new(0, 0.15)
     },
