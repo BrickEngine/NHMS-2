@@ -15,10 +15,12 @@ local PlayerData = require(script.Parent.PlayerData)
 local CharacterSounds = require(ReplicatedStorage.Shared.CharacterSounds)
 local CorePlayerUI = require(script.UI.CorePlayerUI)
 local Controller = require(ReplicatedStorage.Shared.Controller)
-local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
 
+local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local UIType = require(ReplicatedStorage.Shared.Enums.UIType)
+local BaseWeapon = require(ReplicatedStorage.Shared.GameSystems.Weapons.Arsenal.BaseWeapon)
+local WeaponManager = require(ReplicatedStorage.Shared.GameSystems.Weapons.WeaponManager)
 
 local MIN_FALL_DMG_VEL = 65.0
 local MIN_FALL_DMG = 2
@@ -53,6 +55,8 @@ local rootGameData = ClientRoot.getGameData()
 
 local lastFallVel = 0
 local fallCooldown = 0
+
+local weapIdMap = {} :: {[number]: BaseWeapon.Weapon}
 
 local updateConn: RBXScriptConnection
 local charAddedConn: RBXScriptConnection
@@ -92,6 +96,46 @@ function GameClient.initPlayer()
     if (charRemovingConn) then charRemovingConn:Disconnect() end
     charAddedConn = Players.LocalPlayer.CharacterAdded:Connect(onCharAdded)
     charRemovingConn = Players.LocalPlayer.CharacterRemoving:Connect(onCharRemoving)
+end
+
+function GameClient.createWeaponLocal(weapName: string, uid: number, ownerMdl: Model?): BaseWeapon.Weapon
+    if (weapIdMap[uid]) then
+        error(`Weapon with uid '{uid}' already exists`)
+    end
+    local weapon = WeaponManager.createWeaponForClient(ownerMdl, weapName, uid)
+    weapIdMap[uid] = weapon
+
+    return weapon
+end
+
+function GameClient.removeWeaponLocal(uid: number)
+    if (not weapIdMap[uid]) then
+        error(`No existing weapon with uid '{uid}'`)
+    end
+
+    local plrData = ClientRoot.getPlayerData()
+    local weapon = weapIdMap[uid]
+    -- in case weapon is the currently equipped one
+    if (plrData.inventory[plrData.activeInvSlot] == weapon) then
+        weapon:unequip()
+    end
+    weapIdMap[uid]:destroy()
+    weapIdMap[uid] = nil
+end
+
+function GameClient.switchWeaponSlot(newSlot)
+    local plrData = ClientRoot.getPlayerData()
+    local activeInvSlot = plrData.activeInvSlot
+
+    if (not plrData.inventory[newSlot]) then
+        error(`No weapon in slot '{newSlot}' to transition to`)
+    end
+
+    if (plrData.inventory[activeInvSlot]) then
+        plrData.inventory[activeInvSlot]:unequip()
+    end
+    ClientRoot.setActiveInvSlot(newSlot)
+    plrData.inventory[newSlot]:equip()
 end
 
 -- Changes health and related data locally
@@ -205,11 +249,28 @@ local function onSetHealthRemote(plr: Player, newHp: number, damageType: string?
     end
     local _damageType = if (damageType) then damageType else DamageType.NONE
     GameClient.changeHealthLocal(newHp, _damageType)
+end
 
-    -- ClientRoot.setHealth(newHp)
-    -- if (rootPlrData.health <= 0) then
-    --     ClientRoot.setIsDead(true)
-    -- end
+local function onAddWeapToPlayer(plr: Player, weapName: string, uid: number)
+    -- we trust the server to correctly add weapons, making sure old ones on the same slot are removed first
+    local weapon = GameClient.createWeaponLocal(weapName, uid, plr.Character) :: BaseWeapon.Weapon
+    if (plr == localPlr) then
+        local plrData = ClientRoot.getPlayerData()
+        plrData.inventory[weapon.slot] = weapon
+        GameClient.switchWeaponSlot(weapon.slot)
+    end
+end
+
+local function onRemWeapFromPlayer(plr: Player, uid: number)
+    GameClient.removeWeaponLocal(uid)
+end
+
+local function onFireWeapon(uid: number)
+    local weapon = weapIdMap[uid]
+    if (weapon.owner == localPlr.Character) then
+        return
+    end
+    weapon:fire()
 end
 
 local cliREFunction = {
@@ -218,7 +279,16 @@ local cliREFunction = {
     end,
     [Network.serverEvents.setHealth] = function(plr: Player, hp: number, damageType: string)
         onSetHealthRemote(plr, hp, damageType)
-    end
+    end,
+    [Network.serverEvents.addWeaponToPlayer] = function(plr: Player, weaponName: string, uid: number)
+        onAddWeapToPlayer(plr, weaponName, uid)
+    end,
+    [Network.serverEvents.removeWeaponFromPlayer] = function(plr: Player, uid: number)
+        onRemWeapFromPlayer(plr, uid)
+    end,
+    [Network.serverEvents.fireWeapon] = function(uid: number)
+        onFireWeapon(uid)
+    end,
 }
 
 local cliFastREFunctions = {

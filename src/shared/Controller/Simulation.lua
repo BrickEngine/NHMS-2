@@ -17,7 +17,7 @@ local Ground = require(simStates.Ground) :: BaseState.BaseState
 local Water = require(simStates.Water) :: BaseState.BaseState
 local Wall = require(simStates.Wall) :: BaseState.BaseState
 
-local PRINT_DEBUG = true
+local PRINT_DEBUG = false
 
 local STATE_SHARED_VALS = table.freeze({
     grounded = false,

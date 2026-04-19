@@ -88,6 +88,14 @@ function ClientRoot.setIsDead(isDead: boolean)
     plrData.isDead = isDead
 end
 
+function ClientRoot.setActiveInvSlot(newSlot: number)
+    if (plrData.activeInvSlot == newSlot) then
+        return
+    end
+    plrData.activeInvSlot = newSlot
+    ClientRoot.signals.weaponSwitched:Fire(newSlot)
+end
+
 function ClientRoot.setCurrentPlayerStateId(newId: number)
     singleValChangedEvent(newId, simData.playerStateId, ClientRoot.signals.simStateChanged)
     simData.playerStateId = newId

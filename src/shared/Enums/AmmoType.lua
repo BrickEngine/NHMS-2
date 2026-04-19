@@ -1,6 +1,7 @@
 return table.freeze({
     NONE = "None",
-    BULLETS = "Bullets",
+    BULLETS = "LC Bullets",
+    HEAVY_BULLETS = "HC Bullets",
     SHOTGUN_SHELLS = "Shotgun Shells",
     GRENADES = "Grenades",
     BOLTS = "Bolts",

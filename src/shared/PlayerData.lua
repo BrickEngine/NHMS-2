@@ -18,7 +18,7 @@ export type Data = {
     health: number,
     armor: number,
     ammoStorage: {[string]: number},
-    inventory: {[number]: BaseWeapon.BaseWeapon?},
+    inventory: {[number]: BaseWeapon.Weapon?},
     activeInvSlot: number,
     lastDamageType: string,
     godModeActive: boolean,
@@ -38,8 +38,9 @@ PlayerData.DEFAULTS = table.freeze({
         [AmmoType.FUEL_CELLS] = 0,
         [AmmoType.PLASMA_ORBS] = 0,
     },
-    inventory = table.create(9, nil) :: {BaseWeapon.BaseWeapon?},
+    inventory = table.create(8, nil) :: {BaseWeapon.Weapon?},
     activeInvSlot = 0,
+    lastDamageType = DamageType.NONE,
     godModeActive = false,
     isDead = true,
     kills = 0,
@@ -47,6 +48,7 @@ PlayerData.DEFAULTS = table.freeze({
 })
 
 PlayerData.LIMITS = table.freeze({
+    minHealth = 0,
     health = 100,
     healthWithBonus = 200,
     godHealth = 666,
@@ -78,7 +80,7 @@ PlayerData.DEFAULT_DATA = table.freeze({
     },
     inventory = PlayerData.DEFAULTS.inventory,
     activeInvSlot = PlayerData.DEFAULTS.activeInvSlot,
-    lastDamageType = DamageType.NONE,
+    lastDamageType = PlayerData.DEFAULTS.lastDamageType,
     isDead = PlayerData.DEFAULTS.isDead,
     godModeActive = PlayerData.DEFAULTS.godModeActive,
     kills = PlayerData.DEFAULTS.kills,
@@ -93,7 +95,7 @@ function PlayerData.removePlayerData(plr: Player)
     local plrData = data[plr] :: Data
     -- call destroy on weapons, if they exist
     if (plrData.inventory) then
-        for i, weap: BaseWeapon.BaseWeapon? in pairs(plrData.inventory) do
+        for i, weap: BaseWeapon.Weapon? in pairs(plrData.inventory) do
             if (weap) then
                 weap:destroy()
                 plrData.inventory[i] = nil
@@ -121,5 +123,19 @@ function PlayerData.getPlayerData(plr: Player): Data
     end
     return data[plr]
 end
+
+------------------------------------------------------------------------------------------------------------------------
+
+-- -- Returns resulting new HP value from the operation
+-- function PlayerData.changeHealth(plr: Player, newHp: number, dmgType: string): number
+--     local plrData = PlayerData.getPlayerData(plr)
+
+--     if (plrData.godModeActive) then
+--         return plrData.health
+--     end
+--     plrData.health = newHp
+--     plrData.lastDamageType = dmgType
+--     return plrData.health
+-- end
 
 return PlayerData

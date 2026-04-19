@@ -32,7 +32,6 @@ export type NumUID = {
     isOccupied: (self: NumUID, number) -> boolean,
     assignObj: (self: NumUID, any, number) -> (),
     getObjById: (self: NumUID, number) -> any?,
-    [string]: () -> ()
 }
 
 --[[
@@ -55,8 +54,8 @@ end
 ]]
 function NumUID:alloc(): number
     local id = table.remove(self.free)
-    if (not id) then
-        error("No free ids")
+    if (type(id) ~= "number") then
+        error("Id nan")
     end
     local idObj = true
     self.occ[id] = idObj

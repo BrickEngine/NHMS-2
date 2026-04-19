@@ -131,7 +131,7 @@ function Game.addWeaponToPlayerInventory(plr: Player, weapName: string)
     end
     plrData.inventory[weapSlot] = newWeapObj
 
-    ServNetApi.events[Network.serverEvents.createWeapon]:FireAllClients(plr, weapName, weapId)
+    ServNetApi.events[Network.serverEvents.addWeaponToPlayer]:FireAllClients(plr, weapName, weapId)
 end
 
 function Game.equipPlayerStaterGear(plr: Player)
