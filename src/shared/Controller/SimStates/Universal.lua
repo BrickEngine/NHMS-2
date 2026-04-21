@@ -75,7 +75,7 @@ function Universal:update(dt: number)
     if (not self._simulation.isDead) then
         primaryPart.CFrame = CFrame.lookAlong(
             primaryPart.CFrame.Position, camHoriDir
-        ) 
+        )
     end
     primaryPart.AssemblyAngularVelocity = VEC3_ZERO
 end

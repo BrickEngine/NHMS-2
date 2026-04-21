@@ -44,6 +44,7 @@ function FPCam.new()
 	local self = setmetatable(BaseCam.new(), FPCam)
 
 	self.switchToDeathCam = false
+	self.angleResetAfterDeathCam = false
 	self.lastUpdate = tick()
 
 	return self
@@ -51,10 +52,16 @@ end
 
 function FPCam:toggleDeathCam(toggle: boolean)
 	self.switchToDeathCam = toggle
+	if (toggle) then
+		self.angleResetAfterDeathCam = false
+	end
+end
+
+function FPCam:getWasAngleResetAfterDeathCam(): boolean
+	return self.angleResetAfterDeathCam
 end
 
 function FPCam:updateDeathCam(dt: number): (CFrame, CFrame)
-
 	local now = tick()
 	local cam = Workspace.CurrentCamera
 	local camCFrame = cam.CFrame
@@ -104,7 +111,6 @@ function FPCam:update(dt)
 		return self:updateDeathCam(dt)
 	end
 
-	--self.resetCameraAngle = true
 	local now = tick()
 	local cam = Workspace.CurrentCamera
 	local newCamCFrame = cam.CFrame
@@ -123,7 +129,7 @@ function FPCam:update(dt)
         rotateInput = rotateInput.Unit
     end
 
-	-- reset Cam on respawn
+	-- reset cam on respawn
 	if (self.resetCameraAngle) then
 		local rootPart: BasePart = self:getRootPart()
 		camAngVec = VEC3_ZERO
@@ -134,9 +140,10 @@ function FPCam:update(dt)
 		lastWallTilt = 0
 
 		self.resetCameraAngle = false
+		self.angleResetAfterDeathCam = true
 	end
 
-    -- calculate camera CFrame
+    -- calc camera CFrame
 	if (subjCFrame) then
         local adjInputVec = rotateInput * INP_SENS_FAC
         local x = (camAngVec.X - adjInputVec.Y)
@@ -144,11 +151,11 @@ function FPCam:update(dt)
         local rot_x = (x >= ROT_MAX_Y and ROT_MAX_Y) or (x <= ROT_MIN_Y and ROT_MIN_Y) or x
         local rot_y = (camAngVec.Y - adjInputVec.X) % 360
 
-		-- Update effect cams
+		-- update effect cams
 		self:updateDashCam(dt)
 		self:updateWallCam(dt)
 
-		-- Mouse movement linked camera tilting
+		-- mouse movement linked camera tilting
 		local limitedRotInp = math.clamp(rotateInput.X * 45, -INP_TILT, INP_TILT)
 		lastInpTilt = MathUtil.flerp(lastInpTilt, limitedRotInp, TILT_DT)
 		local rot_z = lastInpTilt + lastWallTilt
@@ -163,7 +170,6 @@ function FPCam:update(dt)
 
 		self.lastCameraTransform = newCamCFrame
 		self.lastCameraFocus = newCamFocus
-		--self.lastSubjectCFrame = nil
 	end
 
 	self.lastUpdate = now

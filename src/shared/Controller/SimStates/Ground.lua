@@ -9,7 +9,7 @@ local Workspace = game:GetService("Workspace")
 local controller = script.Parent.Parent
 local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
-local InputManager = require(controller.InputManager)
+local InputManager = require(ReplicatedStorage.Shared.InputManager)
 local SoundManager = require(ReplicatedStorage.Shared.CharacterSounds)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local AnimationStateId = require(ReplicatedStorage.Shared.Enums.AnimationStateId)
@@ -25,7 +25,7 @@ local DASH_SPEED_FAC = 3.2
 local MOVE_DAMP = 0.4 -- lower value ~ more rigid movement (do not set too low; breaks at low framerates)
 local DASH_DAMP = 0.1 -- equivalent to MOVE_DAMP
 local PHYS_DT = 0.05 -- time delta for move accel
-local AIR_FORCE_FAC = 0.1 -- lower value ~ less control (0 = no control)
+local AIR_FORCE_FAC = 0--0.1 -- lower value ~ less control (0 = no control)
 -- max reachable velocities
 local MAX_DASH_SPEED = DASH_SPEED_FAC / PHYS_DT
 local MAX_MOVE_SPEED = MOVE_SPEED_FAC / PHYS_DT

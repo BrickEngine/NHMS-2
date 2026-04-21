@@ -5,8 +5,9 @@ local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local BaseInput = require(script.Parent:WaitForChild("BaseInput"))
-local ContextActions = require(script.Parent.ContextActions)
+local inpRootFold = script.Parent.Parent
+local BaseInput = require(inpRootFold.Types.BaseInput)
+local ContextActions = require(inpRootFold.ContextActions)
 
 local VEC3_ZERO = Vector3.zero
 local VEC2_JUMP_BTN_RECT_OFFS = Vector2.new(1, 146)

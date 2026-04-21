@@ -8,7 +8,7 @@ local FuncUtil = require(ReplicatedStorage.Shared.Util.FuncUtil)
 local Animation = require(script.Parent.Animation)
 local DebugVisualize = require(script.Parent.Common.DebugVisualize)
 
-local InputManager = require(script.Parent.InputManager)
+local InputManager = require(ReplicatedStorage.Shared.InputManager)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local simStates = script.Parent.SimStates
 local BaseState = require(simStates.BaseState)
@@ -72,6 +72,7 @@ function Simulation.init()
     self.allowTransitions = true
     self.stateShared = stateSharedDefaults
     self.isDead = true
+    self.camAngleReset = false
     self.buoySensor = nil
 
     self.character = Players.LocalPlayer.Character
@@ -168,6 +169,9 @@ end
 
 function Simulation:toggleReadInput(readInput: boolean)
     self.isDead = not readInput
+    if (self.isDead) then
+        self.camAngleReset = false
+    end
     InputManager:setControlsEnabled(readInput)
 end
 

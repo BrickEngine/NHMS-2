@@ -1,7 +1,11 @@
 --!strict
--- Abstract base class for character controller input.
+--[[
+    Abstract base class for character controller input.
+]]
 
-local ConnectionUtil = require(script.Parent.Common.ConnectionUtil)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local ConnectionUtil = require(ReplicatedStorage.Shared.Util.ConnectionUtil)
 
 -- export type BaseInputType  = {
 --     new: () -> BaseInputType,

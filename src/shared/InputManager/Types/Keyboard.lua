@@ -4,8 +4,9 @@ local ContextActionService = game:GetService("ContextActionService")
 local UserInputService = game:GetService("UserInputService")
 --local RunService = game:GetService("RunService")
 
-local BaseInput = require(script.Parent.BaseInput)
-local ContextActions = require(script.Parent.ContextActions)
+local inpRootFold = script.Parent.Parent
+local BaseInput = require(inpRootFold.Types.BaseInput)
+local ContextActions = require(inpRootFold.ContextActions)
 
 local VEC3_ZERO = Vector3.zero
 local KEY_W = Enum.KeyCode.W

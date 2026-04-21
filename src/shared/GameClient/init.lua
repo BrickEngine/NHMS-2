@@ -176,8 +176,10 @@ function GameClient.onDeathStateChanged(isDead: boolean, lastDamageType: string)
         -- TODO: spawn / revive effects
         CorePlayerUI:resetAll()
         controllerCamera:activateFPDeathCam(false)
-        -- TODO dynamically wait for cam pos to be reset
-        task.wait(0.5)
+        repeat 
+            task.wait(0.1)
+        until (controllerCamera:getWasFPCamAngleResetAfterDeathCam())
+
         simulation:toggleReadInput(true)
         -- todo move aimation logic to GameClient and do death anim here
     else

@@ -149,6 +149,15 @@ function CameraModule:activateFPDeathCam(activate: boolean)
 	end
 end
 
+-- Returns true if the current camera is FPCam and the camera angle relative to the
+-- character's primary part was reset since the last reset request
+function CameraModule:getWasFPCamAngleResetAfterDeathCam(): boolean
+	if (self.activeCameraController == instantiatedCameraControllers[FPCam]) then
+		return (self.activeCameraController :: FPCam.FPCamModule):getWasAngleResetAfterDeathCam();
+	end
+	return false
+end
+
 function CameraModule:activateOcclusionModule()
 	local newOccModule = Occlusion
 

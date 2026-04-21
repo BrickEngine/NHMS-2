@@ -2,9 +2,9 @@ local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
 local UserInputService = game:GetService("UserInputService")
 
-local controller = script.Parent
-local MoveKeyboard = require(controller.MoveKeyboard)
-local MoveTouch = require(controller.MoveTouch)
+local typesFold = script.Types
+local Keyboard = require(typesFold.Keyboard)
+local Touch = require(typesFold.Touch)
 
 local lastInpType
 
@@ -13,15 +13,15 @@ local NORMALIZE_INPUT = true
 local VEC3_ZERO = Vector3.zero
 
 local PC_INPUT_TYPE_MAP = table.freeze({
-	[Enum.UserInputType.Keyboard] = MoveKeyboard,
-	[Enum.UserInputType.MouseButton1] = MoveKeyboard,
-	[Enum.UserInputType.MouseButton2] = MoveKeyboard,
-	[Enum.UserInputType.MouseButton3] = MoveKeyboard,
-	[Enum.UserInputType.MouseWheel] = MoveKeyboard,
-	[Enum.UserInputType.MouseMovement] = MoveKeyboard,
+	[Enum.UserInputType.Keyboard] = Keyboard,
+	[Enum.UserInputType.MouseButton1] = Keyboard,
+	[Enum.UserInputType.MouseButton2] = Keyboard,
+	[Enum.UserInputType.MouseButton3] = Keyboard,
+	[Enum.UserInputType.MouseWheel] = Keyboard,
+	[Enum.UserInputType.MouseMovement] = Keyboard,
 })
 local TOUCH_INPUT_TYPE_MAP = table.freeze({
-    [Enum.UserInputType.Touch] = MoveTouch
+    [Enum.UserInputType.Touch] = Touch
 })
 
 local InputManager = {}
@@ -33,6 +33,7 @@ function InputManager.new()
     self.controlsEnabled = false
 
     self.inputControllers = {}
+    
     self.activeInputController = nil
 
     self.touchControlArea = nil
@@ -49,8 +50,7 @@ function InputManager.new()
         self:updateActiveControlModuleEnabled()
 	end)
 
-	if UserInputService.TouchEnabled then
-        -- TODO
+	if (UserInputService.TouchEnabled) then
 		self.playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
 		if (self.playerGui) then
 			self:createTouchGuiContainer()
@@ -180,10 +180,10 @@ function InputManager:updateActiveControlModuleEnabled()
 	end
 
 	-- GuiService.TouchControlsEnabled == false and the active controller is a touch controller,
-	-- Disable controls
+	-- disable controls
 	if (not GuiService.TouchControlsEnabled
         and UserInputService.TouchEnabled
-        and self.activeInputController == self.inputControllers[MoveTouch]
+        and self.activeInputController == self.inputControllers[Touch]
     ) then
 		disable(); return
 	end
@@ -200,22 +200,22 @@ function InputManager:onLastInputTypeChanged(newlastInpType: Enum.UserInputType)
     lastInpType = newlastInpType
 
     if (TOUCH_INPUT_TYPE_MAP[lastInpType] ~= nil) then
-        if (self.activeInputController and self.activeInputController == self.inputControllers[MoveTouch]) then
+        if (self.activeInputController and self.activeInputController == self.inputControllers[Touch]) then
             return
         end
 
         while not self.touchControlFrame do
             task.wait()
         end
-        self:switchInputController(MoveTouch)
+        self:switchInputController(Touch)
         print("switching to touch controller")
 
     elseif (PC_INPUT_TYPE_MAP[lastInpType] ~= nil) then
-        if (self.activeInputController and self.activeInputController == self.inputControllers[MoveKeyboard]) then
+        if (self.activeInputController and self.activeInputController == self.inputControllers[Keyboard]) then
             return
         end
 
-        self:switchInputController(MoveKeyboard)
+        self:switchInputController(Keyboard)
         print("switching to keyboard controller")
     end
 end

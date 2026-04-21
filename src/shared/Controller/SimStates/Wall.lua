@@ -8,7 +8,7 @@ local Workspace = game:GetService("Workspace")
 
 local controller = script.Parent.Parent
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
-local InputManager = require(controller.InputManager)
+local InputManager = require(ReplicatedStorage.Shared.InputManager)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local SoundManager = require(ReplicatedStorage.Shared.CharacterSounds)
 local BaseState = require(script.Parent.BaseState)
@@ -18,6 +18,7 @@ local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 local STATE_ID = PlayerStateId.WALL
 
 local DISMOUNT_SPEED = 0.1--2.4 -- studs/s (should be lower than mount speed in the Ground state)
+local ALLOW_DASH_EXIT = false -- whether to allow a more powerful dismount when holding the dash key
 
 local JUNP_INP_COOLDOWN = 0.1 -- seconds
 local JUMP_HEIGHT = 8.0
@@ -249,7 +250,7 @@ function Wall:handleDismount(dt: number, wallNorm: Vector3)
     local mass = primaryPart.AssemblyMass
     local camDir =  Workspace.CurrentCamera.CFrame.lookVector
     local horiCamDir = Vector3.new(camDir.X, 0, camDir.Z).Unit
-    local dashExit = InputManager:getDashKeyDown()
+    local dashExit = InputManager:getDashKeyDown() and ALLOW_DASH_EXIT
 
     local impulse do
         --local movDir = normVecRotFunc(wallNorm).Unit
