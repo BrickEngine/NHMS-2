@@ -149,6 +149,7 @@ end
 
 function Game.equipPlayerStaterGear(plr: Player)
     Game.addWeaponToPlayerInventory(plr, WeaponName.SWORD)
+    Game.addWeaponToPlayerInventory(plr, WeaponName.PLASMA_SPELL)
 end
 
 ------------------------------------------------------------------------------------------------------------------------

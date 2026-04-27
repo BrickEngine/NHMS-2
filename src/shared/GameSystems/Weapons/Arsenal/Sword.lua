@@ -2,6 +2,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 
 local weaponsFolder = ReplicatedStorage.Shared.GameSystems.Weapons
 local WeaponName = require(ReplicatedStorage.Shared.Enums.WeaponName)
@@ -11,11 +12,13 @@ local Network = require(ReplicatedStorage.Shared.Network)
 -- client only modules
 local InputManager
 local CliApi
+
 if (RunService:IsClient()) then
     InputManager = require(ReplicatedStorage.Shared.InputManager)
     CliApi = require(ReplicatedStorage.Shared.GameClient.CliNetApi)
 end
 
+local localPlr = Players.LocalPlayer
 local mdlFold = ReplicatedStorage.Assets.WeaponModels.Sword
 
 local Sword = setmetatable({}, BaseWeapon)
@@ -60,9 +63,18 @@ function Sword:reset()
 end
 
 function Sword:update(dt: number)
-    local fireInp, altFireInp = InputManager:getFireKeysDown()
-    if (fireInp or altFireInp) then
-        self:fire(altFireInp)
+    -- update for other players
+
+    --TODO
+    print("update sword")
+    -- update local player
+    if (self.owner == localPlr.Character) then
+        local fireInp, altFireInp = InputManager:getFireKeysDown()
+
+        if (fireInp or altFireInp) then
+            self:fire(altFireInp)
+            CliApi.events[Network.clientEvents.requestWeaponFire]:FireServer(self.uid, altFireInp)
+        end
     end
 end
 

@@ -17,7 +17,7 @@ function Plasma.new(uid: number)
         iconId = "rbxassetid://0",
         owner = nil,
         weaponModel = nil,
-        slot = 1,
+        slot = 2,
         mainAmmoType = AmmoType.PLASMA_ORBS
     })
 

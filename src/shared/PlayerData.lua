@@ -55,6 +55,7 @@ PlayerData.LIMITS = table.freeze({
     armor = 100,
     armorWithBonus = 200,
     godArmor = 666,
+    maxInventorySize = 8,
     ammoStorage = {
         [AmmoType.BULLETS] = 400,
         [AmmoType.SHOTGUN_SHELLS] = 60,

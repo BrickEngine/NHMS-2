@@ -24,7 +24,7 @@ local UIType = require(ReplicatedStorage.Shared.Enums.UIType)
 local BaseWeapon = require(ReplicatedStorage.Shared.GameSystems.Weapons.Arsenal.BaseWeapon)
 local WeaponManager = require(ReplicatedStorage.Shared.GameSystems.Weapons.WeaponManager)
 
-local INVENTORY_SIZE = #PlayerData.DEFAULTS.inventory
+local INVENTORY_SIZE = PlayerData.LIMITS.maxInventorySize
 
 local MIN_FALL_DMG_VEL = 65.0
 local MIN_FALL_DMG = 2
@@ -126,8 +126,6 @@ function GameClient.removeWeaponLocal(uid: number)
     end
     weapIdMap[uid]:destroy()
     weapIdMap[uid] = nil
-
-    print("Total weapons: ", weapIdMap)
 end
 
 function GameClient.switchWeaponSlot(newSlot)
@@ -145,6 +143,8 @@ function GameClient.switchWeaponSlot(newSlot)
     end
     ClientRoot.setActiveInvSlot(newSlot)
     plrData.inventory[newSlot]:equip()
+
+    CliApi.events[Network.clientEvents.requestActiveWeaponSwitch]:FireServer(newSlot)
 
     switchFree = true
 end
@@ -282,19 +282,17 @@ end
 
 function GameClient.updateWeaponInventory(dt: number)
     local plrData = ClientRoot.getPlayerData()
-    local activeInvSlot = plrData.activeInvSlot
-    local inventory = plrData.inventory
     local switchRequest, switchType, directNum = InputManager:getInvSwitchInput(plrData.activeInvSlot)
 
     if (switchRequest and switchFree) then
-        local slotToSwitchTo
+        local slotToSwitchTo = plrData.activeInvSlot
         if (switchType == SlotSwitchType.DIRECT) then
             if (not directNum) then
                 error("No direct slot number provided")
             end
 
             slotToSwitchTo = directNum
-            if (slotToSwitchTo > INVENTORY_SIZE) then
+            if (slotToSwitchTo > INVENTORY_SIZE or not plrData.inventory[slotToSwitchTo]) then
                 slotToSwitchTo = nil
             end
         elseif (switchType == SlotSwitchType.NEXT) then
@@ -303,13 +301,13 @@ function GameClient.updateWeaponInventory(dt: number)
             slotToSwitchTo = GameClient.getNextOccInvSlot(-1)
         end
 
-        if (slotToSwitchTo and slotToSwitchTo ~= activeInvSlot) then
+        if (slotToSwitchTo and slotToSwitchTo ~= plrData.activeInvSlot) then
             GameClient.switchWeaponSlot(slotToSwitchTo)
         end
     end
 
     if (switchFree) then
-        local currWeapon: BaseWeapon.Weapon = inventory[activeInvSlot]
+        local currWeapon: BaseWeapon.Weapon = plrData.inventory[plrData.activeInvSlot]
         if (not currWeapon) then
             return
         end
@@ -347,7 +345,6 @@ local function onAddWeapToPlayer(plr: Player, weapName: string, uid: number)
         plrData.inventory[weapon.slot] = weapon
         GameClient.switchWeaponSlot(weapon.slot)
     end
-    print("Total weapons: ", weapIdMap)
 end
 
 local function onRemWeapFromPlayer(plr: Player, uid: number)
@@ -357,7 +354,6 @@ end
 
 local function onFireWeapon(uid: number, altFire: boolean)
     local weapon = weapIdMap[uid]
-    print("Weapon:", weapon.name)
     if (weapon.owner == localPlr.Character) then
         return
     end
