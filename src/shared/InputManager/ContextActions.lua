@@ -1,24 +1,27 @@
-local Actions = {
+local Actions = table.freeze({
     -- movement
-    MOVE_L = "moveLeftAction",
-    MOVE_R = "moveRightAction",
-    MOVE_F = "moveForwardAction",
-    MOVE_B = "moveBackwardAction",
-    MOVE_THUMBSTICK = "moveThumbstickAction",
-    JUMP = "jumpAction",
-    DASH = "runAction",
-    JUMP_BUTTON = "jumpButtonAction",
-    DASH_BUTTON = "dashButtonAction",
-    SHIFT_BUTTON = "shiftButtonAction",
-    -- camera
-    CAM_L = "camRotateLeftAction",
-    CAM_R = "camRotateRightAction",
-    CAM_U = "camRotateUpACtion",
-    CAM_D = "camRotateDownAction",
-    -- special
-    SIT = "sitAction",
+    MOVE_L = "MoveLeftAction",
+    MOVE_R = "MoveRightAction",
+    MOVE_F = "MoveForwardAction",
+    MOVE_B = "MoveBackwardAction",
+    MOVE_THUMBSTICK = "MoveThumbstickAction",
+    -- actions pc
+    JUMP = "JumpAction",
+    DASH = "RunAction",
+    INTERACT = "InteractAction",
+    FIRE = "FireAction",
+    ALT_FIRE = "AltFireAction",
+    SWITCH_INV_SLOT = "SwitchInvSlotAction",
+    -- actions mobile
+    JUMP_BUTTON = "JumpButtonAction",
+    DASH_BUTTON = "DashButtonAction",
+    INTERACT_BUTTON = "InteractButtonAction",
+    FIRE_BUTTON = "FireButtonAction",
+    ALT_FIRE_BUTTON = "AltFireButtonAction",
+    NEXT_SLOT_BUTTON = "NextWeaponButton",
     -- other
-    MENU = "MenuOpenAction"
-}
+    MENU = "MenuOpenAction",
+    MENU_BUTTON = "MenuButtonAction",
+})
 
 return Actions

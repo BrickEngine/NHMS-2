@@ -83,7 +83,7 @@ function CameraModule.new()
 
 	-- Switch to debug camera, if enabled
 	if (Global.GAME_CHAR_DEBUG) then
-		UserInputService.InputBegan:Connect(function(input, gpe)
+		UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
 			local function setCharTransparency(char: Instance, val: number)
 				for _, v: BasePart in pairs(CharacterDef.getPlayermodelParts(char)) do
@@ -91,7 +91,7 @@ function CameraModule.new()
 				end
 			end
 
-			if (input.KeyCode == DEBUG_CAM_SWITCH_KEY and not gpe) then
+			if (input.KeyCode == DEBUG_CAM_SWITCH_KEY and not gameProcessed) then
 				self.debugCamSelected = not self.debugCamSelected
 				self:activateCameraController()
 			end
@@ -155,7 +155,7 @@ function CameraModule:getWasFPCamAngleResetAfterDeathCam(): boolean
 	if (self.activeCameraController == instantiatedCameraControllers[FPCam]) then
 		return (self.activeCameraController :: FPCam.FPCamModule):getWasAngleResetAfterDeathCam();
 	end
-	return false
+	return true
 end
 
 function CameraModule:activateOcclusionModule()

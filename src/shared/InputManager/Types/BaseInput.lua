@@ -5,6 +5,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local SlotSwitchType = require(ReplicatedStorage.Shared.InputManager.SlotSwitchType)
 local ConnectionUtil = require(ReplicatedStorage.Shared.Util.ConnectionUtil)
 
 -- export type BaseInputType  = {
@@ -30,9 +31,14 @@ function BaseMoveInput.new()
     self._connectionUtil = ConnectionUtil.new()
 
     self.enabled = false
-    self.isJumping = false
-    self.isDashing = false
     self.moveVec = VEC3_ZERO
+	self.isJumping = false
+	self.isDashing = false
+	self.isInteracting = false
+	self.isFiring = false
+	self.isAltFiring = false
+    self.isSwitchingInvSlot = false
+    self.requestedInvSlot = 0
 
     return self
 end
@@ -41,12 +47,24 @@ function BaseMoveInput:getMoveVec(): Vector3
     return self.moveVec
 end
 
+function BaseMoveInput:getRequestedInvSlot(currSlot: number): (boolean, string, number?)
+    return self.isSwitchingInvSlot, SlotSwitchType.NONE, nil
+end
+
 function BaseMoveInput:getJumpKeyDown(): boolean
     return self.isJumping
 end
 
 function BaseMoveInput:getDashKeyDown(): boolean
     return self.isDashing
+end
+
+function BaseMoveInput:getInteractKeyDown(): boolean
+    return self.isInteracting
+end
+
+function BaseMoveInput:getFireKeysDown(): (boolean, boolean)
+    return self.isFiring, self.isAltFiring
 end
 
 function BaseMoveInput:enable(enable: boolean): boolean

@@ -39,18 +39,14 @@ function ServerRoot.removePlayerData(plr: Player)
     PlayerData.removePlayerData(plr)
 end
 
-function ServerRoot.changePlrHealth(plr: Player, newHealth: number, damageType: string)
+function ServerRoot.changePlayerHealth(plr: Player, newHealth: number, damageType: string)
     local currPlrData = PlayerData.getPlayerData(plr)
-
     currPlrData.lastDamageType = damageType
     currPlrData.health = math.max(newHealth, 0)
-
+    
     if (currPlrData.health == 0) then
         ServerRoot.killPlayer(plr)
     end
-
-    print(`Server HP of {plr}: {currPlrData.health}`)
-
     ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, currPlrData.health, damageType)
 end
 
@@ -58,7 +54,7 @@ function ServerRoot.killPlayer(plr: Player)
     local plrData = PlayerData.getPlayerData(plr)
 
     if (plrData.isDead) then
-        warn(`{plr} already dead`); return
+        return
     end
     if (plrData.health ~= 0) then
         plrData.health = 0
@@ -72,7 +68,7 @@ function ServerRoot.fullyHealPlayer(plr: Player, bonus: boolean?)
     local plrData = PlayerData.getPlayerData(plr)
     local newHp = if (bonus) then PlayerData.LIMITS.healthWithBonus else PlayerData.LIMITS.health
     plrData.isDead = false
-    ServerRoot.changePlrHealth(plr, newHp, DamageType.HEAL)
+    ServerRoot.changePlayerHealth(plr, newHp, DamageType.HEAL)
 
     if (plrData.isDead) then
         plrData.isDead = false

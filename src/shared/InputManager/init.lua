@@ -3,22 +3,26 @@ local GuiService = game:GetService("GuiService")
 local UserInputService = game:GetService("UserInputService")
 
 local typesFold = script.Types
-local Keyboard = require(typesFold.Keyboard)
+local SlotSwitchType = require(script.SlotSwitchType)
+local KeyboardMouse = require(typesFold.KeyboardMouse)
 local Touch = require(typesFold.Touch)
 
 local lastInpType
+
+-- whether to allow switching input types in emulator mode
+local DEBUG_SWITCH_INPTYPE = true
 
 local ACTION_PRIO = 100
 local NORMALIZE_INPUT = true
 local VEC3_ZERO = Vector3.zero
 
 local PC_INPUT_TYPE_MAP = table.freeze({
-	[Enum.UserInputType.Keyboard] = Keyboard,
-	[Enum.UserInputType.MouseButton1] = Keyboard,
-	[Enum.UserInputType.MouseButton2] = Keyboard,
-	[Enum.UserInputType.MouseButton3] = Keyboard,
-	[Enum.UserInputType.MouseWheel] = Keyboard,
-	[Enum.UserInputType.MouseMovement] = Keyboard,
+	[Enum.UserInputType.Keyboard] = KeyboardMouse,
+	[Enum.UserInputType.MouseButton1] = KeyboardMouse,
+	[Enum.UserInputType.MouseButton2] = KeyboardMouse,
+	[Enum.UserInputType.MouseButton3] = KeyboardMouse,
+	[Enum.UserInputType.MouseWheel] = KeyboardMouse,
+	[Enum.UserInputType.MouseMovement] = KeyboardMouse,
 })
 local TOUCH_INPUT_TYPE_MAP = table.freeze({
     [Enum.UserInputType.Touch] = Touch
@@ -50,7 +54,7 @@ function InputManager.new()
         self:updateActiveControlModuleEnabled()
 	end)
 
-	if (UserInputService.TouchEnabled) then
+	if (UserInputService.TouchEnabled or DEBUG_SWITCH_INPTYPE) then
 		self.playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
 		if (self.playerGui) then
 			self:createTouchGuiContainer()
@@ -67,6 +71,27 @@ function InputManager.new()
 			end)
 		end
 	end
+
+    -- if (DEBUG_ALLOW_SWITCH_INPTYPE) then
+    --     warn("DEBUG - Manual input type switching enabled [Key: M]")
+
+    --     local switchable = {Keyboard, Touch}
+    --     local currIndex = 1
+
+    --     local function switchToNextInpController(inpObj: InputObject, gameProcessed: boolean)
+    --         if (gameProcessed or inpObj.KeyCode ~= Enum.KeyCode.M) then
+    --             return
+    --         end
+
+    --         currIndex += 1
+    --         if (currIndex > #switchable) then
+    --             currIndex = 1
+    --         end
+    --         self:switchInputController(switchable[currIndex])
+    --     end
+
+    --     UserInputService.InputBegan:Connect(switchToNextInpController)
+    -- end
 
     return self
 end
@@ -107,6 +132,41 @@ function InputManager:getDashKeyDown(): boolean
     end
     return self.activeInputController:getDashKeyDown()
 end
+
+function InputManager:getInteractKeyDown(): boolean
+    if (not self.activeInputController) then
+        return false
+    end
+    return self.activeInputController:getInteractKeyDown()
+end
+
+--[[
+    Returns whether 1) the fire key is down 2) the alt-fire key is down
+    @return fire key down 
+    @return alt-fire key down
+]]
+function InputManager:getFireKeysDown(): (boolean, boolean)
+    if (not self.activeInputController) then
+        return false, false
+    end
+    return self.activeInputController:getFireKeysDown()
+end
+
+--[[ 
+    Returns 1) whether a switch key is pressed 2) what type of switch occurs (enum)
+    3) if the switch type is DIRECT (num keys), the corresponding number
+    @return input
+    @return switch type
+    @return direct slot number
+]]
+function InputManager:getInvSwitchInput(currSlot: number): (boolean, string, number?)
+    if (not self.activeInputController) then
+        return false, SlotSwitchType.NONE, nil
+    end
+    return self.activeInputController:getInvSwitchInput(currSlot)
+end
+
+------------------------------------------------------------------------------------------------------------------------
 
 function InputManager:getActiveInputController(): ({}?)
     return self.activeInputController
@@ -204,18 +264,18 @@ function InputManager:onLastInputTypeChanged(newlastInpType: Enum.UserInputType)
             return
         end
 
-        while not self.touchControlFrame do
+        while (not self.touchControlFrame) do
             task.wait()
         end
         self:switchInputController(Touch)
         print("switching to touch controller")
 
     elseif (PC_INPUT_TYPE_MAP[lastInpType] ~= nil) then
-        if (self.activeInputController and self.activeInputController == self.inputControllers[Keyboard]) then
+        if (self.activeInputController and self.activeInputController == self.inputControllers[KeyboardMouse]) then
             return
         end
 
-        self:switchInputController(Keyboard)
+        self:switchInputController(KeyboardMouse)
         print("switching to keyboard controller")
     end
 end

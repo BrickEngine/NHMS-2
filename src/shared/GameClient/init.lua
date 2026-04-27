@@ -15,12 +15,16 @@ local PlayerData = require(script.Parent.PlayerData)
 local CharacterSounds = require(ReplicatedStorage.Shared.CharacterSounds)
 local CorePlayerUI = require(script.UI.CorePlayerUI)
 local Controller = require(ReplicatedStorage.Shared.Controller)
+local InputManager = require(ReplicatedStorage.Shared.InputManager)
+local SlotSwitchType = require(ReplicatedStorage.Shared.InputManager.SlotSwitchType)
 
 local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local UIType = require(ReplicatedStorage.Shared.Enums.UIType)
 local BaseWeapon = require(ReplicatedStorage.Shared.GameSystems.Weapons.Arsenal.BaseWeapon)
 local WeaponManager = require(ReplicatedStorage.Shared.GameSystems.Weapons.WeaponManager)
+
+local INVENTORY_SIZE = #PlayerData.DEFAULTS.inventory
 
 local MIN_FALL_DMG_VEL = 65.0
 local MIN_FALL_DMG = 2
@@ -55,6 +59,7 @@ local rootGameData = ClientRoot.getGameData()
 
 local lastFallVel = 0
 local fallCooldown = 0
+local switchFree = true -- mutex for controling weapon behavior during active inv slot changes
 
 local weapIdMap = {} :: {[number]: BaseWeapon.Weapon}
 
@@ -121,9 +126,13 @@ function GameClient.removeWeaponLocal(uid: number)
     end
     weapIdMap[uid]:destroy()
     weapIdMap[uid] = nil
+
+    print("Total weapons: ", weapIdMap)
 end
 
 function GameClient.switchWeaponSlot(newSlot)
+    switchFree = false
+
     local plrData = ClientRoot.getPlayerData()
     local activeInvSlot = plrData.activeInvSlot
 
@@ -136,6 +145,8 @@ function GameClient.switchWeaponSlot(newSlot)
     end
     ClientRoot.setActiveInvSlot(newSlot)
     plrData.inventory[newSlot]:equip()
+
+    switchFree = true
 end
 
 -- Changes health and related data locally
@@ -172,7 +183,9 @@ function GameClient.onHealthChanged(newHp: number, hpDiff: number, damageType: s
 end
 
 function GameClient.onDeathStateChanged(isDead: boolean, lastDamageType: string)
+    local plrData = ClientRoot.getPlayerData()
     if (not isDead) then
+        -- Revival
         -- TODO: spawn / revive effects
         CorePlayerUI:resetAll()
         controllerCamera:activateFPDeathCam(false)
@@ -183,8 +196,15 @@ function GameClient.onDeathStateChanged(isDead: boolean, lastDamageType: string)
         simulation:toggleReadInput(true)
         -- todo move aimation logic to GameClient and do death anim here
     else
+        -- Death
         simulation:toggleReadInput(false)
         controllerCamera:activateFPDeathCam(true)
+
+        local currWeapon: BaseWeapon.Weapon = plrData.inventory[plrData.activeInvSlot]
+        switchFree = false
+        if (currWeapon) then
+            currWeapon:unequip()
+        end
     end
 end
 
@@ -233,6 +253,71 @@ function GameClient.updateSimData(dt: number)
     ClientRoot.setCurrentPlayerStateId(currStateId)
 end
 
+--[[
+    Returns the next occupied slot with a weapon, if it exists
+    @param dir - 1 = next, -1 = prev
+]]
+function GameClient.getNextOccInvSlot(dir: number): number?
+    local plrData = ClientRoot.getPlayerData()
+    local inventory = plrData.inventory
+    local activeInvSlot = plrData.activeInvSlot
+    assert(dir == -1 or dir == 1, "Invalid arg for dir")
+
+    local index = activeInvSlot
+    for _=1, INVENTORY_SIZE, 1 do
+        index += dir
+        if (index > INVENTORY_SIZE) then
+            index = 1
+        elseif (index < 1) then
+            index = INVENTORY_SIZE
+        end
+
+        if (inventory[index]) then
+            return index
+        end
+    end
+    
+    return nil
+end
+
+function GameClient.updateWeaponInventory(dt: number)
+    local plrData = ClientRoot.getPlayerData()
+    local activeInvSlot = plrData.activeInvSlot
+    local inventory = plrData.inventory
+    local switchRequest, switchType, directNum = InputManager:getInvSwitchInput(plrData.activeInvSlot)
+
+    if (switchRequest and switchFree) then
+        local slotToSwitchTo
+        if (switchType == SlotSwitchType.DIRECT) then
+            if (not directNum) then
+                error("No direct slot number provided")
+            end
+
+            slotToSwitchTo = directNum
+            if (slotToSwitchTo > INVENTORY_SIZE) then
+                slotToSwitchTo = nil
+            end
+        elseif (switchType == SlotSwitchType.NEXT) then
+            slotToSwitchTo = GameClient.getNextOccInvSlot(1)
+        elseif (switchType == SlotSwitchType.PREV) then
+            slotToSwitchTo = GameClient.getNextOccInvSlot(-1)
+        end
+
+        if (slotToSwitchTo and slotToSwitchTo ~= activeInvSlot) then
+            GameClient.switchWeaponSlot(slotToSwitchTo)
+        end
+    end
+
+    if (switchFree) then
+        local currWeapon: BaseWeapon.Weapon = inventory[activeInvSlot]
+        if (not currWeapon) then
+            return
+        end
+
+        currWeapon:update(dt)
+    end
+end
+
 ------------------------------------------------------------------------------------------------------------------------
 -- GameClient update
 ------------------------------------------------------------------------------------------------------------------------
@@ -240,6 +325,7 @@ function GameClient.update(dt: number)
     GameClient.updateGameTime(dt)
     GameClient.updateSimData(dt)
     GameClient.updateFallDamage(dt)
+    GameClient.updateWeaponInventory(dt)
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -261,18 +347,21 @@ local function onAddWeapToPlayer(plr: Player, weapName: string, uid: number)
         plrData.inventory[weapon.slot] = weapon
         GameClient.switchWeaponSlot(weapon.slot)
     end
+    print("Total weapons: ", weapIdMap)
 end
 
 local function onRemWeapFromPlayer(plr: Player, uid: number)
+    print("REMOVING AN UNUSED WEAPON")
     GameClient.removeWeaponLocal(uid)
 end
 
-local function onFireWeapon(uid: number)
+local function onFireWeapon(uid: number, altFire: boolean)
     local weapon = weapIdMap[uid]
+    print("Weapon:", weapon.name)
     if (weapon.owner == localPlr.Character) then
         return
     end
-    weapon:fire()
+    weapon:fire(altFire)
 end
 
 local cliREFunction = {
@@ -288,8 +377,8 @@ local cliREFunction = {
     [Network.serverEvents.removeWeaponFromPlayer] = function(plr: Player, uid: number)
         onRemWeapFromPlayer(plr, uid)
     end,
-    [Network.serverEvents.fireWeapon] = function(uid: number)
-        onFireWeapon(uid)
+    [Network.serverEvents.fireWeapon] = function(uid: number, altFire: boolean)
+        onFireWeapon(uid, altFire)
     end,
 }
 
@@ -310,7 +399,6 @@ ClientRoot.signals.healthChanged.Event:Connect(GameClient.onHealthChanged)
 ------------------------------------------------------------------------------------------------------------------------
 
 GameClient.init()
-
 CorePlayerUI.disableAll()
 CorePlayerUI.setActive(UIType.GAME)
 

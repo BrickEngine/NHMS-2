@@ -1,3 +1,7 @@
+--[[
+	Touch controls (mobile).
+]]
+
 local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
 local UserInputService = game:GetService("UserInputService")
@@ -41,14 +45,14 @@ local FADE_IN_OUT_HALF_DURATION_DEFAULT = 0.3
 local FADE_IN_OUT_BALANCE_DEFAULT = 0.5
 
 local ThumbstickFadeTweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
-local LocalPlayer = Players.LocalPlayer
-local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+local localPlr = Players.LocalPlayer
+local playerGui = localPlr:FindFirstChildOfClass("PlayerGui")
 
-local MoveTouch = setmetatable({}, BaseInput)
-MoveTouch.__index = MoveTouch
+local Touch = setmetatable({}, BaseInput)
+Touch.__index = Touch
 
-function MoveTouch.new()
-	local self = setmetatable(BaseInput.new() :: any, MoveTouch)
+function Touch.new()
+	local self = setmetatable(BaseInput.new() :: any, Touch)
 
 	self.moveTouchObject = nil
 	self.moveTouchLockedIn = false
@@ -79,7 +83,7 @@ function MoveTouch.new()
 	return self
 end
 
-function MoveTouch:enable(enable: boolean?, uiParentFrame): boolean?
+function Touch:enable(enable: boolean?, uiParentFrame): boolean?
     if (enable == self.enabled) then
         self:resetJump()
         self:resetDash()
@@ -112,7 +116,7 @@ function MoveTouch:enable(enable: boolean?, uiParentFrame): boolean?
 end
 
 -- Jump button must be held down
-function MoveTouch:resetJump()
+function Touch:resetJump()
     self.jumpInp = false
     self.jumpTouchObj = nil
     if (self.jumpButton) then
@@ -121,7 +125,7 @@ function MoveTouch:resetJump()
     self:updateJump()
 end
 
-function MoveTouch:resetDash()
+function Touch:resetDash()
     self.dashInp = false
     self.dashTouchObj = nil
     if (self.dashButton) then
@@ -130,26 +134,26 @@ function MoveTouch:resetDash()
     self:updateDash()
 end
 
-function MoveTouch:updateJump()
+function Touch:updateJump()
 	self.isJumping = self.jumpInp
 end
 
-function MoveTouch:updateDash()
+function Touch:updateDash()
     self.isDashing = self.dashInp
 end
 
 
-function MoveTouch:onInputEnded()
+function Touch:onInputEnded()
 	self.moveTouchObject = nil
 	self.moveVec = VEC3_ZERO
 	self:fadeThumbstick(false)
 end
 
-function MoveTouch:updateInputVec()
+function Touch:updateInputVec()
     return self.moveVec
 end
 
-function MoveTouch:fadeThumbstick(visible: boolean?)
+function Touch:fadeThumbstick(visible: boolean?)
 	if not visible and self.moveTouchObject then
 		return
 	end
@@ -204,13 +208,13 @@ function MoveTouch:fadeThumbstick(visible: boolean?)
 	end
 end
 
-function MoveTouch:fadeThumbstickFrame(fadeDuration: number, fadeRatio: number)
+function Touch:fadeThumbstickFrame(fadeDuration: number, fadeRatio: number)
 	self.fadeInAndOutHalfDuration = fadeDuration * 0.5
 	self.fadeInAndOutBalance = fadeRatio
 	self.tweenInAlphaStart = tick()
 end
 
-function MoveTouch:inputInFrame(inputObject: InputObject)
+function Touch:inputInFrame(inputObject: InputObject)
 	local frameCornerTopLeft: Vector2 = self.thumbstickFrame.AbsolutePosition
 	local frameCornerBottomRight = frameCornerTopLeft + self.thumbstickFrame.AbsoluteSize
 	local inputPosition = inputObject.Position
@@ -222,7 +226,7 @@ function MoveTouch:inputInFrame(inputObject: InputObject)
 	return false
 end
 
-function MoveTouch:doFadeInBackground()
+function Touch:doFadeInBackground()
 	local hasFadedBackgroundInOrientation = false
 
 	-- only fade in/out the background once per orientation
@@ -244,7 +248,7 @@ function MoveTouch:doFadeInBackground()
 	end
 end
 
-function MoveTouch:doMove(direction: Vector3)
+function Touch:doMove(direction: Vector3)
 	local currentMoveVector: Vector3 = direction
 
 	local inputAxisMagnitude: number = currentMoveVector.Magnitude
@@ -260,7 +264,7 @@ function MoveTouch:doMove(direction: Vector3)
 	self.moveVec = -currentMoveVector
 end
 
-function MoveTouch:LayoutMiddleImages(startPos: Vector3, endPos: Vector3)
+function Touch:LayoutMiddleImages(startPos: Vector3, endPos: Vector3)
 	local startDist = (self.thumbstickSize / 2) + self.middleSize
 	local vector = endPos - startPos
 	local distAvailable = vector.Magnitude - (self.thumbstickRingSize / 2) - self.middleSize
@@ -291,7 +295,7 @@ function MoveTouch:LayoutMiddleImages(startPos: Vector3, endPos: Vector3)
 	end
 end
 
-function MoveTouch:moveStick(pos)
+function Touch:moveStick(pos)
 	local vector2StartPosition = Vector2.new(self.moveTouchStartPosition.X, self.moveTouchStartPosition.Y)
 	local startPos = vector2StartPosition - self.thumbstickFrame.AbsolutePosition
 	local endPos = Vector2.new(pos.X, pos.Y) - self.thumbstickFrame.AbsolutePosition
@@ -299,7 +303,7 @@ function MoveTouch:moveStick(pos)
 	self:LayoutMiddleImages(startPos, endPos)
 end
 
-function MoveTouch:BindContextActions()
+function Touch:BindContextActions()
 	local function inputBegan(inputObject)
 		if self.moveTouchObject then
 			return Enum.ContextActionResult.Pass
@@ -440,7 +444,7 @@ function MoveTouch:BindContextActions()
     )
 end
 
-function MoveTouch:unbindContextActions()
+function Touch:unbindContextActions()
 	ContextActionService:UnbindAction(DYNAMIC_THUMBSTICK_ACTION_NAME)
 
 	if self.TouchMovedCon then
@@ -455,7 +459,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
 
-function MoveTouch:create(parentFrame: GuiBase2d)
+function Touch:create(parentFrame: GuiBase2d)
     if (not parentFrame) then
         error("parent frame does not exist")
     end
@@ -560,7 +564,11 @@ function MoveTouch:create(parentFrame: GuiBase2d)
                 self.radiusOfMaxSpeed = RADIUS_OF_MAX_SPEED
             end
 
-            self.startImage.Position = UDim2.new(0, self.thumbstickRingSize * 3.3 + SAFE_AREA_INSET_MAX, 1, -self.thumbstickRingSize * 2.8 - SAFE_AREA_INSET_MAX)
+            self.startImage.Position = UDim2.new(
+                0, 
+                self.thumbstickRingSize * 3.3 + SAFE_AREA_INSET_MAX, 1, 
+                -self.thumbstickRingSize * 2.8 - SAFE_AREA_INSET_MAX
+            )
             self.startImage.Size = UDim2.new(0, self.thumbstickRingSize  * 3.7, 0, self.thumbstickRingSize  * 3.7)
 
             self.endImage.Position = self.startImage.Position
@@ -607,8 +615,11 @@ function MoveTouch:create(parentFrame: GuiBase2d)
                 end
             elseif self.tweenOutAlphaStart ~= nil then
                 local delta = tick() - self.tweenOutAlphaStart
-                local fadeOutTime = (self.fadeInAndOutHalfDuration * 2) - (self.fadeInAndOutHalfDuration * 2 * self.fadeInAndOutBalance)
-                self.thumbstickFrame.BackgroundTransparency = 1 - FADE_IN_OUT_MAX_ALPHA + FADE_IN_OUT_MAX_ALPHA*math.min(delta/fadeOutTime, 1)
+                local fadeOutTime = 
+                    (self.fadeInAndOutHalfDuration * 2) 
+                    - (self.fadeInAndOutHalfDuration * 2 * self.fadeInAndOutBalance)
+                self.thumbstickFrame.BackgroundTransparency = 
+                    1 - FADE_IN_OUT_MAX_ALPHA + FADE_IN_OUT_MAX_ALPHA*math.min(delta/fadeOutTime, 1)
                 if delta > fadeOutTime  then
                     self.tweenOutAlphaStart = nil
                 end
@@ -628,13 +639,14 @@ function MoveTouch:create(parentFrame: GuiBase2d)
         end)
 
         while not playerGui do
-            LocalPlayer.ChildAdded:Wait()
-            playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+            localPlr.ChildAdded:Wait()
+            playerGui = localPlr:FindFirstChildOfClass("PlayerGui")
         end
 
         local playerGuiChangedConn = nil
-        local originalScreenOrientationWasLandscape =	playerGui.CurrentScreenOrientation == Enum.ScreenOrientation.LandscapeLeft or
-                                                        playerGui.CurrentScreenOrientation == Enum.ScreenOrientation.LandscapeRight
+        local originalScreenOrientationWasLandscape =
+            playerGui.CurrentScreenOrientation == Enum.ScreenOrientation.LandscapeLeft or
+            playerGui.CurrentScreenOrientation == Enum.ScreenOrientation.LandscapeRight
 
         local function longShowBackground()
             self.fadeInAndOutHalfDuration = 1.5
@@ -643,8 +655,10 @@ function MoveTouch:create(parentFrame: GuiBase2d)
         end
 
         playerGuiChangedConn = playerGui:GetPropertyChangedSignal("CurrentScreenOrientation"):Connect(function()
-            if (originalScreenOrientationWasLandscape and playerGui.CurrentScreenOrientation == Enum.ScreenOrientation.Portrait) or
-                (not originalScreenOrientationWasLandscape and playerGui.CurrentScreenOrientation ~= Enum.ScreenOrientation.Portrait) then
+            if (originalScreenOrientationWasLandscape 
+                and playerGui.CurrentScreenOrientation == Enum.ScreenOrientation.Portrait) or
+                (not originalScreenOrientationWasLandscape 
+                and playerGui.CurrentScreenOrientation ~= Enum.ScreenOrientation.Portrait) then
 
                 playerGuiChangedConn:Disconnect()
                 longShowBackground()
@@ -669,8 +683,7 @@ function MoveTouch:create(parentFrame: GuiBase2d)
         end
     end
 
-    ----------------------------------------------------------------------------------------------------------------------------------------
-    -- Setup jump button
+    --------------------------------------------------------------------------------------------------------------------
     local resizeJumpBtn do
         if self.jumpButton then
             self.jumpButton:Destroy()
@@ -714,7 +727,7 @@ function MoveTouch:create(parentFrame: GuiBase2d)
         self.jumpButton.Parent = parentFrame
     end
 
-    ----------------------------------------------------------------------------------------------------------------------------------------
+    --------------------------------------------------------------------------------------------------------------------
     -- Setup dash button
     local resizeDashBtn do
         if (self.dashButton) then
@@ -768,4 +781,4 @@ function MoveTouch:create(parentFrame: GuiBase2d)
     self.absoluteSizeChangedConn = parentFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(resizeControlUI)
 end
 
-return MoveTouch
+return Touch

@@ -11,6 +11,7 @@ local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
 local WeaponName = require(ReplicatedStorage.Shared.Enums.WeaponName)
+local BaseWeapon = require(ReplicatedStorage.Shared.GameSystems.Weapons.Arsenal.BaseWeapon)
 local WeaponManager = require(ReplicatedStorage.Shared.GameSystems.Weapons.WeaponManager)
 local Network = require(ReplicatedStorage.Shared.Network)
 local ServNetApi = require(script.ServNetApi)
@@ -88,7 +89,7 @@ function Game.spawnPlayer(plr: Player)
 
     -- TODO: proper spawn management
     local tmpSpawn : SpawnLocation = Workspace:FindFirstChildWhichIsA("SpawnLocation", true)
-	local spawnPos : Vector3 = (tmpSpawn.CFrame.Position + Vector3.new(0,2,0)) or Vector3.new(0, 50, 0)
+	local spawnPos : Vector3 = (tmpSpawn.CFrame.Position + Vector3.new(0,3,0)) or Vector3.new(0, 50, 0)
     do
         newCharacter.Name = tostring(plr.UserId)
         newCharacter.Parent = Workspace:FindFirstChild(Global.PLAYERS_INST_FOLDER_NAME)
@@ -111,12 +112,24 @@ end
 
 function Game.removeWeaponFromPlayerInventory(plr: Player, slot: number)
     local plrData = ServerRoot.getPlayerData(plr)
-    if (not plrData.inventory[slot]) then
+    local weap: BaseWeapon.Weapon = plrData.inventory[slot]
+    if (not weap) then
         error(`No existing weapon in {plr}'s inventory at slot {slot}`)
     end
 
+    ServNetApi.events[Network.serverEvents.removeWeaponFromPlayer]:FireAllClients(plr, weap.uid)
+
     plrData.inventory[slot]:destroy()
     plrData.inventory[slot] = nil
+end
+
+function Game.removeAllWeaponsFromPlayerInventory(plr)
+    local plrData = ServerRoot.getPlayerData(plr)
+    for i=1, #plrData.inventory, 1 do
+        if (plrData.inventory[i]) then
+            Game.removeWeaponFromPlayerInventory(plr, i)
+        end
+    end
 end
 
 -- Adds a new weapon to the player's inventory, or overwrites an occupied inventory slot
@@ -148,6 +161,7 @@ local function onPlayerRequestSpawn(plr: Player)
         warn(`{plr} on cooldown`); return
     end
     Game.spawnPlayer(plr)
+    Game.removeAllWeaponsFromPlayerInventory(plr)
     Game.equipPlayerStaterGear(plr)
 end
 
@@ -177,8 +191,7 @@ local function onPlayerRequestChangeHealth(plr: Player, newHp: number?, damageTy
         warn("Invalid damage type"); return
     end
 
-    --changePlrHealth(plr, newHp, _damageType)
-    ServerRoot.changePlrHealth(plr, newHp, damageType)
+    ServerRoot.changePlayerHealth(plr, newHp, damageType)
 end
 
 local function onPlayerRequestActiveWeaponSwitch(plr: Player, newSlot: number?)
@@ -197,15 +210,16 @@ local function onPlayerRequestActiveWeaponSwitch(plr: Player, newSlot: number?)
     plrData.activeInvSlot = newSlot
 end
 
-local function onPlayerRequestWeaponFire(plr: Player)
+local function onPlayerRequestWeaponFire(plr: Player, altFire: boolean?)
     local plrData = ServerRoot.getPlayerData(plr)
-    local targetWeapon = plrData.inventory[plrData.activeInvSlot]
-    local targetWeaponName = targetWeapon.name
-
-    if (not targetWeapon) then
-        warn(`{plr} has no weapon in active slot {plrData.activeInvSlot}`)
+    local currWeapon: BaseWeapon.Weapon = plrData.inventory[plrData.activeInvSlot]
+    if (not currWeapon) then
+        warn(`{plr} has no weapon in active inv slot {plrData.activeInvSlot}`); return
     end
-    ServNetApi.events[Network.serverEvents.fireWeapon]:FireAllClients(plr, targetWeaponName)
+    local weapUid = currWeapon.uid
+    local _altFire = altFire == true
+
+    ServNetApi.events[Network.serverEvents.fireWeapon]:FireAllClients(weapUid, _altFire)
 end
 
 local remEventFunctions = {
@@ -248,6 +262,8 @@ ServNetApi.implementRFunctions(remFunctionFunctions)
 -- Bindable events (signals)
 
 local function onPlayerDied(plr: Player)
+    print("player has died")
+
     task.wait(DEATH_REMOVE_DELAY)
     Game.removePlayerCharacter(plr)
 end

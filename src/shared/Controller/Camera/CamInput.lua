@@ -124,6 +124,8 @@ do
 		LeftControl = 0,
 		Left = 0,
 		Right = 0,
+		Up = 0,
+		Down = 0,
 		I = 0,
 		O = 0
 	}
@@ -149,7 +151,10 @@ do
 		local inversionVector = Vector2.new(1, UserGameSettings:GetCameraYInvertValue())
 
 		-- keyboard input is non-coalesced, so must account for time delta
-		local kKeyboard = Vector2.new(keyboardState.Right - keyboardState.Left, 0) * dt
+		local kKeyboard = Vector2.new(
+			keyboardState.Right - keyboardState.Left, 
+			keyboardState.Down - keyboardState.Up
+		) * dt
 		local kGamepad = gamepadState.Thumbstick2 * UserGameSettings.GamepadCameraSensitivity * dt
 
 		local kMouse = mouseState.Movement
@@ -170,7 +175,7 @@ do
 			kPointerAction * ROTATION_SPEED_POINTERACTION +
 			kTouch * ROTATION_SPEED_TOUCH
 
-		return result*inversionVector
+		return result * inversionVector
 	end
 
 	function CameraInput.getZoomDelta(): number
@@ -383,6 +388,8 @@ do
 					Enum.KeyCode.LeftControl,
 					Enum.KeyCode.Left,
 					Enum.KeyCode.Right,
+					Enum.KeyCode.Up,
+					Enum.KeyCode.Down,
 					Enum.KeyCode.I,
 					Enum.KeyCode.O
 				)

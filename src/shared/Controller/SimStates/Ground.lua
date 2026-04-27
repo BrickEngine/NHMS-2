@@ -99,6 +99,7 @@ local function createForces(mdl: Model): {[string]: Instance}
     att.Parent = mdl.PrimaryPart
 
     local moveForce = Instance.new("VectorForce", mdl.PrimaryPart)
+    moveForce.Force = VEC3_ZERO
     moveForce.Enabled = false
     moveForce.Attachment0 = att
     moveForce.ApplyAtCenterOfMass = true
@@ -222,8 +223,12 @@ function Ground:updateJump(dt: number, override: boolean?)
             self.forces.posForce.Enabled = false
 
             local jumpInitVel: number = math.sqrt(Workspace.Gravity * 2 * JUMP_HEIGHT)
+            local yVel = primaryPart.AssemblyLinearVelocity.Y
+            if (yVel < 0) then
+                yVel = 0
+            end
             primaryPart:ApplyImpulse(
-                VEC3_UP * (jumpInitVel - primaryPart.AssemblyLinearVelocity.Y) * primaryPart.AssemblyMass)
+                VEC3_UP * (jumpInitVel - yVel * 0.5) * primaryPart.AssemblyMass)
             jumped = true
         end
     end
@@ -402,13 +407,6 @@ function Ground:update(dt: number)
         self.animation:adjustSpeed(1)
     end
 
-    -- update playermodel rotation
-    -- primaryPart.CFrame = CFrame.lookAlong(
-    --     primaryPart.CFrame.Position, camHoriDir
-    -- )
-    -- primaryPart.AssemblyAngularVelocity = VEC3_ZERO
-
-    -- state transitions
     do
         local canMountWall
         if (ALLOW_IMM_WALL_MOUNT) then

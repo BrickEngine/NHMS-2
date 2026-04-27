@@ -1,48 +1,56 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local weaponsFolder = ReplicatedStorage.Shared.GameSystems.Weapons
-local AmmoType = require(ReplicatedStorage.Shared.Enums.AmmoType)
 local WeaponName = require(ReplicatedStorage.Shared.Enums.WeaponName)
 local BaseWeapon = require(weaponsFolder.Arsenal.BaseWeapon)
+local Network = require(ReplicatedStorage.Shared.Network)
 
-local Sword = setmetatable({} :: BaseWeapon.Weapon, BaseWeapon)
+-- client only modules
+local InputManager
+local CliApi
+if (RunService:IsClient()) then
+    InputManager = require(ReplicatedStorage.Shared.InputManager)
+    CliApi = require(ReplicatedStorage.Shared.GameClient.CliNetApi)
+end
+
+local mdlFold = ReplicatedStorage.Assets.WeaponModels.Sword
+
+local Sword = setmetatable({}, BaseWeapon)
 Sword.__index = Sword
 
 function Sword.new(uid: number)
-    local self = BaseWeapon.new(
-        uid,
-        WeaponName.PLASMA_SPELL,
-        "rbxassetid://0",
-        nil,
-        nil,
-        0,
-        false,
-        false,
-        AmmoType.NONE,
-        0,
-        0
-    )
+    local swordModel = mdlFold.ClassicSword:Clone()
+    
+    local self: BaseWeapon.Weapon = BaseWeapon.new({
+        uid = uid,
+        name = WeaponName.SWORD,
+        iconId = "rbxassetid://0",
+        owner = nil, -- ownerMdl
+        weaponModel = swordModel,
+        slot = 1
+    })
 
     return setmetatable(self, Sword) :: any
 end
 
 function Sword:equip()
+    print("EQUIPPING")
+    task.wait(0.5)
 end
 
 function Sword:unequip()
+    print("UNEQUIPPING")
+    task.wait(0.5)
 end
 
 function Sword:reload()
 end
 
-function Sword:fire()
-    print("ARARARAR")
-end
-
-function Sword:createPickup(): any
-    return nil
+function Sword:fire(altFire: boolean)
+    print("SWOOOOOOORD", altFire)
 end
 
 function Sword:onHit()
@@ -52,10 +60,17 @@ function Sword:reset()
 end
 
 function Sword:update(dt: number)
-    print("update sword")
+    local fireInp, altFireInp = InputManager:getFireKeysDown()
+    if (fireInp or altFireInp) then
+        self:fire(altFireInp)
+    end
 end
 
 function Sword:destroy()
+    print("destroying sword")
+    if (self.weaponModel) then
+        (self.weaponModel :: Model):Destroy()
+    end
 end
 
 return Sword
