@@ -45,7 +45,7 @@ export type Weapon = {
     equip: (self: Weapon) -> (),
     unequip: (self: Weapon) -> (),
     reload: (self: Weapon) -> (),
-    fire: (self: Weapon, altFire: boolean) -> (),
+    fire: (self: Weapon, altFire: boolean, pos: Vector3, dir: Vector3) -> (),
     createPickup: (self: Weapon) -> any,
     onHit: (self: Weapon) -> (),
     reset: (self: Weapon) -> (),
@@ -88,7 +88,7 @@ function BaseWeapon:reload()
     err()
 end
 
-function BaseWeapon:fire(altFire: boolean)
+function BaseWeapon:fire(altFire: boolean, pos: Vector3, dir: Vector3)
     err()
 end
 

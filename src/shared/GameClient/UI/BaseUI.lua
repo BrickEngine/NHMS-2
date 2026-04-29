@@ -25,6 +25,10 @@ function BaseUI:enable(enable: boolean)
     error("cannot call enable of abstract BaseUI", 2)
 end
 
+function BaseUI:fetchAndSetData()
+    error("cannot call enable of abstract BaseUI", 2)
+end
+
 function BaseUI:reset()
     error("cannot call reset of abstract BaseUI", 2)
 end

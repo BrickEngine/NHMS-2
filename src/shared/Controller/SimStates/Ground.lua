@@ -26,6 +26,8 @@ local MOVE_DAMP = 0.4 -- lower value ~ more rigid movement (do not set too low; 
 local DASH_DAMP = 0.1 -- equivalent to MOVE_DAMP
 local PHYS_DT = 0.05 -- time delta for move accel
 local AIR_FORCE_FAC = 0--0.1 -- lower value ~ less control (0 = no control)
+local SLOW_AIR_SPEED_THR = 25 -- studs/s speed below which air control is enabled
+local SLOW_AIR_FORCE_FAC = 0.1 -- air control factor for slow movement
 -- max reachable velocities
 local MAX_DASH_SPEED = DASH_SPEED_FAC / PHYS_DT
 local MAX_MOVE_SPEED = MOVE_SPEED_FAC / PHYS_DT
@@ -296,7 +298,11 @@ function Ground:updateMove(dt: number, rawMoveDir: Vector3, normal: Vector3, nor
 
     self.forces.moveForce.Force = accelVec * mass
     if (not self.shared.grounded and not self.shared.isDashing) then
-        self.forces.moveForce.Force *= AIR_FORCE_FAC
+        if (currHoriVel.Magnitude < SLOW_AIR_SPEED_THR) then
+            self.forces.moveForce.Force *= SLOW_AIR_FORCE_FAC
+        else
+            self.forces.moveForce.Force *= AIR_FORCE_FAC
+        end
     end
 end
 

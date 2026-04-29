@@ -35,7 +35,7 @@ local ClientRoot = {
         healthChanged = Instance.new("BindableEvent"),
         armorChanged = Instance.new("BindableEvent"),
         ammoChanged = Instance.new("BindableEvent"),
-        inventoryChanged = Instance.new("BindableEvent"),
+        inventorySlotChanged = Instance.new("BindableEvent"),
         weaponSwitched = Instance.new("BindableEvent"),
         deathStateChanged = Instance.new("BindableEvent"),
         killCountChanged = Instance.new("BindableEvent"),
@@ -94,6 +94,16 @@ function ClientRoot.setActiveInvSlot(newSlot: number)
     end
     plrData.activeInvSlot = newSlot
     ClientRoot.signals.weaponSwitched:Fire(newSlot)
+end
+
+function ClientRoot.freeInventorySlot(slot: number)
+    plrData.inventory[slot] = nil
+    ClientRoot.signals.inventorySlotChanged:Fire(slot, false)
+end
+
+function ClientRoot.occupyInventorySlot(slot: number, contents: any)
+    plrData.inventory[slot] = contents
+    ClientRoot.signals.inventorySlotChanged:Fire(slot, true)
 end
 
 function ClientRoot.setCurrentPlayerStateId(newId: number)

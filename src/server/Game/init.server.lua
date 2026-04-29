@@ -184,15 +184,16 @@ local function onPlayerRequestChangeHealth(plr: Player, newHp: number?, damageTy
         warn(`{plr} sent invalid newHp parameter`); return 
     end
     -- players can only request health reduction
-    if (newHp % 1 ~= 0 or newHp > currHp) then 
-        warn(`{plr} sent incorrect newHp format`); return 
+    if (newHp > currHp) then 
+        warn(`{plr} attempted to heal themselves`); return 
     end
+    local _newHp = math.round(newHp)
     if (not (damageType and VALID_CLIENT_DAMAGE_TYPES[damageType])) then
         print(VALID_CLIENT_DAMAGE_TYPES[damageType])
         warn("Invalid damage type"); return
     end
 
-    ServerRoot.changePlayerHealth(plr, newHp, damageType)
+    ServerRoot.changePlayerHealth(plr, _newHp, damageType)
 end
 
 local function onPlayerRequestActiveWeaponSwitch(plr: Player, newSlot: number?)

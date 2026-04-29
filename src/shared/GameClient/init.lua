@@ -120,9 +120,13 @@ function GameClient.removeWeaponLocal(uid: number)
 
     local plrData = ClientRoot.getPlayerData()
     local weapon = weapIdMap[uid]
-    -- in case weapon is the currently equipped one
-    if (plrData.inventory[plrData.activeInvSlot] == weapon) then
-        weapon:unequip()
+
+    if (weapon.owner == localPlr.Character) then
+        -- in case weapon is currently equipped in active slot
+        if (plrData.inventory[plrData.activeInvSlot] == weapon) then
+            weapon:unequip()
+        end
+        ClientRoot.freeInventorySlot(weapon.slot)
     end
     weapIdMap[uid]:destroy()
     weapIdMap[uid] = nil
@@ -187,7 +191,6 @@ function GameClient.onDeathStateChanged(isDead: boolean, lastDamageType: string)
     if (not isDead) then
         -- Revival
         -- TODO: spawn / revive effects
-        CorePlayerUI:resetAll()
         controllerCamera:activateFPDeathCam(false)
         repeat 
             task.wait(0.1)
@@ -343,6 +346,7 @@ local function onAddWeapToPlayer(plr: Player, weapName: string, uid: number)
     if (plr == localPlr) then
         local plrData = ClientRoot.getPlayerData()
         plrData.inventory[weapon.slot] = weapon
+        ClientRoot.occupyInventorySlot(weapon.slot, weapon)
         GameClient.switchWeaponSlot(weapon.slot)
     end
 end

@@ -109,9 +109,6 @@ function Water.new(...)
     self.animation = self._simulation.animation
     self.buoySensor = self._simulation.buoySensor
 
-    --self.mainColl = (self.character :: Model):FindFirstChild(CharacterDef.PARAMS.MAINCOLL_NAME) :: BasePart
-    --self.mainCollBuoySensor = createBuoySensForPart(self.mainColl) :: BuoyancySensor
-
     return setmetatable(self, Water)
 end
 
@@ -189,12 +186,6 @@ function Water:updateSwim(dt: number, rawInpDir: Vector3)
         unitBuoyForce = VEC3_ZERO
     end
     self.forces.moveForce.Force = (accelVec + unitBuoyForce) * mass
-
-    -- update playermodel rotation
-    -- primaryPart.CFrame = CFrame.lookAlong(
-    --     primaryPart.CFrame.Position, camHoriDir
-    -- )
-    -- primaryPart.AssemblyAngularVelocity = VEC3_ZERO
 end
 
 local diveSignal = false

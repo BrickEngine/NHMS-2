@@ -14,9 +14,15 @@ local ENABLE_DEATH_FILTER = true
 local DMG_OVERL_TRANSP_MIN = 0.35
 local DMG_OVERL_TRANSP_MAX = 0.8
 local DMG_OVERL_CHANGE_RATE = 0.8
-local DMG_COLOR3 = Color3.new(1, 0, 0)
-local HEAL_COLOR3 = Color3.new(0, 1, 0)
-local COLOR3_FULLBLACK = Color3.new(0, 0, 0)
+
+local DMG_COLOR3 = Color3.fromRGB(255, 0, 0)
+local HEAL_COLOR3 = Color3.fromRGB(0, 255, 0)
+local COLOR3_FULLBLACK = Color3.fromRGB(0, 0, 0)
+
+local COLOR3_INV_SELECT = Color3.fromRGB(0, 60, 255)
+local COLOR3_INV_OCC = Color3.fromRGB(255, 0, 0)
+local COLOR3_INV_EMPTY = Color3.fromRGB(0, 0, 0)
+
 local DISPLAY_BLINK_TIME = 0.2
 local DEATH_FADE_DELAY = 0.6
 
@@ -33,6 +39,9 @@ for ind: string, vec: Vector2 in pairs(FACE_SPRITE_HEALTH_OFFSETS) do
     FACE_SPRITE_HEALTH_OFFSETS[ind] = vec * SPRITESHEET_TILE_SIZE
 end
 
+------------------------------------------------------------------------------------------------------------------------
+-- Local vars
+
 local playerGui = Players.LocalPlayer.PlayerGui
 local starterGameGui = StarterGui.GameUI
 assert(starterGameGui, `No StarterGui object with name {GAME_UI_NAME} found`)
@@ -45,6 +54,10 @@ local activeFilterMesh: BasePart
 
 local pauseDmgOverlayUpd = false
 local timeSinceDeath = 0
+local currActiveSlot = 0
+
+local inventoryFrame = activeGuiObj.LowPanel.WeaponFrame.Inventory
+local invFrameObjMap = {} :: {[number]: Frame}
 
 -- note: some (most) properties of the GUI assembly are predefined by starterGameGui
 -- use this function to overwrite certain settings on reset
@@ -63,50 +76,8 @@ local function setActiveFilterMesh(mesh: BasePart): BasePart
     return meshClone
 end
 
-local function onHealthChanged(newHP: number, diff: number, dmgType: string)
-    local plrData = ClientRoot.getPlayerData()
-    local hpTextBox = activeGuiObj.LowPanel.Vitals.HealthTB
-    local dmgOverlay = activeGuiObj.DamageOverlay
-
-    hpTextBox.Text = tostring(newHP)
-
-    local function setDamageOverlay()
-        if (newHP == 0) then
-            dmgOverlay.Transparency = 1
-            dmgOverlay.BackgroundColor3 = COLOR3_FULLBLACK
-            return
-        end
-        -- dont set transparency when healing or leaving godmode
-        if (newHP - diff <= 0 or newHP >= PlayerData.LIMITS.healthWithBonus) then
-            return
-        end
-        dmgOverlay.BackgroundColor3 = (diff < 0) and DMG_COLOR3 or HEAL_COLOR3
-        dmgOverlay.Transparency = 1 - math.clamp(
-            math.abs(diff) * 0.01, DMG_OVERL_TRANSP_MIN, DMG_OVERL_TRANSP_MAX
-        )
-    end
-
-    local function setFaceIcon()
-        local faceImgLbl = activeGuiObj.LowPanel.CenterFrame.ImageLabel
-        local inGodMode = plrData.godModeActive
-        if (inGodMode) then
-            faceImgLbl.ImageRectOffset = FACE_SPRITE_HEALTH_OFFSETS.godmode
-        else
-            if (newHP >= 65) then
-                faceImgLbl.ImageRectOffset = FACE_SPRITE_HEALTH_OFFSETS.default
-            elseif (newHP < 65 and newHP >= 30) then
-                faceImgLbl.ImageRectOffset = FACE_SPRITE_HEALTH_OFFSETS.wounded0
-            elseif (newHP < 30 and newHP > 0) then
-                faceImgLbl.ImageRectOffset = FACE_SPRITE_HEALTH_OFFSETS.wounded1
-            else
-                faceImgLbl.ImageRectOffset = FACE_SPRITE_HEALTH_OFFSETS.dead
-            end
-        end
-    end
-
-    setDamageOverlay()
-    setFaceIcon()
-end
+------------------------------------------------------------------------------------------------------------------------
+-- Part of update loop
 
 local function updateDmgOverlayTransp(dt: number)
     if (pauseDmgOverlayUpd) then 
@@ -132,7 +103,7 @@ end
 local blinkTime = 0
 local vis = true
 local function updateDisplays(dt: number)
-    local hpTextBox = activeGuiObj.LowPanel.Vitals.HealthTB
+    local hpTextBox = activeGuiObj.LowPanel.Vitals.StatsFrame.Health
     local currHp = ClientRoot.getPlayerData().health
 
     local hueVal = math.clamp((currHp - 25) * 0.01, 0, 0.32)
@@ -152,6 +123,88 @@ local function updateDisplays(dt: number)
     end
 end
 
+local function updateFilter()
+    local character: Model = Players.LocalPlayer.Character
+    if (not (character and character.PrimaryPart)) then
+        return
+    end 
+
+    if (activeFilterMesh) then
+        activeFilterMesh.CFrame = Workspace.CurrentCamera.CFrame
+    end
+end
+
+------------------------------------------------------------------------------------------------------------------------
+
+local function setInvSlotState(slot: number, occupied: boolean)
+    if (invFrameObjMap[slot]) then
+        if (occupied) then
+            invFrameObjMap[slot].BackgroundColor3 = COLOR3_INV_OCC
+        else
+            invFrameObjMap[slot].BackgroundColor3 = COLOR3_INV_EMPTY
+        end
+    end
+end
+
+local function setActiveInvSlot(slot: number)
+    if (invFrameObjMap[currActiveSlot]) then
+        invFrameObjMap[currActiveSlot].ZIndex = 0
+        (invFrameObjMap[currActiveSlot].UIStroke :: UIStroke).Transparency = 1
+    end
+    currActiveSlot = slot
+    if (invFrameObjMap[slot]) then
+        invFrameObjMap[slot].ZIndex = 1
+        local uiStroke = invFrameObjMap[slot].UIStroke :: UIStroke
+        uiStroke.Transparency = 0
+        uiStroke.Color = COLOR3_INV_SELECT
+    end
+end
+
+local function setFaceIcon(health: number)
+    local plrData = ClientRoot.getPlayerData()
+    local faceImgLbl = activeGuiObj.LowPanel.Vitals.FaceFrame.ImageLabel
+    local inGodMode = plrData.godModeActive
+    if (inGodMode) then
+        faceImgLbl.ImageRectOffset = FACE_SPRITE_HEALTH_OFFSETS.godmode
+    else
+        if (health >= 65) then
+            faceImgLbl.ImageRectOffset = FACE_SPRITE_HEALTH_OFFSETS.default
+        elseif (health < 65 and health >= 30) then
+            faceImgLbl.ImageRectOffset = FACE_SPRITE_HEALTH_OFFSETS.wounded0
+        elseif (health < 30 and health > 0) then
+            faceImgLbl.ImageRectOffset = FACE_SPRITE_HEALTH_OFFSETS.wounded1
+        else
+            faceImgLbl.ImageRectOffset = FACE_SPRITE_HEALTH_OFFSETS.dead
+        end
+    end
+end
+
+local function onHealthChanged(newHP: number, diff: number, dmgType: string)
+    local hpTextBox = activeGuiObj.LowPanel.Vitals.StatsFrame.Health
+
+    hpTextBox.Text = tostring(newHP)
+
+    local function setDamageOverlay()
+        local dmgOverlay = activeGuiObj.DamageOverlay
+        if (newHP == 0) then
+            dmgOverlay.Transparency = 1
+            dmgOverlay.BackgroundColor3 = COLOR3_FULLBLACK
+            return
+        end
+        -- dont set transparency when healing or leaving godmode
+        if (newHP - diff <= 0 or newHP >= PlayerData.LIMITS.healthWithBonus) then
+            return
+        end
+        dmgOverlay.BackgroundColor3 = (diff < 0) and DMG_COLOR3 or HEAL_COLOR3
+        dmgOverlay.Transparency = 1 - math.clamp(
+            math.abs(diff) * 0.01, DMG_OVERL_TRANSP_MIN, DMG_OVERL_TRANSP_MAX
+        )
+    end
+
+    setDamageOverlay()
+    setFaceIcon(newHP)
+end
+
 local function onDeathStateChanged(isDead: boolean, lastDmgType: string)
     if (isDead) then
         local dmgOverlay = activeGuiObj.DamageOverlay
@@ -168,15 +221,12 @@ local function onDeathStateChanged(isDead: boolean, lastDmgType: string)
 	-- renderConn:Disconnect()
 end
 
-local function updateFilter()
-    local character: Model = Players.LocalPlayer.Character
-    if (not (character and character.PrimaryPart)) then
-        return
-    end 
+local function onInvSlotChanged(slot:number, occupied: boolean)
+    setInvSlotState(slot, occupied)
+end
 
-    if (activeFilterMesh) then
-        activeFilterMesh.CFrame = Workspace.CurrentCamera.CFrame
-    end
+local function onWeaponSwitched(newSlot: number)
+    setActiveInvSlot(newSlot)
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -213,7 +263,10 @@ function GameUI:enable(enable: boolean)
         eventConns = {
             healthChanged = ClientRoot.signals.healthChanged.Event:Connect(onHealthChanged),
             deathStateChanged = ClientRoot.signals.deathStateChanged.Event:Connect(onDeathStateChanged),
+            weaponSwitched = ClientRoot.signals.weaponSwitched.Event:Connect(onWeaponSwitched),
+            invSlotChanged = ClientRoot.signals.inventorySlotChanged.Event:Connect(onInvSlotChanged)
         }
+        self:fetchAndSetData()
     else
         for _, conn: RBXScriptConnection in eventConns do
             conn:Disconnect()
@@ -228,13 +281,45 @@ function GameUI:enable(enable: boolean)
     self.enabled = enable
 end
 
+-- activeGuiObj must exist when this is called
+function GameUI:fetchAndSetData()
+    local plrData = ClientRoot.getPlayerData()
+    local vitalsFrame = activeGuiObj.LowPanel.Vitals
+    local weaponFrame = activeGuiObj.LowPanel.WeaponFrame
+
+    inventoryFrame = weaponFrame.Inventory
+    invFrameObjMap = {
+        [1] = inventoryFrame.S1,
+        [2] = inventoryFrame.S2,
+        [3] = inventoryFrame.S3,
+        [4] = inventoryFrame.S4,
+        [5] = inventoryFrame.S5,
+        [6] = inventoryFrame.S6,
+        [7] = inventoryFrame.S7,
+        [8] = inventoryFrame.S8
+    } :: {[number]: Frame}
+
+    local healthText = vitalsFrame.StatsFrame.Health
+    local armorText = vitalsFrame.StatsFrame.Armor
+
+    healthText.Text = tostring(plrData.health)
+    armorText.Text = tostring(plrData.armor)
+    
+    setFaceIcon(plrData.health)
+
+    for i=1, #invFrameObjMap, 1 do
+        local occ = plrData.inventory[i] ~= nil
+        setInvSlotState(i, occ)
+    end
+    setActiveInvSlot(plrData.activeInvSlot)
+end
+
 function GameUI:reset()
     self:enable(false)
 
     if (activeGuiObj) then
         activeGuiObj:Destroy()
     end
-
     local newGuiClone = starterGameGui:Clone()
     newGuiClone.Parent = playerGui
     activeGuiObj = newGuiClone

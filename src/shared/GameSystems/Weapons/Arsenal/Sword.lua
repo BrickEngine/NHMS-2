@@ -1,4 +1,4 @@
---!strict
+--!nonstrict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -18,7 +18,7 @@ if (RunService:IsClient()) then
     CliApi = require(ReplicatedStorage.Shared.GameClient.CliNetApi)
 end
 
-local localPlr = Players.LocalPlayer
+local localPlr = Players.LocalPlayer :: Player
 local mdlFold = ReplicatedStorage.Assets.WeaponModels.Sword
 
 local Sword = setmetatable({}, BaseWeapon)
@@ -63,6 +63,9 @@ function Sword:reset()
 end
 
 function Sword:update(dt: number)
+    if (not RunService:IsClient()) then
+        error("cannot run on server")
+    end
     -- update for other players
 
     --TODO
