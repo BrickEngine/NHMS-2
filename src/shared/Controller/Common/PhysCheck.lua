@@ -251,8 +251,8 @@ function PhysCheck.checkFloor(
 	local targetPos = VEC3_FARDOWN
     local targetNorm = VEC3_UP
     local targetNormAngle = 0
-	local numHits = 0
-	local numTotalHits = 0
+	local numGndHits = 0
+	local numTotalRayHits = 0
 	local adjHipHeight = hipHeight + RAY_Y_OFFSET
 	local _rayParams = rayParams or floorRayParams
 
@@ -282,16 +282,16 @@ function PhysCheck.checkFloor(
 		if (ray :: RaycastResult) then
 			local debug_gnd_hit = false
 
-			numTotalHits += 1
-			normalsArr[numTotalHits] = ray.Normal
+			numTotalRayHits += 1
+			normalsArr[numTotalRayHits] = ray.Normal
 
 			if (ray.Distance <= adjHipHeight + gndClearDist) then
 
 				local hitNormAng = math.asin((VEC3_UP:Cross(ray.Normal)).Magnitude)
 				if (hitNormAng < MAX_INCLINE_ANGLE) then
-					numHits += 1
-					hitPointsArr[numHits] = ray.Position
-					ptsHeightArr[numHits] = ray.Position.Y
+					numGndHits += 1
+					hitPointsArr[numGndHits] = ray.Position
+					ptsHeightArr[numGndHits] = ray.Position.Y
 
 					if (ray.Distance < closestDist) then
 						closestDist = ray.Distance
@@ -317,13 +317,13 @@ function PhysCheck.checkFloor(
 	grounded = true
 
 	if (TARGET_CLOSEST) then
-		if (numHits > 0) then
-			
+		if (numGndHits > 0) then
+
 			local biggestDist = biggestOrderedDist(ptsHeightArr)
 			if (biggestDist <= MAX_GND_POINT_DIFF) then
-				if (numHits >= 3) then
+				if (numGndHits >= 3) then
 					targetPos = avgPlaneFromPoints(hitPointsArr).centroid
-				elseif (numHits == 2) then
+				elseif (numGndHits == 2) then
 					targetPos = avgVecFromVecs(hitPointsArr)
 				else
 					targetPos = hitPointsArr[1]
@@ -336,17 +336,17 @@ function PhysCheck.checkFloor(
 			targetNorm = avgVecFromVecs(normalsArr)
 		else
 			grounded = false
-			targetNorm = VEC3_UP
+			targetNorm = if (numTotalRayHits > 0) then avgVecFromVecs(normalsArr) else VEC3_UP
 		end
 
 	else
 		targetNorm = avgVecFromVecs(normalsArr)
-		if (numHits > 2) then
+		if (numGndHits > 2) then
 			local planeData = avgPlaneFromPoints(hitPointsArr)
 			targetPos = planeData.centroid
 			targetNorm = planeData.normal
 			--pNormAngle = math.deg(math.acos(targetNorm:Dot(VEC3_UP)))
-		elseif (numHits == 2 or numHits == 1) then
+		elseif (numGndHits == 2 or numGndHits == 1) then
 			targetPos = avgVecFromVecs(hitPointsArr)
 		else
 			grounded = false
@@ -407,10 +407,7 @@ function PhysCheck.checkWall(
 		if (ray and ray.Instance and ray.Instance:IsA("BasePart")) then
 			local hitPart = ray.Instance :: BasePart
 
-			if (
-				hitPart.CollisionGroup ==
-				(USE_WALL_COLL_GROUP and CollisionGroup.WALL or CollisionGroup.DEFAULT)
-			) then
+			if (hitPart.CollisionGroup == (USE_WALL_COLL_GROUP and CollisionGroup.WALL or CollisionGroup.DEFAULT)) then
 				if (not hitWallsSet[ray.Instance]) then
 					hitWallsSet[ray.Instance] = true
 					hitWallsArr[#hitWallsArr + 1] = ray.Instance

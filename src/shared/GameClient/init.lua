@@ -174,6 +174,13 @@ end
 -- Things to execute when the ClientRoot Event fires
 function GameClient.onHealthChanged(newHp: number, hpDiff: number, damageType: string?)
     local _damageType = if (damageType) then damageType else DamageType.NONE
+    local ceilOldHP = math.ceil(newHp - hpDiff)
+    local ceilNewHP = math.ceil(newHp)
+
+    if (ceilNewHP == ceilOldHP) then
+        return
+    end
+
     -- play sounds
     if (hpDiff < 0) then
         if (newHp > 0) then
@@ -231,7 +238,7 @@ function GameClient.updateFallDamage(dt: number)
         and fallCooldown <= 0
 
     if (damageConditions) then
-        local damage = math.floor((lastFallVel - MIN_FALL_DMG_VEL) * FALL_DMG_FAC + MIN_FALL_DMG)
+        local damage = (lastFallVel - MIN_FALL_DMG_VEL) * FALL_DMG_FAC + MIN_FALL_DMG
         local newHp = rootPlrData.health - damage
         newHp = math.max(0, newHp)
         GameClient.changeHealth(newHp, DamageType.FALL)

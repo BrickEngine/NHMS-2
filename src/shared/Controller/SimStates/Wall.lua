@@ -37,10 +37,10 @@ local WALL_FORCE_STRENGTH_FAC = 10.75
 local MAX_LIN_VEL_FORCE = 400000
 
 local SLIDE_FAC = 50.25 -- distance scaling for how much a player slides per frame
-local MANEUV_FAC = 0.98 -- wall maneuverability factor scaled with velocity
+local MANEUV_FAC = 0.98 -- wall maneuverability factor; scaled with velocity
 local START_SLIDE_VEL = 45.0 -- studs/s - velocity at which a player starts to slide
 local WALL_MAX_SPEED = 135.0 -- studs/s, max speed on the wall
-local BOOST_FAC = 1.32 -- by how much to boost the wall velocity on enter
+local BOOST_FAC = 1.125 --1.32 -- by how much to boost the wall velocity on enter
 local WALL_SPEED_LOSS_FAC = 9.5 -- how much speed is reduced each phys update on the wall
 
 local PLAY_WALL_SOUNDS = true

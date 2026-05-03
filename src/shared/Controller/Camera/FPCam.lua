@@ -15,9 +15,9 @@ local DEATH_OFFSET = Vector3.new(0, -3, 0)
 local DEATH_ROT_CF_OFFSET = CFrame.fromEulerAnglesXYZ(math.rad(15), 0, math.rad(-60))
 local DASH_OFFSET = Vector3.new(0, -1.8, 0)
 local INP_SENS_FAC = 34	-- input sensitivity factor
-local WALL_TILT = 5.5 -- deg - max cam wall tilt
-local INP_TILT = 6 -- deg - max cam input based tilt
-local TILT_DT = 0.2	-- time delta for tilt lerp functions
+local WALL_TILT = 7.5 -- deg - max cam wall tilt
+local INP_TILT = 6.8 -- deg - max cam input based tilt
+local TILT_DT_FAC = 18 -- time delta scale for cam tilt lerp functions
 local DEATH_LERP_FAC = 5.45
 local ROT_MIN_Y = -89 -- deg
 local ROT_MAX_Y = 89 -- deg
@@ -83,14 +83,14 @@ function FPCam:updateDeathCam(dt: number): (CFrame, CFrame)
 	return self.lastCameraTransform, self.lastCameraFocus
 end
 
-function FPCam:updateDashCam(dt: number)
+function FPCam:updateDashOffset(dt: number)
 	local effCamOffset = simData.isDashing and DASH_OFFSET or VEC3_ZERO
 	lastCamOffs = MathUtil.vec3Clamp(
 		MathUtil.vec3Flerp(lastCamOffs, effCamOffset, dt * 20), DASH_OFFSET, VEC3_ZERO
 	)
 end
 
-function FPCam:updateWallCam(dt: number)
+function FPCam:updateWallTilt(dt: number)
 	local nearWall, rightSide = simData.nearWall, simData.isRightSideWall
 	local fac = rightSide and -1 or 1
 	local effCamTilt = 
@@ -98,7 +98,7 @@ function FPCam:updateWallCam(dt: number)
 	effCamTilt *= fac
 
 	lastWallTilt = math.clamp(
-		MathUtil.flerp(lastWallTilt, effCamTilt, TILT_DT), -WALL_TILT, WALL_TILT
+		MathUtil.lerp(lastWallTilt, effCamTilt, TILT_DT_FAC * dt), -WALL_TILT, WALL_TILT
 	)
 end
 
@@ -106,7 +106,7 @@ end
 -- FPCam RenderStepped update
 --------------------------------------------------------------------------------------------------
 
-function FPCam:update(dt)
+function FPCam:update(dt: number)
 	if (self.switchToDeathCam) then
 		return self:updateDeathCam(dt)
 	end
@@ -152,12 +152,12 @@ function FPCam:update(dt)
         local rot_y = (camAngVec.Y - adjInputVec.X) % 360
 
 		-- update effect cams
-		self:updateDashCam(dt)
-		self:updateWallCam(dt)
+		self:updateDashOffset(dt)
+		self:updateWallTilt(dt)
 
 		-- mouse movement linked camera tilting
 		local limitedRotInp = math.clamp(rotateInput.X * 45, -INP_TILT, INP_TILT)
-		lastInpTilt = MathUtil.flerp(lastInpTilt, limitedRotInp, TILT_DT)
+		lastInpTilt = MathUtil.lerp(lastInpTilt, limitedRotInp, TILT_DT_FAC * dt)
 		local rot_z = lastInpTilt + lastWallTilt
 
         camAngVec = Vector3.new(rot_x, rot_y, rot_z)

@@ -187,13 +187,12 @@ local function onPlayerRequestChangeHealth(plr: Player, newHp: number?, damageTy
     if (newHp > currHp) then 
         warn(`{plr} attempted to heal themselves`); return 
     end
-    local _newHp = math.round(newHp)
     if (not (damageType and VALID_CLIENT_DAMAGE_TYPES[damageType])) then
         print(VALID_CLIENT_DAMAGE_TYPES[damageType])
         warn("Invalid damage type"); return
     end
 
-    ServerRoot.changePlayerHealth(plr, _newHp, damageType)
+    ServerRoot.changePlayerHealth(plr, newHp, damageType)
 end
 
 local function onPlayerRequestActiveWeaponSwitch(plr: Player, newSlot: number?)
@@ -212,16 +211,15 @@ local function onPlayerRequestActiveWeaponSwitch(plr: Player, newSlot: number?)
     plrData.activeInvSlot = newSlot
 end
 
-local function onPlayerRequestWeaponFire(plr: Player, altFire: boolean?)
+local function onPlayerRequestFireWeapon(plr: Player, args: any)
     local plrData = ServerRoot.getPlayerData(plr)
     local currWeapon: BaseWeapon.Weapon = plrData.inventory[plrData.activeInvSlot]
     if (not currWeapon) then
         warn(`{plr} has no weapon in active inv slot {plrData.activeInvSlot}`); return
     end
     local weapUid = currWeapon.uid
-    local _altFire = altFire == true
 
-    ServNetApi.events[Network.serverEvents.fireWeapon]:FireAllClients(weapUid, _altFire)
+    ServNetApi.events[Network.serverEvents.fireWeapon]:FireAllClients(weapUid, args)
 end
 
 local remEventFunctions = {
@@ -237,8 +235,8 @@ local remEventFunctions = {
     [Network.clientEvents.requestChangeHealth] = function(plr: Player, ...)
         onPlayerRequestChangeHealth(plr, ...)
     end,
-    [Network.clientEvents.requestWeaponFire] = function(plr: Player)
-        onPlayerRequestWeaponFire(plr)
+    [Network.clientEvents.requestFireWeapon] = function(plr: Player, ...)
+        onPlayerRequestFireWeapon(plr, ...)
     end,
     [Network.clientEvents.requestActiveWeaponSwitch] = function(plr: Player, ...)
         onPlayerRequestActiveWeaponSwitch(plr, ...)

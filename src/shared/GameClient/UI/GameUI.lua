@@ -55,6 +55,7 @@ local activeFilterMesh: BasePart
 local pauseDmgOverlayUpd = false
 local timeSinceDeath = 0
 local currActiveSlot = 0
+local lastCeilHealth = 0
 
 local inventoryFrame = activeGuiObj.LowPanel.WeaponFrame.Inventory
 local invFrameObjMap = {} :: {[number]: Frame}
@@ -180,10 +181,6 @@ local function setFaceIcon(health: number)
 end
 
 local function onHealthChanged(newHP: number, diff: number, dmgType: string)
-    local hpTextBox = activeGuiObj.LowPanel.Vitals.StatsFrame.Health
-
-    hpTextBox.Text = tostring(newHP)
-
     local function setDamageOverlay()
         local dmgOverlay = activeGuiObj.DamageOverlay
         if (newHP == 0) then
@@ -201,8 +198,17 @@ local function onHealthChanged(newHP: number, diff: number, dmgType: string)
         )
     end
 
-    setDamageOverlay()
-    setFaceIcon(newHP)
+    local hpTextBox = activeGuiObj.LowPanel.Vitals.StatsFrame.Health
+    local newCeilHP = math.ceil(newHP)
+
+    hpTextBox.Text = tostring(newCeilHP)
+
+    -- only trigger health effects when there is a ceil difference
+    if (lastCeilHealth ~= newCeilHP) then
+        setDamageOverlay()
+        setFaceIcon(newHP)
+    end
+    lastCeilHealth = newCeilHP
 end
 
 local function onDeathStateChanged(isDead: boolean, lastDmgType: string)
@@ -298,6 +304,7 @@ function GameUI:fetchAndSetData()
         [7] = inventoryFrame.S7,
         [8] = inventoryFrame.S8
     } :: {[number]: Frame}
+    lastCeilHealth = plrData.health
 
     local healthText = vitalsFrame.StatsFrame.Health
     local armorText = vitalsFrame.StatsFrame.Armor

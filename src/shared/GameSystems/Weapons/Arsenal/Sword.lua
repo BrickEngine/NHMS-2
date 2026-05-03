@@ -40,12 +40,12 @@ function Sword.new(uid: number)
 end
 
 function Sword:equip()
-    print("EQUIPPING")
+    print("EQUIPPING SWORD")
     task.wait(0.5)
 end
 
 function Sword:unequip()
-    print("UNEQUIPPING")
+    print("UNEQUIPPING SWORD")
     task.wait(0.5)
 end
 
@@ -53,7 +53,7 @@ function Sword:reload()
 end
 
 function Sword:fire(altFire: boolean)
-    print("SWOOOOOOORD", altFire)
+
 end
 
 function Sword:onHit()
@@ -69,14 +69,13 @@ function Sword:update(dt: number)
     -- update for other players
 
     --TODO
-    print("update sword")
     -- update local player
     if (self.owner == localPlr.Character) then
         local fireInp, altFireInp = InputManager:getFireKeysDown()
 
         if (fireInp or altFireInp) then
             self:fire(altFireInp)
-            CliApi.events[Network.clientEvents.requestWeaponFire]:FireServer(self.uid, altFireInp)
+            --CliApi.events[Network.clientEvents.requestFireWeapon]:FireServer(self.uid, altFireInp)
         end
     end
 end

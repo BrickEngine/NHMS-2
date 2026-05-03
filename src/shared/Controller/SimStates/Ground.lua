@@ -22,12 +22,13 @@ local STATE_ID = PlayerStateId.GROUND
 -- physics
 local MOVE_SPEED_FAC = 1.95--1.75
 local DASH_SPEED_FAC = 3.2
-local MOVE_DAMP = 0.4 -- lower value ~ more rigid movement (do not set too low; breaks at low framerates)
+local MOVE_DAMP = 0.4 -- lower value ~ more rigid movement (do not set below 0.1; unstable at low framerates)
 local DASH_DAMP = 0.1 -- equivalent to MOVE_DAMP
-local PHYS_DT = 0.05 -- time delta for move accel
-local AIR_FORCE_FAC = 0--0.1 -- lower value ~ less control (0 = no control)
-local SLOW_AIR_SPEED_THR = 25 -- studs/s speed below which air control is enabled
+local PHYS_DT = 0.05 -- time delta for movement physics
+local AIR_FORCE_FAC = 0 -- lower value ~ less control (0 ~ no control)
 local SLOW_AIR_FORCE_FAC = 0.1 -- air control factor for slow movement
+local SLOW_AIR_SPEED_THR = 25 -- studs/s speed below which air control is enabled
+
 -- max reachable velocities
 local MAX_DASH_SPEED = DASH_SPEED_FAC / PHYS_DT
 local MAX_MOVE_SPEED = MOVE_SPEED_FAC / PHYS_DT
@@ -40,6 +41,7 @@ local GND_CLEAR_DIST = 0.45
 local MAX_INCLINE = math.rad(70) -- radiants
 local JUMP_HEIGHT = 6
 local JUMP_DELAY = 0.28
+local JUMP_Y_VEL_DAMP = 0.5 -- range: 0-1; sets by how much jump velocity is damped with current velocity
 local DASH_TIME = 1.6
 local DASH_COOLDOWN_TIME = 0.8
 
@@ -226,11 +228,11 @@ function Ground:updateJump(dt: number, override: boolean?)
 
             local jumpInitVel: number = math.sqrt(Workspace.Gravity * 2 * JUMP_HEIGHT)
             local yVel = primaryPart.AssemblyLinearVelocity.Y
-            if (yVel < 0) then
-                yVel = 0
-            end
+            -- if (yVel < 0) then
+            --     yVel = 0
+            -- end
             primaryPart:ApplyImpulse(
-                VEC3_UP * (jumpInitVel - yVel * 0.5) * primaryPart.AssemblyMass)
+                VEC3_UP * (jumpInitVel - yVel * JUMP_Y_VEL_DAMP) * primaryPart.AssemblyMass)
             jumped = true
         end
     end
@@ -334,7 +336,8 @@ function Ground:update(dt: number)
         wallData = PhysCheck.checkWall(currPos, scanDir, PHYS_RADIUS, HIP_HEIGHT)
 
         -- if scanDir delivers no results, check again with the raw input dir
-        if (rawMoveDir.Magnitude > SMALL_MAG and self.shared.stateTime > 0.25) then
+        local wallMountCdTime = math.max(0.25, 25 * dt)
+        if (rawMoveDir.Magnitude > SMALL_MAG and self.shared.stateTime > wallMountCdTime) then
             wallData = PhysCheck.checkWall(currPos, -rawMoveDir.Unit, PHYS_RADIUS, HIP_HEIGHT)
         end
     end

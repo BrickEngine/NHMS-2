@@ -16,8 +16,10 @@ local NetApi = table.freeze({
         requestSound = "RequestSound",
         requestChangeHealth = "RequestChangeHealth",
         requestActiveWeaponSwitch = "RequestActiveWeaponSwitch",
-        requestWeaponFire = "RequestWeaponFire",
-        requestAquirePickup = "RequestAquirePickup"
+        requestFireWeapon = "RequestFireWeapon",
+        requestDamage = "RequestDamage",
+        requestInteract = "RequestInteract",
+        requestAquirePickup = "RequestAquirePickup",
     },
     clientFastEvents = {
         jointsDataToServer = "JointsDataToServer",
