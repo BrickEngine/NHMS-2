@@ -76,7 +76,7 @@ function GameClient.init()
     if (updateConn) then
         (updateConn :: RBXScriptConnection):Disconnect()
     end
-    updateConn = RunService.PreSimulation:Connect(function(dt) 
+    updateConn = RunService.PreRender:Connect(function(dt) 
         GameClient.update(dt) 
     end)
 

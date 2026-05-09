@@ -83,7 +83,7 @@ function BaseWeapon:setOwner(ownerMdl: Model | nil)
 end
 
 function BaseWeapon:validateFireParams(params: any?): (boolean, string?)
-    if (not self.fireSchema) then
+    if (not (self.fireSchema and params)) then
         return true, nil
     end
     return Schema.validate(params, self.fireSchema)

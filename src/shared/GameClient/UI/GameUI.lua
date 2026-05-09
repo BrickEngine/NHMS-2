@@ -11,7 +11,7 @@ local UIType = require(ReplicatedStorage.Shared.Enums.UIType)
 
 local GAME_UI_NAME = "GameUI"
 local ENABLE_DEATH_FILTER = true
-local DMG_OVERL_TRANSP_MIN = 0.35
+local DMG_OVERL_TRANSP_MIN = 0.25
 local DMG_OVERL_TRANSP_MAX = 0.8
 local DMG_OVERL_CHANGE_RATE = 0.8
 

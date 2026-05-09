@@ -208,7 +208,7 @@ function KeyboardMouse:bindActions()
 			if (self.scrollResetTask) then
 				task.cancel(self.scrollResetTask)
 			end
-			self.scrollResetTask = task.delay(0.05, function()
+			self.scrollResetTask = task.delay(0, function()
 				self:updateInvSwitchInput(SlotSwitchType.NONE)
 			end)
 		elseif (inputObject.UserInputType == Enum.UserInputType.Keyboard and 

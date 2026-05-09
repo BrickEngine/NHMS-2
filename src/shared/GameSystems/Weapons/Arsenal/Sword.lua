@@ -8,9 +8,14 @@ local Workspace = game:GetService("Workspace")
 
 local weaponsFolder = ReplicatedStorage.Shared.GameSystems.Weapons
 local WeaponName = require(ReplicatedStorage.Shared.Enums.WeaponName)
+local WeaponCommon = require(ReplicatedStorage.Shared.GameSystems.Weapons.WeaponCommon)
 local BaseWeapon = require(weaponsFolder.Arsenal.BaseWeapon)
 local Schema = require(ReplicatedStorage.Shared.Util.Schema)
 local Network = require(ReplicatedStorage.Shared.Network)
+
+local CF_CAM_WEAP_OFFS = 
+    CFrame.new(Vector3.new(0.95,-0.2,-1.25)) 
+    * CFrame.fromEulerAnglesXYZ(math.rad(75), math.rad(180), math.rad(120))
 
 -- client only modules
 local InputManager
@@ -56,7 +61,16 @@ function Sword.new(uid: number)
 end
 
 function Sword:equip()
+    local weapModel: Model = self.weaponModel
+    local ownerMdl: Model = self.owner
+    assert(weapModel.PrimaryPart, `Model '{weapModel}' has no primary part`)
+    assert(ownerMdl.PrimaryPart, `Owner model '{ownerMdl}' has no primary part`)
+
+    --WeaponCommon.joinWeaponToOwnerPrimPart(weapModel, ownerMdl)
+
+    -- case for other players
     if (self.owner ~= localPlr.Character) then
+        -- TODO
         return
     end
 
@@ -65,29 +79,31 @@ function Sword:equip()
         error("No weapon owner")
     end
 
-    local weapModel: Model = self.weaponModel
-    local owner: Model = self.owner
-    assert(weapModel.PrimaryPart, `Model '{weapModel}' has no primary part`)
-    assert(owner.PrimaryPart, `Owner model '{owner}' has no primary part`)
-
+    weapModel.PrimaryPart.Anchored = true
     weapModel.Parent = self.owner
-    weapModel.PrimaryPart.CFrame = CFrame.new(owner.PrimaryPart.CFrame.Position)
+    weapModel.PrimaryPart.CFrame = CFrame.new(ownerMdl.PrimaryPart.CFrame.Position)
 
-
-    task.wait(0.5)
     --TweenService:Create(instance, tweenInfo, propertyTable)
 end
 
 function Sword:unequip()
+    -- case for other players
     if (self.owner ~= localPlr.Character) then
+        -- TODO
         return
     end
+
+    local weapModel: Model = self.weaponModel
+    local ownerMdl: Model = self.owner
+    assert(weapModel.PrimaryPart, `Model '{weapModel}' has no primary part`)
+    assert(ownerMdl.PrimaryPart, `Owner model '{ownerMdl}' has no primary part`)
+
+    weapModel.Parent = localPlr.Backpack
 
     print("UNEQUIPPING SWORD")
     if (not self.owner) then
         error("No weapon owner")
     end
-    task.wait(0.5)
 end
 
 function Sword:reload()
@@ -107,27 +123,31 @@ function Sword:update(dt: number)
     if (not RunService:IsClient()) then
         error("cannot run on server")
     end
-    -- update for other players
 
-    --TODO
-    -- update local player
-    if (self.owner == localPlr.Character) then
-        local fireInp, altFireInp = InputManager:getFireKeysDown()
+    -- do not update for other players
+    if (self.owner ~= localPlr.Character) then
+        return
+    end
 
-        local userMdl = self.owner :: Model
-        local userPrimPart = userMdl.PrimaryPart
+    local charMdl = self.owner :: Model
+    local weapModel: Model = self.weaponModel
 
-        if (not userPrimPart) then 
-            error("No primary part")
-        end
+    local charPrimPart = charMdl.PrimaryPart
+    local weapPrimPart = weapModel.PrimaryPart
+    local charPos = charPrimPart.CFrame.Position
+    local camera = Workspace.CurrentCamera
+    local camCFrame = camera.CFrame
+    local fireInp, altFireInp = InputManager:getFireKeysDown()
 
-        local pos = userPrimPart.Position
-        local dir = Workspace.CurrentCamera.CFrame.LookVector
+    if (not charPrimPart) then 
+        error("No primary part")
+    end
 
-        if (fireInp or altFireInp) then
-            self:fire(altFireInp)
-            CliApi.events[Network.clientEvents.requestFireWeapon]:FireServer(pos, dir, altFireInp)
-        end
+    weapPrimPart.CFrame = camCFrame * CF_CAM_WEAP_OFFS
+
+    if (fireInp or altFireInp) then
+        self:fire(altFireInp)
+        CliApi.events[Network.clientEvents.requestFireWeapon]:FireServer(charPos, camCFrame.LookVector)
     end
 end
 

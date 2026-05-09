@@ -31,6 +31,8 @@ local unownedWeapons = {} :: {number}
 local weapAssetFold = ReplicatedStorage.Assets.WeaponModels
 for _, inst: Instance in pairs(weapAssetFold:GetDescendants()) do
     if (inst:IsA("BasePart")) then
+        inst.CastShadow = false
+        inst.Anchored = false
         inst.CanCollide = false
         inst.CollisionGroup = CollisionGroup.IGNORE
     end

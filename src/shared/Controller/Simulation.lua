@@ -4,6 +4,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 --local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
+local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local FuncUtil = require(ReplicatedStorage.Shared.Util.FuncUtil)
 local Animation = require(script.Parent.Animation)
 local DebugVisualize = require(script.Parent.Common.DebugVisualize)
@@ -104,6 +105,9 @@ function Simulation:onCharAdded(character: Model)
     -- make playermodel invisible
     for _, p: Instance in pairs(self.character:GetDescendants()) do
         if p:IsA("BasePart") then
+            if (p.CollisionGroup ~= CollisionGroup.PLAYER) then
+                continue
+            end
             p.Transparency = 1
         end
     end
