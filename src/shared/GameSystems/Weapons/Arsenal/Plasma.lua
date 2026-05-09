@@ -48,7 +48,6 @@ function Plasma:reset()
 end
 
 function Plasma:update(dt: number)
-    print("update plasma")
 end
 
 function Plasma:destroy()

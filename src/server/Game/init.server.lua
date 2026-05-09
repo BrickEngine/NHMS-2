@@ -211,15 +211,26 @@ local function onPlayerRequestActiveWeaponSwitch(plr: Player, newSlot: number?)
     plrData.activeInvSlot = newSlot
 end
 
-local function onPlayerRequestFireWeapon(plr: Player, args: any)
+local function onPlayerRequestFireWeapon(plr: Player, pos: Vector3?, dir: Vector3?, params: any?)
     local plrData = ServerRoot.getPlayerData(plr)
     local currWeapon: BaseWeapon.Weapon = plrData.inventory[plrData.activeInvSlot]
+    local weapUid = currWeapon.uid
     if (not currWeapon) then
         warn(`{plr} has no weapon in active inv slot {plrData.activeInvSlot}`); return
     end
-    local weapUid = currWeapon.uid
+    if (typeof(pos) ~= "Vector3" or typeof(dir) ~= "Vector3") then
+        warn(`{plr} sent illegal pos or dir args: pos: '{pos}', dir: '{dir}'`); return
+    end
+    if (dir.Magnitude == 0) then
+        warn(`{plr} dir vec has magnitude 0`); return
+    end
 
-    ServNetApi.events[Network.serverEvents.fireWeapon]:FireAllClients(weapUid, args)
+    local validParams, err = currWeapon:validateFireParams(params)
+    if (not validParams) then
+        warn(`{plr} sent illegal params: {err}`); return
+    end
+
+    ServNetApi.events[Network.serverEvents.fireWeapon]:FireAllClients(weapUid, params)
 end
 
 local remEventFunctions = {

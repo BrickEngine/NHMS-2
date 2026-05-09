@@ -54,6 +54,7 @@ local floorRayParams = RaycastParams.new()
 floorRayParams.CollisionGroup = CollisionGroup.PLAYER
 floorRayParams.FilterType = Enum.RaycastFilterType.Exclude
 floorRayParams.IgnoreWater = true
+floorRayParams.RespectCanCollide = true
 
 local wallRayParams = RaycastParams.new()
 wallRayParams.CollisionGroup = CollisionGroup.PLAYER

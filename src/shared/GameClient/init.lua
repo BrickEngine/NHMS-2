@@ -350,6 +350,13 @@ end
 local function onAddWeapToPlayer(plr: Player, weapName: string, uid: number)
     -- we trust the server to correctly add weapons, making sure old ones on the same slot are removed first
     local weapon = GameClient.createWeaponLocal(weapName, uid, plr.Character) :: BaseWeapon.Weapon
+
+    if (not plr.Character) then
+        print(`Waiting for character of player '{plr}'`)
+        plr.CharacterAdded:Wait()
+    end
+    weapon:setOwner(plr.Character)
+
     if (plr == localPlr) then
         local plrData = ClientRoot.getPlayerData()
         plrData.inventory[weapon.slot] = weapon

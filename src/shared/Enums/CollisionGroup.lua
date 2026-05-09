@@ -1,6 +1,6 @@
 return table.freeze({
     DEFAULT = "Default",
-    NOCOLL = "NoCollide",
+    IGNORE = "Ignore",
     PLAYER = "Player",
     TRIGGER = "Trigger",
     WATER = "Water",

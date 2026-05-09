@@ -6,6 +6,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local AmmoType = require(ReplicatedStorage.Shared.Enums.AmmoType)
+local Schema = require(ReplicatedStorage.Shared.Util.Schema)
 
 local function err()
     error("Cannot call function of abstract class BaseWeapon", 2)
@@ -19,11 +20,13 @@ export type WeaponConf = {
     name: string,
     iconId: string,
     owner: Model?,
+    fireSchema: {[string]: (any?) -> boolean}?,
     weaponModel: Model?,
     slot: number,
     mainAmmoType: string?,
     hasInternalAmmo: boolean?,
     ammoCapacity: number?,
+    ammoPerShot: number?,
     ammo: number?,
 }
 
@@ -46,6 +49,7 @@ export type Weapon = {
     unequip: (self: Weapon) -> (),
     reload: (self: Weapon) -> (),
     fire: (self: Weapon, altFire: boolean, pos: Vector3, dir: Vector3) -> (),
+    validateFireParams: (self: Weapon, params: any) -> (boolean, string?),
     createPickup: (self: Weapon) -> any,
     onHit: (self: Weapon) -> (),
     reset: (self: Weapon) -> (),
@@ -61,12 +65,14 @@ function BaseWeapon.new(weaponConf: WeaponConf)
     self.uid = weaponConf.uid
     self.name = weaponConf.name
     self.iconId = weaponConf.iconId
-    self.owner = weaponConf.owner
-    self.weaponModel = weaponConf.weaponModel
+    self.owner = weaponConf.owner or nil
+    self.fireSchema = weaponConf.fireSchema or nil
+    self.weaponModel = weaponConf.weaponModel or nil
     self.slot = weaponConf.slot
     self.mainAmmoType = weaponConf.mainAmmoType or AmmoType.NONE
     self.hasInternalAmmo = weaponConf.hasInternalAmmo or false
     self.ammoCapacity = weaponConf.ammoCapacity or 0
+    self.ammoPerShot = weaponConf.ammoPerShot or 0
     self.ammo = weaponConf.ammo or 0
 
     return self :: any
@@ -74,6 +80,13 @@ end
 
 function BaseWeapon:setOwner(ownerMdl: Model | nil)
     self.owner = ownerMdl
+end
+
+function BaseWeapon:validateFireParams(params: any?): (boolean, string?)
+    if (not self.fireSchema) then
+        return true, nil
+    end
+    return Schema.validate(params, self.fireSchema)
 end
 
 function BaseWeapon:equip()
@@ -88,7 +101,8 @@ function BaseWeapon:reload()
     err()
 end
 
-function BaseWeapon:fire(altFire: boolean, pos: Vector3, dir: Vector3)
+-- fireParams schema is validated via validateFireParams
+function BaseWeapon:fire(pos: Vector3, dir: Vector3, fireParams: any?)
     err()
 end
 

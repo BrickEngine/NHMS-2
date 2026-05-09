@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local weaponsFolder = ReplicatedStorage.Shared.GameSystems.Weapons
+local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local WeaponName = require(ReplicatedStorage.Shared.Enums.WeaponName)
 local BaseWeapon = require(weaponsFolder.Arsenal.BaseWeapon)
 local NumUID = require(ReplicatedStorage.Shared.Util.NumUID)
@@ -25,6 +26,15 @@ local weapUids = NumUID.new(MAX_WEAPON_IDS)
 -- stores the uids of the weapons (and the respective owner model)
 local ownedWeapons = {} :: {Model: {number}}
 local unownedWeapons = {} :: {number}
+
+-- configure weapon models
+local weapAssetFold = ReplicatedStorage.Assets.WeaponModels
+for _, inst: Instance in pairs(weapAssetFold:GetDescendants()) do
+    if (inst:IsA("BasePart")) then
+        inst.CanCollide = false
+        inst.CollisionGroup = CollisionGroup.IGNORE
+    end
+end
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Module
