@@ -13,10 +13,6 @@ local BaseWeapon = require(weaponsFolder.Arsenal.BaseWeapon)
 local Schema = require(ReplicatedStorage.Shared.Util.Schema)
 local Network = require(ReplicatedStorage.Shared.Network)
 
-local CF_CAM_WEAP_OFFS = 
-    CFrame.new(Vector3.new(0.95,-0.2,-1.25)) 
-    * CFrame.fromEulerAnglesXYZ(math.rad(75), math.rad(180), math.rad(120))
-
 -- client only modules
 local InputManager
 local CliApi
@@ -25,6 +21,10 @@ if (RunService:IsClient()) then
     InputManager = require(ReplicatedStorage.Shared.InputManager)
     CliApi = require(ReplicatedStorage.Shared.GameClient.CliNetApi)
 end
+
+local CF_CAM_WEAP_OFFS = 
+    CFrame.new(Vector3.new(0.95,-0.2,-1.25)) 
+    * CFrame.fromEulerAnglesXYZ(math.rad(75), math.rad(180), math.rad(120))
 
 local localPlr = Players.LocalPlayer :: Player
 local mdlFold = ReplicatedStorage.Assets.WeaponModels.Sword
@@ -110,6 +110,9 @@ function Sword:reload()
 end
 
 function Sword:fire(pos: Vector3, dir: Vector3, fireParams: SwordFireParams)
+    if (self:isOwnedByLocalPlr()) then
+        CliApi.events[Network.clientEvents.requestFireWeapon]:FireServer(pos, dir, fireParams)
+    end
 
 end
 
@@ -117,6 +120,7 @@ function Sword:onHit()
 end
 
 function Sword:reset()
+    self.fireLocked = false
 end
 
 function Sword:update(dt: number)
@@ -125,7 +129,7 @@ function Sword:update(dt: number)
     end
 
     -- do not update for other players
-    if (self.owner ~= localPlr.Character) then
+    if (not self:isOwnedByLocalPlr()) then
         return
     end
 
@@ -147,7 +151,6 @@ function Sword:update(dt: number)
 
     if (fireInp or altFireInp) then
         self:fire(altFireInp)
-        CliApi.events[Network.clientEvents.requestFireWeapon]:FireServer(charPos, camCFrame.LookVector)
     end
 end
 

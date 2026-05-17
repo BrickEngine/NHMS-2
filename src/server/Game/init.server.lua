@@ -94,12 +94,13 @@ function Game.spawnPlayer(plr: Player)
         newCharacter.Name = tostring(plr.UserId)
         newCharacter.Parent = Workspace:FindFirstChild(Global.PLAYERS_INST_FOLDER_NAME)
         newCharacter:MoveTo(spawnPos)
+        
 
         newCharacter.PrimaryPart:SetNetworkOwner(plr)
         plr.Character = newCharacter
     end
 
-    assert(plr.Character and plr.Character.PrimaryPart, "Player character must exist and have a primary part")
+    assert(plr.Character and plr.Character.PrimaryPart, "Playermodel must exist and have a primary part")
 
     if (Workspace.StreamingEnabled) then
         plr.ReplicationFocus = plr.Character.PrimaryPart
@@ -275,6 +276,7 @@ ServNetApi.implementRFunctions(remFunctionFunctions)
 local function onPlayerDied(plr: Player)
     print("player has died")
 
+    ServerRoot.onDeathImmediate(plr)
     task.wait(DEATH_REMOVE_DELAY)
     Game.removePlayerCharacter(plr)
 end

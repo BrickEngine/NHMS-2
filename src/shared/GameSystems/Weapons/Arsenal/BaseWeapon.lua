@@ -3,7 +3,9 @@
     Abstract template class for player weapons.
 ]]
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local AmmoType = require(ReplicatedStorage.Shared.Enums.AmmoType)
 local Schema = require(ReplicatedStorage.Shared.Util.Schema)
@@ -42,6 +44,8 @@ export type Weapon = {
     ammoCapacity: number?,
     ammo: number?,
 
+    fireLocked: boolean,
+
     -- uid must be assigned on creation
     new: (uid: number, (any)) -> Weapon,
 
@@ -75,6 +79,8 @@ function BaseWeapon.new(weaponConf: WeaponConf)
     self.ammoPerShot = weaponConf.ammoPerShot or 0
     self.ammo = weaponConf.ammo or 0
 
+    self.fireLocked = false
+
     return self :: any
 end
 
@@ -87,6 +93,13 @@ function BaseWeapon:validateFireParams(params: any?): (boolean, string?)
         return true, nil
     end
     return Schema.validate(params, self.fireSchema)
+end
+
+function BaseWeapon:isOwnedByLocalPlr()
+    if (not RunService:IsClient()) then
+        error("Can only be called by client")
+    end
+    return self.owner == Players.LocalPlayer.Character
 end
 
 function BaseWeapon:equip()

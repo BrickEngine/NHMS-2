@@ -39,6 +39,7 @@ local MAX_LIN_VEL_FORCE = 400000
 local SLIDE_FAC = 50.25 -- distance scaling for how much a player slides per frame
 local MANEUV_FAC = 0.98 -- wall maneuverability factor; scaled with velocity
 local START_SLIDE_VEL = 45.0 -- studs/s - velocity at which a player starts to slide
+local TRAGET_VERT_VEL_FAC = 3 -- factor for vertical wall movement velocity
 local WALL_MAX_SPEED = 135.0 -- studs/s, max speed on the wall
 local BOOST_FAC = 1.125 --1.32 -- by how much to boost the wall velocity on enter
 local WALL_SPEED_LOSS_FAC = 9.5 -- how much speed is reduced each phys update on the wall
@@ -92,7 +93,7 @@ local function createForces(mdl: Model): {[string]: Instance}
     posForce.Attachment0 = att
     posForce.Mode = Enum.PositionAlignmentMode.OneAttachment
     posForce.ForceLimitMode = Enum.ForceLimitMode.PerAxis
-    posForce.MaxAxesForce = VEC3_UP * 1000000
+    posForce.MaxAxesForce = VEC3_ZERO--VEC3_UP * 100
     posForce.MaxVelocity = 300--100000
     posForce.Responsiveness = 200
     posForce.ForceRelativeTo = Enum.ActuatorRelativeTo.World
@@ -302,10 +303,14 @@ function Wall:updateVerticalAnchor(dt: number)
     if (currHoriVel.Magnitude <= START_SLIDE_VEL) then
         forceDownFac = Workspace.Gravity * SLIDE_FAC / cappedVelFac
     end
-    local targetVertVel = (camUpFac - forceDownFac)
+    local targetVertVel = (camUpFac - forceDownFac) * TRAGET_VERT_VEL_FAC
+
+    self.forces.posForce.MaxAxesForce 
+        = VEC3_UP * primaryPart.AssemblyMass * Workspace.Gravity * 25
 
     if (peakedJumpAfterEntry) then
-        self.forces.posForce.Position += VEC3_UP * targetVertVel * dt
+        self.forces.posForce.Position = primaryPart.CFrame.Position + (VEC3_UP * targetVertVel * dt)
+
         return
     end
     
