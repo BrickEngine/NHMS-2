@@ -61,12 +61,13 @@ function WeaponManager.createWeapon(ownerMdl: Model?, weapName: string): (BaseWe
     else
         table.insert(unownedWeapons, weapon)
     end
+
     return weapon, newUid
 end
 
 function WeaponManager.createWeaponForClient(ownerMdl: Model?, weapName: string, uid: number): BaseWeapon.Weapon
     if (not RunService:IsClient()) then
-        warn("'createWeaponForClient' should be only called by the client")
+        error("'createWeaponForClient' should be only called by the client")
     end
 
     local weapModule = WEAP_MODULE_MAP[weapName]
@@ -74,9 +75,16 @@ function WeaponManager.createWeaponForClient(ownerMdl: Model?, weapName: string,
         error(`No existing module for '{string}'`)
     end
 
+    weapUids:forceAlloc(uid)
     local weapon = weapModule.new(uid) :: BaseWeapon.Weapon
     weapon:setOwner(ownerMdl)
+    weapUids:assignObj(weapon, uid)
+
     return weapon
+end
+
+function WeaponManager.getWeapFromUid(uid: number): BaseWeapon.Weapon?
+    return weapUids:getObjById(uid)
 end
 
 -- -- Creates and registers a weapon by enum name for an id and optional owner model
@@ -109,9 +117,17 @@ function WeaponManager.destroyWeapon(uid: number)
     end
     weapon:destroy()
 
-    local success = weapUids:release(uid)
-    if (not success) then
-        error(`Unable to release uid '{uid}'`)
+    if (RunService:IsServer()) then
+        print(`Destroying weapon with uid '{uid}'`)
+
+        local success = weapUids:release(uid)
+        if (not success) then
+            error(`Unable to release uid '{uid}'`)
+        end
+    elseif (RunService:IsClient()) then
+        print(`Destroying local weapon with uid '{uid}'`)
+
+        weapUids:forceRelease(uid)
     end
 end
 
@@ -133,7 +149,7 @@ end
 
 function WeaponManager.destroyAllWeapons()
     WeaponManager.destroyAllUnownedWeapons()
-    for _, ownerMdl: Model in pairs(ownedWeapons) do
+    for _, ownerMdl: Model? in pairs(ownedWeapons) do
         if (ownerMdl) then
             WeaponManager.destroyAllWeaponsForOwner(ownerMdl)
         end

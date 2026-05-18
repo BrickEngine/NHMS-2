@@ -64,18 +64,22 @@ function ServerRoot.killPlayer(plr: Player)
     ServerRoot.signals.playerDied:Fire(plr)
 end
 
-function ServerRoot.onDeathImmediate(plr: Player)
-    local plrData = PlayerData.getPlayerData(plr)
+-- function ServerRoot.onDeathImmediate(plr: Player)
+--     local plrData = PlayerData.getPlayerData(plr)
 
-    if (not plrData.isDead) then
-        error(`Player '{plr}' is not dead`)
-    end
+--     if (not plrData.isDead) then
+--         error(`Player '{plr}' is not dead`)
+--     end
 
-    if (plrData.health ~= 0) then
-        warn(`Health of player '{plr}' was not zero`)
-        ServerRoot.changePlayerHealth(plr, 0, DamageType.NONE)
-    end
-    plrData.activeInvSlot = PlayerData.DEFAULTS.activeInvSlot
+--     if (plrData.health ~= 0) then
+--         warn(`Health of player '{plr}' was not zero`)
+--         ServerRoot.changePlayerHealth(plr, 0, DamageType.NONE)
+--     end
+--     --plrData.activeInvSlot = PlayerData.DEFAULTS.activeInvSlot
+-- end
+
+function ServerRoot.resetPlayerData(plr: Player)
+    PlayerData.fullyResetPlayerData(plr)
 end
 
 function ServerRoot.fullyHealPlayer(plr: Player, bonus: boolean?)

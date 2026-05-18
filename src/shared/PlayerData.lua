@@ -109,13 +109,21 @@ end
 
 function PlayerData.createPlayerData(plr: Player): Data
     if (data[plr]) then
-        warn(`existing data of {plr} was overwritten`); PlayerData.removePlayerData(plr)
+        warn(`existing data of '{plr}' was overwritten`); PlayerData.removePlayerData(plr)
     end
 
     local newData = FuncUtil.deepCopy(PlayerData.DEFAULT_DATA)
     data[plr] = newData
 
     return data[plr]
+end
+
+function PlayerData.fullyResetPlayerData(plr:Player)
+    if (not data[plr]) then
+        error(`no existing data for '{plr}'`)
+    end
+    PlayerData.removePlayerData(plr)
+    PlayerData.createPlayerData(plr)
 end
 
 function PlayerData.getPlayerData(plr: Player): Data

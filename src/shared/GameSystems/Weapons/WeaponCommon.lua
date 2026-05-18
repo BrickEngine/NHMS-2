@@ -7,7 +7,7 @@ function WeaponCommon.joinWeaponToOwnerPrimPart(weaponMdl: Model, ownerMdl: Mode
     local joint = Instance.new("Motor6D", weaponMdl.PrimaryPart)
     joint.Name = "WeaponM6D"
     joint.Part0 = ownerMdl.PrimaryPart
-    joint.part1 = weaponMdl.PrimaryPart
+    joint.Part1 = weaponMdl.PrimaryPart
 
     return joint
 end

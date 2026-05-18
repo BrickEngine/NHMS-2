@@ -28,7 +28,9 @@ export type NumUID = {
     new: (number) -> NumUID,
 
     alloc: (self: NumUID, any?) -> number,
+    forceAlloc: (self: NumUID, number) -> (),
     release: (self: NumUID, number) -> boolean,
+    forceRelease: (self: NumUID, number) -> (),
     isOccupied: (self: NumUID, number) -> boolean,
     assignObj: (self: NumUID, any, number) -> (),
     getObjById: (self: NumUID, number) -> any?,
@@ -57,10 +59,17 @@ function NumUID:alloc(): number
     if (type(id) ~= "number") then
         error("Id nan")
     end
-    local idObj = true
-    self.occ[id] = idObj
+    self.occ[id] = true
 
     return id
+end
+
+--[[
+	Allocates a specific UID without checking whether its free or not;
+    should be called by the client only to apply server-side allocations
+]]
+function NumUID:forceAlloc(id: number)
+    self.occ[id] = true
 end
 
 --[[
@@ -76,7 +85,7 @@ function NumUID:assignObj(obj: any, id: number)
 end
 
 --[[
-	Frees a given UID by reassigning it to the free table, does NOT destroy assigned object!
+	Frees a given UID by reassigning it to the free table, does NOT destroy the assigned object
 	@param id - the uid
 	@return success
 ]]
@@ -91,6 +100,16 @@ function NumUID:release(id: number): boolean
         return true
     end
     return false
+end
+
+--[[
+	Frees a given UID without changing the free table;
+    should be called by the client only to mirror server-side changes
+	@param id - the uid
+	@return success
+]]
+function NumUID:forceRelease(id: number)
+    self.occ[id] = nil
 end
 
 --[[

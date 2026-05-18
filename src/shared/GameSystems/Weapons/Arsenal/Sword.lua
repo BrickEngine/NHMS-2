@@ -83,6 +83,8 @@ function Sword:equip()
     weapModel.Parent = self.owner
     weapModel.PrimaryPart.CFrame = CFrame.new(ownerMdl.PrimaryPart.CFrame.Position)
 
+    task.wait(1)
+
     --TweenService:Create(instance, tweenInfo, propertyTable)
 end
 
@@ -104,6 +106,8 @@ function Sword:unequip()
     if (not self.owner) then
         error("No weapon owner")
     end
+
+    task.wait(1)
 end
 
 function Sword:reload()

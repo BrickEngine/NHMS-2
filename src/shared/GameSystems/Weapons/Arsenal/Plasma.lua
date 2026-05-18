@@ -25,9 +25,13 @@ function Plasma.new(uid: number)
 end
 
 function Plasma:equip()
+    print("EQUIPPING PLASMA")
+    task.wait(1)
 end
 
 function Plasma:unequip()
+    print("UNEQUIPPING PLASMA")
+    task.wait(1)
 end
 
 function Plasma:reload()

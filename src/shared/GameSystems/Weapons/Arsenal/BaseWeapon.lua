@@ -99,7 +99,7 @@ function BaseWeapon:isOwnedByLocalPlr()
     if (not RunService:IsClient()) then
         error("Can only be called by client")
     end
-    return self.owner == Players.LocalPlayer.Character
+    return self.owner == (Players.LocalPlayer :: Player).Character
 end
 
 function BaseWeapon:equip()

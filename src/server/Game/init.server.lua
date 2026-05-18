@@ -73,6 +73,7 @@ function Game.removePlayerCharacter(plr: Player)
 end
 
 function Game.revivePlayer(plr: Player)
+    ServerRoot.resetPlayerData(plr)
     ServerRoot.fullyHealPlayer(plr)
     deathCooldownList[plr] = DEATH_EVENT_COOLDOWN
 end
@@ -94,7 +95,6 @@ function Game.spawnPlayer(plr: Player)
         newCharacter.Name = tostring(plr.UserId)
         newCharacter.Parent = Workspace:FindFirstChild(Global.PLAYERS_INST_FOLDER_NAME)
         newCharacter:MoveTo(spawnPos)
-        
 
         newCharacter.PrimaryPart:SetNetworkOwner(plr)
         plr.Character = newCharacter
@@ -111,33 +111,36 @@ function Game.spawnPlayer(plr: Player)
 	return newCharacter
 end
 
-function Game.removeWeaponFromPlayerInventory(plr: Player, slot: number)
+function Game.removeWeaponFromPlayerInventory(plr: Player, uid: number)
     local plrData = ServerRoot.getPlayerData(plr)
-    local weap: BaseWeapon.Weapon = plrData.inventory[slot]
+    local weap: BaseWeapon.Weapon? = WeaponManager.getWeapFromUid(uid)
     if (not weap) then
-        error(`No existing weapon in {plr}'s inventory at slot {slot}`)
+        error(`Player '{plr}' has no weapon with uid '{uid}'`)
     end
 
     ServNetApi.events[Network.serverEvents.removeWeaponFromPlayer]:FireAllClients(plr, weap.uid)
 
-    plrData.inventory[slot]:destroy()
-    plrData.inventory[slot] = nil
+    WeaponManager.destroyWeapon(uid)
+    --plrData.inventory[weap.slot]:destroy()
+    plrData.inventory[weap.slot] = nil
 end
 
 function Game.removeAllWeaponsFromPlayerInventory(plr)
     local plrData = ServerRoot.getPlayerData(plr)
     for i=1, #plrData.inventory, 1 do
-        if (plrData.inventory[i]) then
-            Game.removeWeaponFromPlayerInventory(plr, i)
+        local weapon = plrData.inventory[i] :: BaseWeapon.Weapon?
+        if (weapon) then
+            Game.removeWeaponFromPlayerInventory(plr, weapon.uid)
         end
     end
 end
 
 -- Adds a new weapon to the player's inventory, or overwrites an occupied inventory slot
-function Game.addWeaponToPlayerInventory(plr: Player, weapName: string)
-    local newWeapObj, weapId = WeaponManager.createWeapon(plr.Character, weapName)
+function Game.addWeaponToPlayerInventory(plr: Player, weapName: string, switchToSlot: boolean?)
+    local newWeapObj, weapUid = WeaponManager.createWeapon(plr.Character, weapName)
     local weapSlot = newWeapObj.slot
     local plrData = ServerRoot.getPlayerData(plr)
+    local switch = switchToSlot or false
 
     if (plrData.inventory[weapSlot]) then
         plrData.inventory[weapSlot]:destroy()
@@ -145,11 +148,13 @@ function Game.addWeaponToPlayerInventory(plr: Player, weapName: string)
     end
     plrData.inventory[weapSlot] = newWeapObj
 
-    ServNetApi.events[Network.serverEvents.addWeaponToPlayer]:FireAllClients(plr, weapName, weapId)
+    print(`Adding weapon for '{plr}' with uid '{weapUid}'`)
+
+    ServNetApi.events[Network.serverEvents.addWeaponToPlayer]:FireAllClients(plr, weapName, weapUid, switch)
 end
 
 function Game.equipPlayerStaterGear(plr: Player)
-    Game.addWeaponToPlayerInventory(plr, WeaponName.SWORD)
+    Game.addWeaponToPlayerInventory(plr, WeaponName.SWORD, true)
     Game.addWeaponToPlayerInventory(plr, WeaponName.PLASMA_SPELL)
 end
 
@@ -215,15 +220,14 @@ end
 local function onPlayerRequestFireWeapon(plr: Player, pos: Vector3?, dir: Vector3?, params: any?)
     local plrData = ServerRoot.getPlayerData(plr)
     local currWeapon: BaseWeapon.Weapon = plrData.inventory[plrData.activeInvSlot]
-    local weapUid = currWeapon.uid
     if (not currWeapon) then
-        warn(`{plr} has no weapon in active inv slot {plrData.activeInvSlot}`); return
+        warn(`'{plr}' has no weapon in active inv slot '{plrData.activeInvSlot}'`); return
     end
     if (typeof(pos) ~= "Vector3" or typeof(dir) ~= "Vector3") then
-        warn(`{plr} sent illegal pos or dir args: pos: '{pos}', dir: '{dir}'`); return
+        warn(`'{plr}' sent illegal pos or dir args: pos: '{pos}', dir: '{dir}'`); return
     end
     if (dir.Magnitude == 0) then
-        warn(`{plr} dir vec has magnitude 0`); return
+        warn(`'{plr}' dir vec has magnitude 0`); return
     end
 
     local validParams, err = currWeapon:validateFireParams(params)
@@ -231,7 +235,7 @@ local function onPlayerRequestFireWeapon(plr: Player, pos: Vector3?, dir: Vector
         warn(`{plr} sent illegal params: {err}`); return
     end
 
-    ServNetApi.events[Network.serverEvents.fireWeapon]:FireAllClients(weapUid, params)
+    ServNetApi.events[Network.serverEvents.fireWeapon]:FireAllClients(currWeapon.uid, params)
 end
 
 local remEventFunctions = {
@@ -276,7 +280,6 @@ ServNetApi.implementRFunctions(remFunctionFunctions)
 local function onPlayerDied(plr: Player)
     print("player has died")
 
-    ServerRoot.onDeathImmediate(plr)
     task.wait(DEATH_REMOVE_DELAY)
     Game.removePlayerCharacter(plr)
 end
@@ -296,7 +299,6 @@ local function onPlayerRemoving(plr: Player)
     print(plr.Name .. " left the game")
     deathCooldownList[plr] = nil
     ServerRoot.removePlayerData(plr)
-
     Game.removePlayerCharacter(plr)
 end
 
