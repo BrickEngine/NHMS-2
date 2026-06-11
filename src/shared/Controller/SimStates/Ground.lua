@@ -50,7 +50,7 @@ local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
 local COLL_HEIGHT = CharacterDef.PARAMS.MAINCOLL_SIZE.X
 
 local FORCE_STEPUP = false -- whether the player will be forced up steep inclines, if too low to the ground
-local GND_FORCE_DIST = 0.1 -- height at which player will be forced up, if FORCE_STEUP is true
+local GND_FORCE_DIST = 0.1 -- ground distance below or at which player will be forced up, if FORCE_STEUP is true
 
 local PLAY_JUMP_SOUND = true -- To be removed later
 
@@ -211,9 +211,7 @@ function Ground:updateJump(dt: number, override: boolean?)
     local currRootPos = primaryPart.CFrame.Position
 
     if (self.shared.grounded) then
-        if ((j_Delay <= 0) or
-            (jumped and currRootPos.Y < lastYPos)
-        ) then
+        if ((j_Delay <= 0) or(jumped and currRootPos.Y < lastYPos)) then
             self.forces.posForce.Enabled = true
             jumped = false
         end

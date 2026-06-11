@@ -119,15 +119,6 @@ function KeyboardMouse:updateInvSwitchInput(switchType: string, directSlot: numb
 end
 
 function KeyboardMouse:getInvSwitchInput(): (boolean, string, number?)
-	-- if (self.isSwitchingInvSlot) then
-	-- 	if (self.slotSwitchType == SlotSwitchType.DIRECT) then
-			
-	-- 	elseif (self.slotSwitchType == SlotSwitchType.NEXT) then
-
-	-- 	elseif (self.slotSwitchType == SlotSwitchType.PREV) then
-
-	-- 	end
-	-- end
     return self.isSwitchingInvSlot, self.slotSwitchType, self.directSlot
 end
 

@@ -22,11 +22,11 @@ local ConnectionUtil = require(ReplicatedStorage.Shared.Util.ConnectionUtil)
 
 local VEC3_ZERO = Vector3.zero
 
-local BaseMoveInput = {}
-BaseMoveInput.__index = BaseMoveInput
+local BaseInput = {}
+BaseInput.__index = BaseInput
 
-function BaseMoveInput.new()
-    local self = setmetatable({}, BaseMoveInput) :: any
+function BaseInput.new()
+    local self = setmetatable({}, BaseInput) :: any
 
     self._connectionUtil = ConnectionUtil.new()
 
@@ -38,37 +38,36 @@ function BaseMoveInput.new()
 	self.isFiring = false
 	self.isAltFiring = false
     self.isSwitchingInvSlot = false
-    self.requestedInvSlot = 0
 
     return self
 end
 
-function BaseMoveInput:getMoveVec(): Vector3
+function BaseInput:getMoveVec(): Vector3
     return self.moveVec
 end
 
-function BaseMoveInput:getRequestedInvSlot(currSlot: number): (boolean, string, number?)
+function BaseInput:getInvSwitchInput(): (boolean, string, number?)
     return self.isSwitchingInvSlot, SlotSwitchType.NONE, nil
 end
 
-function BaseMoveInput:getJumpKeyDown(): boolean
+function BaseInput:getJumpKeyDown(): boolean
     return self.isJumping
 end
 
-function BaseMoveInput:getDashKeyDown(): boolean
+function BaseInput:getDashKeyDown(): boolean
     return self.isDashing
 end
 
-function BaseMoveInput:getInteractKeyDown(): boolean
+function BaseInput:getInteractKeyDown(): boolean
     return self.isInteracting
 end
 
-function BaseMoveInput:getFireKeysDown(): (boolean, boolean)
+function BaseInput:getFireKeysDown(): (boolean, boolean)
     return self.isFiring, self.isAltFiring
 end
 
-function BaseMoveInput:enable(enable: boolean): boolean
+function BaseInput:enable(enable: boolean): boolean
     error("cannot enable abstract class BaseMoveInput", 2)
 end
 
-return BaseMoveInput
+return BaseInput

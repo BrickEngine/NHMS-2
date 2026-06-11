@@ -10,7 +10,7 @@ local DEFAULT_RATE = 0.5 -- balanced, as all things should be
 local MathUtil = {}
 
 --[[
-	Standard lerp function
+	Standard lerp function.
 	@param v0 - current
 	@param v1 - target
 	@param dt - time delta
@@ -24,7 +24,7 @@ function MathUtil.lerp(v0: number, v1: number, dt: number): number
 end
 
 --[[
-	Quadratic ease-out function
+	Quadratic ease-out function.
 	@param v0 - current
 	@param v1 - target
 	@param dt - time delta
@@ -35,7 +35,7 @@ function MathUtil.easeOutQuad(v0: number, v1: number, dt: number): number
 end
 
 --[[
-	Framerate independent lerp function - slightly less efficient than lerp
+	Framerate independent lerp function - slightly less efficient than lerp.
 	@param v0 - current
 	@param v1 - target
 	@param dt - time delta
@@ -51,7 +51,7 @@ function MathUtil.flerp(v0: number, v1: number, dt: number, r: number?): number
 end
 
 --[[
-	Standard lerp for each value of the Vector3
+	Standard lerp for each value of the Vector3.
 	@param vec0 - current
 	@param vec1 - target
 	@param dt - time delta
@@ -66,7 +66,7 @@ function MathUtil.vec3Lerp(vec0: Vector3, vec1: Vector3, dt:number): Vector3
 end
 
 --[[
-	Framerate independent lerp for each value of the Vector3
+	Framerate independent lerp for each value of the Vector3.
 	@param vec0 - current
 	@param vec1 - target
 	@param dt - time delta
@@ -82,7 +82,7 @@ function MathUtil.vec3Flerp(vec0: Vector3, vec1: Vector3, dt: number, r: number?
 end
 
 --[[
-	Clamps each value of the Vector3, equivalent to math.clamp
+	Clamps each value of the Vector3, equivalent to math.clamp.
 ]]
 function MathUtil.vec3Clamp(vec: Vector3, vMin: Vector3, vMax: Vector3): Vector3
 	return Vector3.new(
@@ -93,7 +93,7 @@ function MathUtil.vec3Clamp(vec: Vector3, vMin: Vector3, vMax: Vector3): Vector3
 end
 
 --[[
-	Project a Vector3 onto a plane with given plane normal
+	Project a Vector3 onto a plane with given plane normal.
 	@param v - vector to project
 	@param norm - a plane normal
 	@return projected Vector3
@@ -112,7 +112,7 @@ function MathUtil.projectOnPlaneVec3(v: Vector3, norm: Vector3): Vector3
 end
 
 --[[
-	Rotates a Vector3 around another vector with a given angle in radiants
+	Rotates a Vector3 around another vector with a given angle in radiants.
 	@param vec - vector to rotate
 	@param axisVec - vector that defines the rotation axis
 	@param phi - rotation angle
@@ -129,7 +129,7 @@ function MathUtil.rotateAroundAxisVec3(vec: Vector3, axisVec: Vector3, phi: numb
 end
 
 --[[
-	Returns the angle between two vectors
+	Returns the angle between two vectors.
 	@param v0 - first vector
 	@param v1 - second vector
 ]]
@@ -144,7 +144,7 @@ function MathUtil.getAngleVec3(v0: Vector3, v1: Vector3): number
 end
 
 --[[
-	Clamps a Vector3 to a virtual cone with a given angle in radiants
+	Clamps a Vector3 to a virtual cone with a given angle in radiants.
 	@param v - vector to be clamped
 	@param n - plane normal vector from which the cone is formed
 	@param phi - angle limit of the cone
@@ -191,7 +191,7 @@ end
 
 --[[
 	Compresses a Vector3 into virtual cone such that the vector's full freedom of rotation (180 degrees) 
-	is mapped to the cone's limited range
+	is mapped to the cone's limited range.
 	@param v - vector to be mapped
 	@param n - plane normal vector from which the cone is formed
 	@param phi - angle limit of the cone
@@ -252,7 +252,7 @@ function MathUtil.avgVecFromVecs(vecArr: {Vector3}): Vector3
 end
 
 --[[
-	Calculates a virtual plane normal from given points
+	Calculates a virtual plane normal from given points.
 	@param ptsArr - array of at least 3 points that define the plane
 	@return an approximated plane that consists of an upwards facing normal vector and a centroid
 ]]
@@ -313,7 +313,7 @@ function MathUtil.avgPlaneFromPoints(ptsArr: {Vector3}) : {centroid: Vector3, no
 end
 
 --[[
-	Returns the height of a plane at any given point
+	Returns the height of a plane at any given point.
 	@param centroid - centroid of the virtual plane
 	@param normal - a normal vector of the virtual plane
 	@param loc - point in space
@@ -322,6 +322,32 @@ end
 function MathUtil.planeHeightAtPoint(centroid: Vector3, normal: Vector3, loc: Vector3): number
 	local x, z = loc.X, loc.Z
 	return centroid.Y - ((normal.X * (x - centroid.X) + normal.Z * (z - centroid.Z)) / normal.Y)
+end
+
+--[[
+	Simulates a spring and returns its current position based on the current position, velocity and target.
+	@param x - current position
+	@param vel - current velocity
+	@param target - target position
+	@param k - stiffness
+	@param dt - time delta
+	@return spring position
+]]
+function MathUtil.dSpring(x: number, vel: number, target: number, k: number, dt: number)
+    local f = 1 + k * 2*dt
+    local omega = k*k * dt
+    local disc = f*f - 4*omega
+
+    if disc < 0 then
+        disc = 0
+    end
+
+    local e = (f - math.sqrt(disc)) * 0.5
+
+    local newX = (x + dt * vel + omega * target) / e
+    local newV = (vel + k * (target - x)) / e
+
+    return newX, newV
 end
 
 ------------------------------------------------------------------------------------------------------------------------

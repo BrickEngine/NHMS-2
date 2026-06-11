@@ -6,10 +6,12 @@ local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local inpRootFold = script.Parent.Parent
+local SlotSwitchType = require(ReplicatedStorage.Shared.InputManager.SlotSwitchType)
 local BaseInput = require(inpRootFold.Types.BaseInput)
 local ContextActions = require(inpRootFold.ContextActions)
 
@@ -142,6 +144,9 @@ function Touch:updateDash()
     self.isDashing = self.dashInp
 end
 
+function BaseInput:getInvSwitchInput(): (boolean, string, number?)
+    return self.isSwitchingInvSlot, SlotSwitchType.NEXT, nil
+end
 
 function Touch:onInputEnded()
 	self.moveTouchObject = nil

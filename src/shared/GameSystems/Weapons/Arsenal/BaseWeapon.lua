@@ -84,6 +84,9 @@ function BaseWeapon.new(weaponConf: WeaponConf)
     return self :: any
 end
 
+------------------------------------------------------------------------------------------------------------------------
+-- global methods
+
 function BaseWeapon:setOwner(ownerMdl: Model | nil)
     self.owner = ownerMdl
 end
@@ -101,6 +104,12 @@ function BaseWeapon:isOwnedByLocalPlr()
     end
     return self.owner == (Players.LocalPlayer :: Player).Character
 end
+
+function BaseWeapon:getIsFireLocked()
+    return self.fireLocked
+end
+
+------------------------------------------------------------------------------------------------------------------------
 
 function BaseWeapon:equip()
     err()

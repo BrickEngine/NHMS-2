@@ -21,6 +21,8 @@ local PARAMS = table.freeze({
     MAINCOLL_SIZE = Vector3.new(3, 3, 3),
     LEGCOLL_SIZE = Vector3.new(2, 3, 3),
 
+    ROOT_CAMERA_OFFSET = Vector3.new(0, 2.5, 0),
+
     ROOTPART_SHAPE = Enum.PartType.Block,
     MAINCOLL_SHAPE = Enum.PartType.Cylinder,
     LEGCOLL_SHAPE = Enum.PartType.Cylinder,

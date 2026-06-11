@@ -1,3 +1,4 @@
+local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
@@ -25,6 +26,10 @@ local COLOR3_INV_EMPTY = Color3.fromRGB(0, 0, 0)
 
 local DISPLAY_BLINK_TIME = 0.2
 local DEATH_FADE_DELAY = 0.6
+
+local HIDE_UI_KEY = Enum.KeyCode.M
+local HIDE_UI_ACTION_NAME = "HideStatsUIAction"
+local MESSAGE_DISPLAY_TIME = 3
 
 local SPRITESHEET_TILE_SIZE = 64
 local FACE_SPRITE_HEALTH_OFFSETS = {
@@ -56,6 +61,8 @@ local pauseDmgOverlayUpd = false
 local timeSinceDeath = 0
 local currActiveSlot = 0
 local lastCeilHealth = 0
+
+local toggleStatsVisKeyDown = false
 
 local inventoryFrame = activeGuiObj.LowPanel.WeaponFrame.Inventory
 local invFrameObjMap = {} :: {[number]: Frame}
@@ -135,6 +142,18 @@ local function updateFilter()
     end
 end
 
+local messageTime = 0
+local function updateMessageBoxVisibility(dt: number)
+    local messageTL = activeGuiObj.MessageBox.Message
+    messageTL.Visible = messageTime > 0
+    messageTime = math.max(0, messageTime - dt)
+end
+
+local function getHideUIInputSignal(): boolean
+    local pressed = toggleStatsVisKeyDown
+    toggleStatsVisKeyDown = false
+    return pressed
+end
 ------------------------------------------------------------------------------------------------------------------------
 
 local function setInvSlotState(slot: number, occupied: boolean)
@@ -179,6 +198,13 @@ local function setFaceIcon(health: number)
         end
     end
 end
+
+local function displayMessage(text: string)
+    local messageTL = activeGuiObj.MessageBox.Message
+    messageTL.Text = text
+    messageTime = MESSAGE_DISPLAY_TIME
+end
+
 
 local function onHealthChanged(newHP: number, diff: number, dmgType: string)
     local function setDamageOverlay()
@@ -273,7 +299,19 @@ function GameUI:enable(enable: boolean)
             invSlotChanged = ClientRoot.signals.inventorySlotChanged.Event:Connect(onInvSlotChanged)
         }
         self:fetchAndSetData()
+
+        ContextActionService:BindAction(
+            HIDE_UI_ACTION_NAME,
+            function(name: string, inpState: Enum.UserInputState, inpObj: InputObject)
+                if (inpObj.KeyCode == HIDE_UI_KEY) then
+                    toggleStatsVisKeyDown = inpState == Enum.UserInputState.Begin
+                end
+            end,
+            false,
+            HIDE_UI_KEY
+        )
     else
+        ContextActionService:UnbindAction(HIDE_UI_ACTION_NAME)
         for _, conn: RBXScriptConnection in eventConns do
             conn:Disconnect()
         end
@@ -285,6 +323,16 @@ function GameUI:enable(enable: boolean)
     end
 
     self.enabled = enable
+end
+
+function GameUI:hideStatsPanel(show: boolean)
+    if (not self.enabled) then
+        return
+    end
+    activeGuiObj.LowPanel.Visible = show
+
+    local stateText = show and "shown" or "hidden"
+    displayMessage(`Stats UI {stateText} [M]`)
 end
 
 -- activeGuiObj must exist when this is called
@@ -342,7 +390,13 @@ function GameUI:update(dt: number)
 
     updateDisplays(dt)
     updateDmgOverlayTransp(dt)
+    updateMessageBoxVisibility(dt)
     updateFilter()
+
+    local currLPanelVis = activeGuiObj.LowPanel.Visible
+    if (getHideUIInputSignal()) then
+        self:hideStatsPanel(not currLPanelVis)
+    end
 
     if (ClientRoot.getPlayerData().isDead) then
         timeSinceDeath += dt

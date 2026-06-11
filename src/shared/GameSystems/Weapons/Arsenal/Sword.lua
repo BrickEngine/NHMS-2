@@ -3,7 +3,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local weaponsFolder = ReplicatedStorage.Shared.GameSystems.Weapons
@@ -22,12 +21,32 @@ if (RunService:IsClient()) then
     CliApi = require(ReplicatedStorage.Shared.GameClient.CliNetApi)
 end
 
+------------------------------------------------------------------------------------------------------------------------
+
 local CF_CAM_WEAP_OFFS = 
     CFrame.new(Vector3.new(0.95,-0.2,-1.25)) 
     * CFrame.fromEulerAnglesXYZ(math.rad(75), math.rad(180), math.rad(120))
 
+local CF_UNEQUIP_TARGET = 
+    CFrame.new(Vector3.new(0, 0, -4))
+
+--local VEC3_UNEQUIP_TARGET = Vector3.new(0, 0, -4)
+local EQUIP_LERP_FAC = 18
+local EQUIP_DURATION = 0.25
+local SWING_RATE = 0.33
+
 local localPlr = Players.LocalPlayer :: Player
 local mdlFold = ReplicatedStorage.Assets.WeaponModels.Sword
+
+local inSwing = false
+local altFireCharging = false
+
+local equipUpdateConn: RBXScriptConnection
+local unequipUpdateConn: RBXScriptConnection
+
+local function updateSwordSwing(dt: number)
+    
+end
 
 export type SwordFireParams = {
     throw: boolean,
@@ -61,6 +80,10 @@ function Sword.new(uid: number)
 end
 
 function Sword:equip()
+    if (not self.owner) then
+        error("No weapon owner")
+    end
+
     local weapModel: Model = self.weaponModel
     local ownerMdl: Model = self.owner
     assert(weapModel.PrimaryPart, `Model '{weapModel}' has no primary part`)
@@ -73,26 +96,50 @@ function Sword:equip()
         -- TODO
         return
     end
-
     print("EQUIPPING SWORD")
+
+    if (unequipUpdateConn) then
+        unequipUpdateConn:Disconnect()
+    end
+
+    local downPosOffsCFrame = CF_CAM_WEAP_OFFS * CF_UNEQUIP_TARGET
+    local camCFrame = Workspace.CurrentCamera.CFrame
+    local targetOffsLerpCFrame = downPosOffsCFrame
+    local equipTime = 0
+
+    weapModel.PrimaryPart.Anchored = true
+    weapModel.Parent = self.owner
+    weapModel.PrimaryPart.CFrame = camCFrame * downPosOffsCFrame
+
+    equipUpdateConn = RunService.PreRender:Connect(function(dt: number)
+        camCFrame = Workspace.CurrentCamera.CFrame
+        targetOffsLerpCFrame = targetOffsLerpCFrame:Lerp(CF_CAM_WEAP_OFFS, dt * EQUIP_LERP_FAC)
+
+        weapModel.PrimaryPart.CFrame = camCFrame * targetOffsLerpCFrame
+        
+        if (equipTime >= EQUIP_DURATION) then
+            equipUpdateConn:Disconnect()
+        end
+        equipTime += dt
+    end)
+
+    task.wait(EQUIP_DURATION)
+end
+
+function Sword:unequip()
     if (not self.owner) then
         error("No weapon owner")
     end
 
-    weapModel.PrimaryPart.Anchored = true
-    weapModel.Parent = self.owner
-    weapModel.PrimaryPart.CFrame = CFrame.new(ownerMdl.PrimaryPart.CFrame.Position)
-
-    task.wait(1)
-
-    --TweenService:Create(instance, tweenInfo, propertyTable)
-end
-
-function Sword:unequip()
     -- case for other players
     if (self.owner ~= localPlr.Character) then
         -- TODO
         return
+    end
+    print("UNEQUIPPING SWORD")
+
+    if (equipUpdateConn) then
+        equipUpdateConn:Disconnect()
     end
 
     local weapModel: Model = self.weaponModel
@@ -100,21 +147,41 @@ function Sword:unequip()
     assert(weapModel.PrimaryPart, `Model '{weapModel}' has no primary part`)
     assert(ownerMdl.PrimaryPart, `Owner model '{ownerMdl}' has no primary part`)
 
+    local downPosOffsCFrame = CF_CAM_WEAP_OFFS * CF_UNEQUIP_TARGET
+    local camCFrame = Workspace.CurrentCamera.CFrame
+    local targetOffsLerpCFrame = CF_CAM_WEAP_OFFS
+    local unequipTime = 0
+
+    weapModel.PrimaryPart.CFrame = camCFrame * CF_CAM_WEAP_OFFS
+
+    unequipUpdateConn = RunService.PreRender:Connect(function(dt: number)
+        camCFrame = Workspace.CurrentCamera.CFrame
+        targetOffsLerpCFrame = targetOffsLerpCFrame:Lerp(downPosOffsCFrame, dt * EQUIP_LERP_FAC)
+
+        weapModel.PrimaryPart.CFrame = camCFrame * targetOffsLerpCFrame
+
+        unequipTime += dt
+        if (unequipTime >= EQUIP_DURATION) then
+            unequipUpdateConn:Disconnect()
+        end
+    end)
+
+    task.wait(EQUIP_DURATION)
     weapModel.Parent = localPlr.Backpack
-
-    print("UNEQUIPPING SWORD")
-    if (not self.owner) then
-        error("No weapon owner")
-    end
-
-    task.wait(1)
 end
 
 function Sword:reload()
 end
 
 function Sword:fire(pos: Vector3, dir: Vector3, fireParams: SwordFireParams)
+    local weapModel: Model = self.weaponModel
+    local weapPrimPart = weapModel.PrimaryPart
+
+    local swordSlashSound: Sound = weapPrimPart.SwordSlash
+    swordSlashSound:Play()
+
     if (self:isOwnedByLocalPlr()) then
+        -- TODO
         CliApi.events[Network.clientEvents.requestFireWeapon]:FireServer(pos, dir, fireParams)
     end
 
@@ -142,18 +209,26 @@ function Sword:update(dt: number)
 
     local charPrimPart = charMdl.PrimaryPart
     local weapPrimPart = weapModel.PrimaryPart
-    local charPos = charPrimPart.CFrame.Position
-    local camera = Workspace.CurrentCamera
-    local camCFrame = camera.CFrame
+    local currCharVel = charMdl.PrimaryPart.AssemblyLinearVelocity
+    local camCFrame = Workspace.CurrentCamera.CFrame
     local fireInp, altFireInp = InputManager:getFireKeysDown()
 
     if (not charPrimPart) then 
         error("No primary part")
     end
 
-    weapPrimPart.CFrame = camCFrame * CF_CAM_WEAP_OFFS
+    --weapPrimPart.CFrame = camCFrame * CF_CAM_WEAP_OFFS
+    weapPrimPart.CFrame = WeaponCommon.calcVelImpactOffsetCFrame(
+        dt, currCharVel, camCFrame * CF_CAM_WEAP_OFFS, Vector3.fromAxis(Enum.Axis.Z)
+    )
+    
+
+    if (fireInp) then
+        --self.fireLocked = true
+    end
 
     if (fireInp or altFireInp) then
+        self.fireLocked = true
         self:fire(altFireInp)
     end
 end
@@ -162,6 +237,13 @@ function Sword:destroy()
     print("destroying sword")
     if (self.weaponModel) then
         (self.weaponModel :: Model):Destroy()
+    end
+
+    if (equipUpdateConn) then
+        equipUpdateConn:Disconnect()
+    end
+    if (unequipUpdateConn) then
+        unequipUpdateConn:Disconnect()
     end
 end
 

@@ -4,13 +4,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 --local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
+local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local Simulation = require(script.Parent.Parent.Simulation)
 local CamInput = require(script.Parent.CamInput)
 local BaseCam = require(script.Parent.BaseCam)
 local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 
-local ROOT_OFFSET = Vector3.new(0, 2.5, 0)
+local ROOT_OFFSET = CharacterDef.PARAMS.ROOT_CAMERA_OFFSET
 local DEATH_OFFSET = Vector3.new(0, -3, 0)
 local DEATH_ROT_CF_OFFSET = CFrame.fromEulerAnglesXYZ(math.rad(15), 0, math.rad(-60))
 local DASH_OFFSET = Vector3.new(0, -1.8, 0)

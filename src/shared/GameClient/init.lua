@@ -8,8 +8,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
-local CliNetApi = require(script.CliNetApi)
 local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
+--local CliNetApi = require(script.CliNetApi)
 local Network = require(ReplicatedStorage.Shared.Network)
 local CliApi = require(script.CliNetApi)
 local PlayerData = require(script.Parent.PlayerData)
@@ -235,8 +235,6 @@ function GameClient.onDeathStateChanged(isDead: boolean, lastDamageType: string)
         -- todo move aimation logic to GameClient and do death anim here
     else
         -- Death
-        ClientRoot.setActiveInvSlot(0)
-        targetInvSlot = 0
         simulation:toggleReadInput(false)
         controllerCamera:activateFPDeathCam(true)
 
@@ -244,6 +242,8 @@ function GameClient.onDeathStateChanged(isDead: boolean, lastDamageType: string)
         if (currWeapon) then
             currWeapon:unequip()
         end
+        ClientRoot.setActiveInvSlot(0)
+        targetInvSlot = 0
     end
 end
 
@@ -353,7 +353,7 @@ function GameClient.updateWeaponInventory(dt: number)
     -- switch slots if possible
     if (targetInvSlot ~= plrData.activeInvSlot) then
         local currWeapon: BaseWeapon.Weapon = GameClient.getActiveWeapon()
-        local isWeaponActive = currWeapon and currWeapon.fireLocked
+        local isWeaponActive = currWeapon and currWeapon:getIsFireLocked()
 
         if (switchFree and not isWeaponActive) then
             GameClient.switchWeapon(targetInvSlot)
