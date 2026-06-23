@@ -331,9 +331,41 @@ end
 	@param target - target position
 	@param k - stiffness
 	@param dt - time delta
-	@return spring position
+	@return spring position, velocity
 ]]
-function MathUtil.dSpring(x: number, vel: number, target: number, k: number, dt: number)
+function MathUtil.dSpring(
+	x: number, vel: number, target: number, k: number, dt: number
+): (number, number)
+
+    local f = 1 + k * 2*dt
+    local omega = k*k * dt
+    local disc = f*f - 4*omega
+
+    if disc < 0 then
+        disc = 0
+    end
+
+    local e = (f - math.sqrt(disc)) * 0.5
+
+    local newX = (x + dt * vel + omega * target) / e
+    local newV = (vel + k * (target - x)) / e
+
+    return newX, newV
+end
+
+--[[
+	Equivalent to dSpring in 2d
+	@param x - current position
+	@param vel - current velocity
+	@param target - target position
+	@param k - stiffness
+	@param dt - time delta
+	@return spring position, velocity
+]]
+function MathUtil.dSpring2d(
+	x: Vector2, vel: Vector2, target: Vector2, k: number, dt: number
+): (Vector2, Vector2)
+
     local f = 1 + k * 2*dt
     local omega = k*k * dt
     local disc = f*f - 4*omega

@@ -24,8 +24,8 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 
 local CF_CAM_WEAP_OFFS = 
-    CFrame.new(Vector3.new(0.95,-0.2,-1.25)) 
-    * CFrame.fromEulerAnglesXYZ(math.rad(75), math.rad(180), math.rad(120))
+    CFrame.new(Vector3.new(0.95,-1.4,-1.25)) 
+    * CFrame.fromEulerAnglesXYZ(math.rad(0), math.rad(0), math.rad(0))
 
 local CF_UNEQUIP_TARGET = 
     CFrame.new(Vector3.new(0, 0, -4))
@@ -34,6 +34,8 @@ local CF_UNEQUIP_TARGET =
 local EQUIP_LERP_FAC = 18
 local EQUIP_DURATION = 0.25
 local SWING_RATE = 0.33
+
+local VEC3_UP = Vector3.new(0, 1, 0)
 
 local localPlr = Players.LocalPlayer :: Player
 local mdlFold = ReplicatedStorage.Assets.WeaponModels.Sword
@@ -219,7 +221,7 @@ function Sword:update(dt: number)
 
     --weapPrimPart.CFrame = camCFrame * CF_CAM_WEAP_OFFS
     weapPrimPart.CFrame = WeaponCommon.calcVelImpactOffsetCFrame(
-        dt, currCharVel, camCFrame * CF_CAM_WEAP_OFFS, Vector3.fromAxis(Enum.Axis.Z)
+        dt, currCharVel, camCFrame * CF_CAM_WEAP_OFFS
     )
     
 
