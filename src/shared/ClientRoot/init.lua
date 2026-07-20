@@ -15,15 +15,19 @@ local gameData = {
 }
 local simData = {
     playerStateId = PlayerStateId.NONE,
-    isDashing = false,
     isGrounded = false,
+    inWater = false,
+    submerged = false,
+    onWaterSurface = false,
+    isDashing = false,
+    nearWall = false,
+    isRightSideWall = false,
 }
 local plrData: PlayerData.Data = PlayerData.createPlayerData(Players.LocalPlayer)
 
 local function singleValChangedEvent(newVal: any, oldVal: any, bindEvent: BindableEvent)
-    if (newVal ~= oldVal) then
-        bindEvent:Fire(newVal)
-    end
+    if (newVal == oldVal) then return end
+    bindEvent:Fire(newVal)
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -42,9 +46,18 @@ local ClientRoot = {
         scoreChanged = Instance.new("BindableEvent"),
         effectAdded = Instance.new("BindableEvent"),
         -- sim state signals
+        --[[
+            SimState signal info pattern:
+            (newval, oldval)
+        ]]
         simStateChanged = Instance.new("BindableEvent"),
+        simDataChanged = Instance.new("BindableEvent"),
         isDashingChanged = Instance.new("BindableEvent"),
         isGroundedChanged = Instance.new("BindableEvent"),
+        inWaterChanged = Instance.new("BindableEvent"),
+        submergedChanged = Instance.new("BindableEvent"),
+        onWaterSurfaceChanged = Instance.new("BindableEvent"),
+        nearWallChanged = Instance.new("BindableEvent")
     },
 }
 
@@ -111,14 +124,28 @@ function ClientRoot.setCurrentPlayerStateId(newId: number)
     simData.playerStateId = newId
 end
 
-function ClientRoot.setIsDashing(isDashing: boolean)
-    singleValChangedEvent(isDashing, simData.isDashing, ClientRoot.signals.isDashingChanged)
-    simData.isDashing = isDashing
-end
-
-function ClientRoot.setIsGrounded(grounded: boolean)
+function ClientRoot.setSimSharedData(
+    grounded: boolean,
+    inWater: boolean, 
+    submerged: boolean, 
+    onSurface: boolean,
+    isDashing: boolean,
+    nearWall: boolean,
+    isRightSideWall: boolean
+)
     singleValChangedEvent(grounded, simData.isGrounded, ClientRoot.signals.isGroundedChanged)
+    singleValChangedEvent(inWater, simData.inWater, ClientRoot.signals.inWaterChanged)
+    singleValChangedEvent(submerged, simData.submerged, ClientRoot.signals.submergedChanged)
+    singleValChangedEvent(onSurface, simData.onWaterSurface, ClientRoot.signals.onWaterSurfaceChanged)
+    singleValChangedEvent(isDashing, simData.isDashing, ClientRoot.signals.isDashingChanged)
+    singleValChangedEvent(nearWall, simData.nearWall, ClientRoot.signals.nearWallChanged)
     simData.isGrounded = grounded
+    simData.inWater = inWater
+    simData.submerged = submerged
+    simData.onWaterSurface = onSurface
+    simData.isDashing = isDashing
+    simData.nearWall = nearWall
+    simData.isRightSideWall = isRightSideWall
 end
 
 return ClientRoot

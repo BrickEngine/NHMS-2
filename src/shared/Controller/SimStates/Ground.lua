@@ -12,7 +12,7 @@ local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(ReplicatedStorage.Shared.InputManager)
 local SoundManager = require(ReplicatedStorage.Shared.CharacterSounds)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
-local AnimationStateId = require(ReplicatedStorage.Shared.Enums.AnimationStateId)
+--local AnimationStateId = require(ReplicatedStorage.Shared.Enums.AnimationStateId)
 local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 local BaseState = require(controller.SimStates.BaseState)
 local PhysCheck = require(controller.Common.PhysCheck)
@@ -55,8 +55,8 @@ local GND_FORCE_DIST = 0.1 -- ground distance below or at which player will be f
 local PLAY_JUMP_SOUND = true -- To be removed later
 
 -- animation
-local ANIM_THRESHHOLD = 0.1 -- Studs/s
-local ANIM_SPEED_FAC = 0.06
+-- local ANIM_THRESHHOLD = 0.1 -- Studs/s
+-- local ANIM_SPEED_FAC = 0.06
 
 -- constants
 local VEC3_ZERO = Vector3.zero
@@ -149,7 +149,7 @@ function Ground.new(...)
     self.shared = self._simulation.stateShared
     self.character = self._simulation.character :: Model
     self.forces = createForces(self.character)
-    self.animation = self._simulation.animation
+    --self.animation = self._simulation.animation
     self.buoySensor = self._simulation.buoySensor
 
     --ray_params_gnd.FilterDescendantsInstances = self.character:GetChildren()
@@ -172,7 +172,7 @@ function Ground:stateEnter(stateId: number, params: any?)
         wasOnDryLand = false
     end
 
-    self.animation:setState(AnimationStateId.IDLE)
+    --self.animation:setState(AnimationStateId.IDLE)
 end
 
 function Ground:stateLeave()
@@ -348,7 +348,7 @@ function Ground:update(dt: number)
     self.shared.grounded = groundData.grounded
     self.shared.nearWall = wallData.nearWall
     self.shared.inWater = waterData.inWater
-    self.shared.underWater = waterData.fullSubmerged
+    self.shared.underWater = waterData.fullySubmerged
     self.shared.onWaterSurface = waterData.onSurface
 
     if (self.shared.grounded) then
@@ -406,13 +406,13 @@ function Ground:update(dt: number)
     self:updateMove(dt, rawMoveDir, groundData.normal, groundData.normalAngle)
 
     -- update animation
-    if (currHoriVel.Magnitude >= ANIM_THRESHHOLD) then
-        self.animation:setState(AnimationStateId.WALK)
-        self.animation:adjustSpeed(currHoriVel.Magnitude * ANIM_SPEED_FAC)
-    else
-        self.animation:setState(AnimationStateId.IDLE)
-        self.animation:adjustSpeed(1)
-    end
+    -- if (currHoriVel.Magnitude >= ANIM_THRESHHOLD) then
+    --     self.animation:setState(AnimationStateId.WALK)
+    --     self.animation:adjustSpeed(currHoriVel.Magnitude * ANIM_SPEED_FAC)
+    -- else
+    --     self.animation:setState(AnimationStateId.IDLE)
+    --     self.animation:adjustSpeed(1)
+    -- end
 
     do
         local canMountWall

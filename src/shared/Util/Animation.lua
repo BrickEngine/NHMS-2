@@ -1,7 +1,11 @@
--- Character animations module. Instantiates all defined animation tracks
+--[[
+	Utility module for managing character animations.
+	Instantiates character bound pre-defined animation tracks.
+]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local AnimationStateId = require(ReplicatedStorage.Shared.Enums.AnimationStateId)
 local AnimStateId = require(ReplicatedStorage.Shared.Enums.AnimationStateId)
 
 local Animation = {}
@@ -11,6 +15,14 @@ type AnimationState = {
     id: string,
 	trackData: {[string]: any}
 }
+
+export type Module = typeof(Animation)
+
+------------------------------------------------------------------------------------------------------------------------
+-- Module
+------------------------------------------------------------------------------------------------------------------------
+
+Animation.AnimationStateId = AnimationStateId
 
 Animation.states = {
 	-- idle (0)
@@ -44,10 +56,10 @@ Animation.states = {
 	-- actions (2-5)
 }
 
-function Animation.new(simulation)
+function Animation.new(character: Model)
     local self = setmetatable({}, Animation)
 
-	self.character = simulation.character :: Model
+	self.character = character
 	self.animationController = self.character:FindFirstChildOfClass("AnimationController")
 	self.animator = self.animationController:FindFirstChildOfClass("Animator")
 

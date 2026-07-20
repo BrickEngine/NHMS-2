@@ -88,7 +88,7 @@ function DebugVisualize.normalPart(pos: Vector3, norm: Vector3, size: Vector3?)
 		part = Instance.new("Part", workspace)
 		part.Anchored = true
 		part.CanCollide = false
-		part.CollisionGroup = CollisionGroup.NOCOLL
+		part.CollisionGroup = CollisionGroup.IGNORE
 		if (size) then
 			part.Size = size
 		else

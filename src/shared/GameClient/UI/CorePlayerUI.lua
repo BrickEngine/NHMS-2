@@ -43,6 +43,8 @@ local MenuUI = require(script.Parent.MenuUI)
 ------------------------------------------------------------------------------------------------------------------------
 
 local CorePlayerUI = {
+    UIType = UIType,
+    
     gameUI = nil,
     menuUI = nil,
     currentActive = nil

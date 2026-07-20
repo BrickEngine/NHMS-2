@@ -228,7 +228,7 @@ type wallSide = {
 export type waterData = {
 	inWater: boolean,
 	onSurface: boolean,
-	fullSubmerged: boolean,
+	fullySubmerged: boolean,
 	waterSurfacePos: Vector3
 }
 
@@ -488,7 +488,7 @@ function PhysCheck.checkWater(
 	return {
 		inWater = inWater,
 		onSurface = onSurface,
-		fullSubmerged = fullySubmerged,
+		fullySubmerged = fullySubmerged,
 		waterSurfacePos = surfacePos
 	} :: waterData
 end

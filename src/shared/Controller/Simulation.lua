@@ -6,7 +6,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 --local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local FuncUtil = require(ReplicatedStorage.Shared.Util.FuncUtil)
-local Animation = require(script.Parent.Animation)
 local DebugVisualize = require(script.Parent.Common.DebugVisualize)
 
 local InputManager = require(ReplicatedStorage.Shared.InputManager)
@@ -23,7 +22,7 @@ local PRINT_DEBUG = false
 local STATE_SHARED_VALS = table.freeze({
     grounded = false,
     inWater = false,
-    underWater = false,
+    submerged = false,
     onWaterSurface = false,
     isDashing = false,
     nearWall = false,
@@ -68,7 +67,6 @@ function Simulation.init()
     self.currentState = nil
     self.universalState = nil
     self.simUpdateConn = nil
-    self.animation = nil
 
     self.allowTransitions = true
     self.stateShared = stateSharedDefaults
@@ -201,11 +199,11 @@ function Simulation:resetSimulation()
     if (self.simUpdateConn :: RBXScriptConnection) then
         self.simUpdateConn:Disconnect()
     end
-    if (self.animation) then
-        self.animation:destroy()
-    end
+    -- if (self.animation) then
+    --     self.animation:destroy()
+    -- end
 
-    self.animation = Animation.new(self)
+    -- self.animation = Animation.new(self.character)
 
     self:resetStateShared()
 
@@ -252,7 +250,7 @@ function Simulation:serialize(sharedVals: SharedVals): buffer
     local flags = 0
     if (shared.grounded)        then flags = bit32.bor(flags, bit32.lshift(1, 0)) end
     if (shared.inWater)         then flags = bit32.bor(flags, bit32.lshift(1, 1)) end
-    if (shared.underWater)      then flags = bit32.bor(flags, bit32.lshift(1, 2)) end
+    if (shared.submerged)          then flags = bit32.bor(flags, bit32.lshift(1, 2)) end
     if (shared.onWaterSurface)  then flags = bit32.bor(flags, bit32.lshift(1, 3)) end
     if (shared.isDashing)       then flags = bit32.bor(flags, bit32.lshift(1, 4)) end
     if (shared.nearWall)        then flags = bit32.bor(flags, bit32.lshift(1, 5)) end

@@ -23,12 +23,16 @@ end
 
 ------------------------------------------------------------------------------------------------------------------------
 
-local CF_CAM_WEAP_OFFS = 
+local CF_DEF_WEAP_OFFS = 
     CFrame.new(Vector3.new(0.95,-1.4,-1.25)) 
     * CFrame.fromEulerAnglesXYZ(math.rad(0), math.rad(0), math.rad(0))
 
 local CF_UNEQUIP_TARGET = 
-    CFrame.new(Vector3.new(0, 0, -4))
+    CFrame.new(Vector3.new(0, -4, 0))
+
+local CF_SWING_TARGET = 
+    CFrame.new(Vector3.new(0.95,-1.4,-1.25)) 
+    * CFrame.fromEulerAnglesXYZ(math.rad(-90), math.rad(0), math.rad(0))
 
 --local VEC3_UNEQUIP_TARGET = Vector3.new(0, 0, -4)
 local EQUIP_LERP_FAC = 18
@@ -104,7 +108,7 @@ function Sword:equip()
         unequipUpdateConn:Disconnect()
     end
 
-    local downPosOffsCFrame = CF_CAM_WEAP_OFFS * CF_UNEQUIP_TARGET
+    local downPosOffsCFrame = CF_DEF_WEAP_OFFS * CF_UNEQUIP_TARGET
     local camCFrame = Workspace.CurrentCamera.CFrame
     local targetOffsLerpCFrame = downPosOffsCFrame
     local equipTime = 0
@@ -115,7 +119,7 @@ function Sword:equip()
 
     equipUpdateConn = RunService.PreRender:Connect(function(dt: number)
         camCFrame = Workspace.CurrentCamera.CFrame
-        targetOffsLerpCFrame = targetOffsLerpCFrame:Lerp(CF_CAM_WEAP_OFFS, dt * EQUIP_LERP_FAC)
+        targetOffsLerpCFrame = targetOffsLerpCFrame:Lerp(CF_DEF_WEAP_OFFS, dt * EQUIP_LERP_FAC)
 
         weapModel.PrimaryPart.CFrame = camCFrame * targetOffsLerpCFrame
         
@@ -149,12 +153,12 @@ function Sword:unequip()
     assert(weapModel.PrimaryPart, `Model '{weapModel}' has no primary part`)
     assert(ownerMdl.PrimaryPart, `Owner model '{ownerMdl}' has no primary part`)
 
-    local downPosOffsCFrame = CF_CAM_WEAP_OFFS * CF_UNEQUIP_TARGET
+    local downPosOffsCFrame = CF_DEF_WEAP_OFFS * CF_UNEQUIP_TARGET
     local camCFrame = Workspace.CurrentCamera.CFrame
-    local targetOffsLerpCFrame = CF_CAM_WEAP_OFFS
+    local targetOffsLerpCFrame = CF_DEF_WEAP_OFFS
     local unequipTime = 0
 
-    weapModel.PrimaryPart.CFrame = camCFrame * CF_CAM_WEAP_OFFS
+    weapModel.PrimaryPart.CFrame = camCFrame * CF_DEF_WEAP_OFFS
 
     unequipUpdateConn = RunService.PreRender:Connect(function(dt: number)
         camCFrame = Workspace.CurrentCamera.CFrame
@@ -167,6 +171,8 @@ function Sword:unequip()
             unequipUpdateConn:Disconnect()
         end
     end)
+
+    WeaponCommon.dynOffset.reset()
 
     task.wait(EQUIP_DURATION)
     weapModel.Parent = localPlr.Backpack
@@ -220,8 +226,8 @@ function Sword:update(dt: number)
     end
 
     --weapPrimPart.CFrame = camCFrame * CF_CAM_WEAP_OFFS
-    weapPrimPart.CFrame = WeaponCommon.calcVelImpactOffsetCFrame(
-        dt, currCharVel, camCFrame * CF_CAM_WEAP_OFFS
+    weapPrimPart.CFrame = WeaponCommon.dynOffset.calc(
+        dt, currCharVel, camCFrame * CF_DEF_WEAP_OFFS
     )
     
 

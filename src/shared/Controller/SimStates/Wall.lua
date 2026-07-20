@@ -162,7 +162,7 @@ function Wall.new(...)
     self.shared = self._simulation.stateShared
     self.character = self._simulation.character :: Model
     self.forces = createForces(self.character)
-    self.animation = self._simulation.animation
+    --self.animation = self._simulation.animation
     self.buoySensor = self._simulation.buoySensor
 
     return setmetatable(self, Wall)

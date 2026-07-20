@@ -10,7 +10,6 @@ local controller = script.Parent.Parent
 local BaseState = require(controller.SimStates.BaseState)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
-local AnimationStateId = require(ReplicatedStorage.Shared.Enums.AnimationStateId)
 local InputManager = require(ReplicatedStorage.Shared.InputManager)
 local SoundManager = require(ReplicatedStorage.Shared.CharacterSounds)
 local PhysCheck = require(controller.Common.PhysCheck)
@@ -30,9 +29,6 @@ local GND_STATE_DELAY = 0 -- time to pass before making state transition possibl
 local GND_CLEAR_DIST = 0.425 -- should be smaller than the one in the ground state
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local COMP_HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X * 0.9
-
--- animation
-local SWIM_ANIM_SPEED_FAC = 0.1
 
 -- constants
 local VEC3_ZERO = Vector3.zero
@@ -106,7 +102,6 @@ function Water.new(...)
     self.shared = self._simulation.stateShared
     self.character = self._simulation.character :: Model
     self.forces = createForces(self.character)
-    self.animation = self._simulation.animation
     self.buoySensor = self._simulation.buoySensor
 
     return setmetatable(self, Water)
@@ -119,15 +114,13 @@ function Water:stateEnter(stateId: number, params: any?)
 
     canSwimUp = false
     self.forces.moveForce.Enabled = true
-    -- TODO: swim animation
-    self.animation:setState(AnimationStateId.WALK)
 
     SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WATER_SPLASH, true)
 end
 
 function Water:stateLeave()
     self.shared.inWater = false
-    self.shared.underWater = false
+    self.shared.submerged = false
     self.shared.onWaterSurface = false
 
     if (not self.forces) then
@@ -231,7 +224,6 @@ end
 function Water:update(dt: number)
     local primaryPart: BasePart = self.character.PrimaryPart
     local inpVec = InputManager:getMoveVec()
-    local currVel = primaryPart.AssemblyLinearVelocity
     local currPos = primaryPart.CFrame.Position
 
     -- phys checks
@@ -245,16 +237,13 @@ function Water:update(dt: number)
 
     self.shared.grounded = groundData.grounded
     self.shared.inWater = waterData.inWater
-    self.shared.underWater = waterData.fullSubmerged
+    self.shared.submerged = waterData.fullySubmerged
     self.shared.onWaterSurface = waterData.onSurface
 
     -- movement update
     canSwimUp = self.shared.stateTime > INP_READ_DELAY
     self:updateSwim(dt, inpVec)
     self:updateSounds(dt)
-
-    -- animation
-    self.animation:adjustSpeed(currVel.Magnitude * SWIM_ANIM_SPEED_FAC)
 
     -- state transitions
     local gndSurfDist = waterData.waterSurfacePos.Y - groundData.gndHeight

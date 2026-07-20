@@ -13,15 +13,16 @@ local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
 local Network = require(ReplicatedStorage.Shared.Network)
 local CliApi = require(script.CliNetApi)
 local PlayerData = require(script.Parent.PlayerData)
-local CharacterSounds = require(ReplicatedStorage.Shared.CharacterSounds)
 local CorePlayerUI = require(script.UI.CorePlayerUI)
+local PlayerVisuals = require(script.PlayerVisuals)
+local CharacterSounds = require(ReplicatedStorage.Shared.CharacterSounds)
 local Controller = require(ReplicatedStorage.Shared.Controller)
+local Simulation = require(ReplicatedStorage.Shared.Controller.Simulation)
 local InputManager = require(ReplicatedStorage.Shared.InputManager)
 local SlotSwitchType = require(ReplicatedStorage.Shared.InputManager.SlotSwitchType)
 
 local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
-local UIType = require(ReplicatedStorage.Shared.Enums.UIType)
 local BaseWeapon = require(ReplicatedStorage.Shared.GameSystems.Weapons.Arsenal.BaseWeapon)
 local WeaponManager = require(ReplicatedStorage.Shared.GameSystems.Weapons.WeaponManager)
 
@@ -284,11 +285,20 @@ function GameClient.updateGameTime(dt: number, override: number?)
 end
 
 function GameClient.updateSimData(dt: number)
-    local stateShared = simulation:getStateShared()
+    local stateShared = simulation:getStateShared() :: Simulation.SharedVals
     local currStateId = simulation:getCurrentStateId()
 
-    ClientRoot.setIsGrounded(stateShared.grounded)
-    ClientRoot.setIsDashing(stateShared.isDashing)
+    -- ClientRoot.setIsGrounded(stateShared.grounded)
+    -- ClientRoot.setIsDashing(stateShared.isDashing)
+    ClientRoot.setSimSharedData(
+        stateShared.grounded,
+        stateShared.inWater,
+        stateShared.submerged,
+        stateShared.onWaterSurface,
+        stateShared.isDashing,
+        stateShared.nearWall,
+        stateShared.isRightSideWall
+    )
     ClientRoot.setCurrentPlayerStateId(currStateId)
 end
 
@@ -462,7 +472,8 @@ ClientRoot.signals.healthChanged.Event:Connect(GameClient.onHealthChanged)
 ------------------------------------------------------------------------------------------------------------------------
 
 GameClient.init()
+PlayerVisuals.init()
 CorePlayerUI.disableAll()
-CorePlayerUI.setActive(UIType.GAME)
+CorePlayerUI.setActive(CorePlayerUI.UIType.GAME)
 
 return GameClient
