@@ -39,7 +39,7 @@
         "SignalBehavior": "Deferred",
         "PhysicsSteppingMethod": "Fixed",
         "RejectCharacterDeletions": "Enabled",
-        "UseNewLuauTypeSolver": "Disabled"
+        "UseFixedSimulation": "Enabled"
       }
     },
     "Lighting": {

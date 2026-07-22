@@ -10,11 +10,12 @@ local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 -- end
 
 -- dyn offset
-local ENABLE_Y_SIM = false
+local ENABLE_Y_OFFS = true
 local MAX_MOUSE_X_DIST = 0.325
 local MAX_SPRING_Y_DIFF = 0.2
 local MOUSE_X_FAC = 0.0065
 local Y_DIFF_FAC = 0.0055
+local DYN_OFFS_LERP_FAC = 45
 
 local VEC3_UP = Vector3.new(0, 1, 0)
 local VEC3_RIGHT = Vector3.new(1, 0, 0)
@@ -48,6 +49,7 @@ end
 ]]
 
 local lastYVel = 0
+local lastYDiff = 0
 local lastMouseX = 0
 
 WeaponCommon.dynOffset = {
@@ -56,6 +58,7 @@ WeaponCommon.dynOffset = {
     ]]
     reset = function()
         lastYVel = 0
+        lastYDiff = 0
         lastMouseX = 0
     end,
 
@@ -73,14 +76,18 @@ WeaponCommon.dynOffset = {
         end
 
         local mouseX = UserInputService:GetMouseDelta().X
-        lastMouseX = MathUtil.lerp(lastMouseX, mouseX, dt * 25)
+        lastMouseX = MathUtil.flerp(lastMouseX, mouseX, dt * DYN_OFFS_LERP_FAC)
+        mouseX = MathUtil.flerp(lastMouseX, 0, dt * DYN_OFFS_LERP_FAC)
         local horiPos = math.clamp(lastMouseX * -MOUSE_X_FAC, -MAX_MOUSE_X_DIST, MAX_MOUSE_X_DIST)
 
         local vertPos
-        if (ENABLE_Y_SIM) then
+        if (ENABLE_Y_OFFS) then
             local yDiff = (lastYVel - vel.Y) * Y_DIFF_FAC
-            vertPos = MathUtil.dSpring(0, 0, yDiff, 0.5, dt)
+            vertPos = MathUtil.dSpring(0, 0, lastYDiff, 0.5, dt)
             vertPos = math.clamp(vertPos, -MAX_SPRING_Y_DIFF * 1.8, MAX_SPRING_Y_DIFF)
+
+            lastYVel = MathUtil.flerp(lastYVel, vel.Y, dt * 7.5)
+            lastYDiff = MathUtil.flerp(lastYDiff, yDiff, dt * 50)
         else
             vertPos = 0
         end
@@ -89,7 +96,6 @@ WeaponCommon.dynOffset = {
             baseCFOffset * CFrame.new(VEC3_UP * vertPos) 
             * CFrame.new(VEC3_RIGHT * horiPos)
         )
-        lastYVel = MathUtil.lerp(lastYVel, vel.Y, dt * 7.5)
 
         return baseCFOffset * newCFOffset
     end

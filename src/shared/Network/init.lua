@@ -37,7 +37,6 @@ local NetApi = table.freeze({
         removePickup = "RemovePickup",
     },
     serverFastEvents = {
-        jointsDataToClient = "JointsDataToClient",
         plrDataToClient = "PlrDataToClient",
     },
     -- client -> server -> client

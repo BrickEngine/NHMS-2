@@ -149,7 +149,7 @@ function FPCam:update(dt: number)
         local adjInputVec = rotateInput * INP_SENS_FAC
         local x = (camAngVec.X - adjInputVec.Y)
 
-        local rot_x = (x >= ROT_MAX_Y and ROT_MAX_Y) or (x <= ROT_MIN_Y and ROT_MIN_Y) or x
+        local rot_x = (x > ROT_MAX_Y and ROT_MAX_Y) or (x < ROT_MIN_Y and ROT_MIN_Y) or x
         local rot_y = (camAngVec.Y - adjInputVec.X) % 360
 
 		-- update effect cams
@@ -157,8 +157,9 @@ function FPCam:update(dt: number)
 		self:updateWallTilt(dt)
 
 		-- mouse movement linked camera tilting
-		local limitedRotInp = math.clamp(rotateInput.X * 45, -INP_TILT, INP_TILT)
-		lastInpTilt = MathUtil.lerp(lastInpTilt, limitedRotInp, TILT_DT_FAC * dt)
+		--local limitedRotInp = math.clamp(rotateInput.X * 45, -INP_TILT, INP_TILT)
+		lastInpTilt = MathUtil.flerp(lastInpTilt, rotateInput.X * 45, TILT_DT_FAC * dt)
+		lastInpTilt = math.clamp(lastInpTilt, -INP_TILT, INP_TILT)
 		local rot_z = lastInpTilt + lastWallTilt
 
         camAngVec = Vector3.new(rot_x, rot_y, rot_z)

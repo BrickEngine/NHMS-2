@@ -41,6 +41,7 @@ end
 
 function ServerRoot.changePlayerHealth(plr: Player, newHealth: number, damageType: string)
     local currPlrData = PlayerData.getPlayerData(plr)
+    --local oldPlrHealth = currPlrData.health
     currPlrData.lastDamageType = damageType
     currPlrData.health = math.max(newHealth, 0)
     

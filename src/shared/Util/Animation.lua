@@ -29,7 +29,8 @@ Animation.states = {
 	[AnimStateId.DEATH] = {
 		id = "rbxassetid://86228921476914", 
 		trackData = {
-			Priority = 0
+			Priority = 0,
+			Looped = true
 		}
 	},
 	[AnimStateId.IDLE] = {

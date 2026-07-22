@@ -33,6 +33,7 @@ local SOUND_ITEMS = table.freeze({
     WATER_MOVEMENT = "WaterMovementSound",
     WATER_DIVE = "WaterDiveSound",
     WATER_SURFACE = "WaterSurfaceSound",
+    WATER_AIRGASP = "WaterAirgasp",
     WALL_ENTER_0 = "WallEnter0Sound",
     WALL_ENTER_1 = "WallEnter1Sound",
     WALL_SLIDE = "WallSlideSound",
@@ -82,8 +83,15 @@ local SOUND_DATA = table.freeze({
         Volume = 1.08,
         PlaybackSpeed = 2,
     },
+    [SOUND_ITEMS.WATER_SURFACE] = {
+        SoundId = "rbxassetid://72842661683082",
+        Volume = 0.85,
+        PlaybackSpeed = 1.15,
+        PlaybackRegionsEnabled = true,
+        PlaybackRegion = NumberRange.new(0.25, SOUND_PB_REG_HUGE)
+    },
     [SOUND_ITEMS.WATER_MOVEMENT] = {
-        SoundId = "rbxassetid://5466166437",
+        SoundId = "rbxassetid://124084387347767", --106239090346339
         Looped = true,
     },
     [SOUND_ITEMS.WATER_DIVE] = {
@@ -93,7 +101,7 @@ local SOUND_DATA = table.freeze({
         PlaybackRegion = NumberRange.new(0.62, 2),
         PlaybackSpeed = 1.25
     },
-    [SOUND_ITEMS.WATER_SURFACE] = {
+    [SOUND_ITEMS.WATER_AIRGASP] = {
         SoundId = "rbxassetid://9114555843",
     },
     [SOUND_ITEMS.WALL_ENTER_0] = {
@@ -258,18 +266,30 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 
 -- Updates the specified sound item of another player
-function SoundManager:updatePlayerSound(plr: Player, item: string, play: boolean)
+function SoundManager:updatePlayerSoundOnEvent(plr: Player, item: string, play: boolean)
     if (plr == localPlr) then 
-        return 
+        return
     end
+
     if (not (playerSoundsMap[plr] and playerSoundsMap[plr][item])) then
         warn("No sound"); return
     end
     updateSound(playerSoundsMap[plr][item], play)
 end
 
+function SoundManager:updatePlayerSound(plr: Player, item: string, play: boolean)
+    if (plr == localPlr) then
+        SoundManager:updateLocalSound(item, play)
+    else
+        if (not (playerSoundsMap[plr] and playerSoundsMap[plr][item])) then
+            warn("No sound"); return
+        end
+        updateSound(playerSoundsMap[plr][item], play) 
+    end
+end
+
 -- Plays the specified sound item for (on) the local player
-function SoundManager:updateLocal(item: string, play: boolean)
+function SoundManager:updateLocalSound(item: string, play: boolean)
     local sound = playerSoundsMap[localPlr][item]
     if (not sound) then error(`Nonexistent sound for '{item}'`) end
 
@@ -285,7 +305,7 @@ function SoundManager:updateLocal(item: string, play: boolean)
 end
 
 function SoundManager:updateGlobalSound(item: string, play: boolean)
-    self:updateLocal(item, play)
+    self:updateLocalSound(item, play)
     CliNetApi.events[Network.clientEvents.requestSound]:FireServer(item, play)
 end
 

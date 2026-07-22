@@ -11,7 +11,6 @@ local BaseState = require(controller.SimStates.BaseState)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local InputManager = require(ReplicatedStorage.Shared.InputManager)
-local SoundManager = require(ReplicatedStorage.Shared.CharacterSounds)
 local PhysCheck = require(controller.Common.PhysCheck)
 local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 
@@ -28,7 +27,7 @@ local DIVE_CONE_ANG_LIM = math.rad(45) -- rad - angle limit for remapping swim d
 local GND_STATE_DELAY = 0 -- time to pass before making state transition possible
 local GND_CLEAR_DIST = 0.425 -- should be smaller than the one in the ground state
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
-local COMP_HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X * 0.9
+local COMP_HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X * 0.98
 
 -- constants
 local VEC3_ZERO = Vector3.zero
@@ -115,7 +114,7 @@ function Water:stateEnter(stateId: number, params: any?)
     canSwimUp = false
     self.forces.moveForce.Enabled = true
 
-    SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WATER_SPLASH, true)
+    --SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WATER_SPLASH, true)
 end
 
 function Water:stateLeave()
@@ -181,41 +180,41 @@ function Water:updateSwim(dt: number, rawInpDir: Vector3)
     self.forces.moveForce.Force = (accelVec + unitBuoyForce) * mass
 end
 
-local diveSignal = false
-local lastOnSurface = false
-local uwTime = 0
+-- local diveSignal = false
+-- local lastOnSurface = false
+-- local uwTime = 0
 
 -- TODO: move sound logic over time GameClient
-function Water:updateSounds(dt: number)
-    local inWater: boolean = self.shared.inWater
-    local onSurface: boolean = self.shared.onWaterSurface 
+-- function Water:updateSounds(dt: number)
+--     local inWater: boolean = self.shared.inWater
+--     local onSurface: boolean = self.shared.onWaterSurface 
 
-    if (not inWater) then
-        return
-    end
+--     if (not inWater) then
+--         return
+--     end
 
-    if (lastOnSurface ~= onSurface) then
-        diveSignal = true
-    else
-        diveSignal = false
-    end
-    lastOnSurface = onSurface
+--     if (lastOnSurface ~= onSurface) then
+--         diveSignal = true
+--     else
+--         diveSignal = false
+--     end
+--     lastOnSurface = onSurface
 
-    if (diveSignal and not onSurface) then
-        SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WATER_DIVE, true)
-    elseif (diveSignal and onSurface) then
-        if (uwTime > 2) then 
-            SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WATER_SURFACE, true)
-        end
-    end
+--     if (diveSignal and not onSurface) then
+--         SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WATER_DIVE, true)
+--     elseif (diveSignal and onSurface) then
+--         if (uwTime > 2) then 
+--             SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WATER_SURFACE, true)
+--         end
+--     end
 
-    if (onSurface) then
-        uwTime = 0
-    else
-        uwTime += dt
-    end
+--     if (onSurface) then
+--         uwTime = 0
+--     else
+--         uwTime += dt
+--     end
 
-end
+-- end
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Water update
@@ -243,7 +242,7 @@ function Water:update(dt: number)
     -- movement update
     canSwimUp = self.shared.stateTime > INP_READ_DELAY
     self:updateSwim(dt, inpVec)
-    self:updateSounds(dt)
+    --self:updateSounds(dt)
 
     -- state transitions
     local gndSurfDist = waterData.waterSurfacePos.Y - groundData.gndHeight

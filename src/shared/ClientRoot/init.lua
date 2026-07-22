@@ -6,23 +6,15 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
-local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
+--local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local PlayerData = require(ReplicatedStorage.Shared.PlayerData)
+local SimDataManager = require(script.SimDataManager)
 local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
 
 local gameData = {
-    gameTime = 0,
+    gameTime = 0
 }
-local simData = {
-    playerStateId = PlayerStateId.NONE,
-    isGrounded = false,
-    inWater = false,
-    submerged = false,
-    onWaterSurface = false,
-    isDashing = false,
-    nearWall = false,
-    isRightSideWall = false,
-}
+local simData: SimDataManager.Data = SimDataManager.getData(Players.LocalPlayer)
 local plrData: PlayerData.Data = PlayerData.createPlayerData(Players.LocalPlayer)
 
 local function singleValChangedEvent(newVal: any, oldVal: any, bindEvent: BindableEvent)
@@ -46,10 +38,6 @@ local ClientRoot = {
         scoreChanged = Instance.new("BindableEvent"),
         effectAdded = Instance.new("BindableEvent"),
         -- sim state signals
-        --[[
-            SimState signal info pattern:
-            (newval, oldval)
-        ]]
         simStateChanged = Instance.new("BindableEvent"),
         simDataChanged = Instance.new("BindableEvent"),
         isDashingChanged = Instance.new("BindableEvent"),
@@ -61,7 +49,8 @@ local ClientRoot = {
     },
 }
 
-export type SimData = typeof(simData)
+export type SimData = SimDataManager.Data
+export type PlrData = PlayerData.Data
 export type GameData = typeof(gameData)
 
 -- Getters
@@ -70,8 +59,21 @@ function ClientRoot.getGameData(): GameData
     return gameData
 end
 
-function ClientRoot.getSimData(): SimData
-    return simData
+function ClientRoot.getSimData()
+    return SimDataManager.getData(Players.LocalPlayer)
+end
+
+-- SimDataManager also stores other players' data
+function ClientRoot.getSimDataOfPlayer(plr: Player): SimData
+    return SimDataManager.getData(plr)
+end
+
+function ClientRoot.getDefaultSimData(): SimData
+    return SimDataManager.DEFAULT
+end
+
+function ClientRoot.writeSimData(plr: Player, newSimData: SimData)
+    SimDataManager.writeData(plr, newSimData)
 end
 
 function ClientRoot.getPlayerData(): PlayerData.Data

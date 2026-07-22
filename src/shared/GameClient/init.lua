@@ -14,7 +14,7 @@ local Network = require(ReplicatedStorage.Shared.Network)
 local CliApi = require(script.CliNetApi)
 local PlayerData = require(script.Parent.PlayerData)
 local CorePlayerUI = require(script.UI.CorePlayerUI)
-local PlayerVisuals = require(script.PlayerVisuals)
+local SimVisuals = require(script.SimVisuals)
 local CharacterSounds = require(ReplicatedStorage.Shared.CharacterSounds)
 local Controller = require(ReplicatedStorage.Shared.Controller)
 local Simulation = require(ReplicatedStorage.Shared.Controller.Simulation)
@@ -380,6 +380,10 @@ function GameClient.updateWeaponInventory(dt: number)
     end
 end
 
+function GameClient.updateLocalSimData()
+    ClientRoot.writeSimData(Players.LocalPlayer, simulation:getCurrentSimData())
+end
+
 ------------------------------------------------------------------------------------------------------------------------
 -- GameClient update
 ------------------------------------------------------------------------------------------------------------------------
@@ -388,6 +392,7 @@ function GameClient.update(dt: number)
     GameClient.updateSimData(dt)
     GameClient.updateFallDamage(dt)
     GameClient.updateWeaponInventory(dt)
+    GameClient.updateLocalSimData()
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -395,6 +400,7 @@ end
 
 local function onSetHealthRemote(plr: Player, newHp: number, damageType: string?)
     if (plr ~= localPlr) then
+        --CharacterSounds.updatePlayerSound(self, plr, item, play)
         return
     end
     local _damageType = if (damageType) then damageType else DamageType.NONE
@@ -436,9 +442,19 @@ local function onFireWeapon(uid: number, altFire: boolean)
     weapon:fire(altFire)
 end
 
+local function onPlrDataToClient(plr: Player, payload: buffer)
+    if (plr == Players.LocalPlayer) then
+        return
+    end
+
+    local newSimData = simulation:deserializeSimData(payload)
+    print(newSimData)
+    ClientRoot.writeSimData(plr, newSimData)
+end
+
 local cliREFunction = {
     [Network.serverEvents.playSound] = function(plr: Player, item: string, play: boolean)
-        CharacterSounds:updatePlayerSound(plr, item, play)
+        CharacterSounds:updatePlayerSoundOnEvent(plr, item, play)
     end,
     [Network.serverEvents.setHealth] = function(plr: Player, hp: number, damageType: string)
         onSetHealthRemote(plr, hp, damageType)
@@ -456,8 +472,8 @@ local cliREFunction = {
 }
 
 local cliFastREFunctions = {
-    [Network.serverFastEvents.jointsDataToClient] = function(plr: Player, ...)
-        -- TODO
+    [Network.serverFastEvents.plrDataToClient] = function(plr: Player, ...)
+        onPlrDataToClient(plr, ...)
     end,
 }
 
@@ -472,7 +488,7 @@ ClientRoot.signals.healthChanged.Event:Connect(GameClient.onHealthChanged)
 ------------------------------------------------------------------------------------------------------------------------
 
 GameClient.init()
-PlayerVisuals.init()
+SimVisuals.init()
 CorePlayerUI.disableAll()
 CorePlayerUI.setActive(CorePlayerUI.UIType.GAME)
 

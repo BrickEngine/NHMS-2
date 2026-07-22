@@ -10,7 +10,6 @@ local controller = script.Parent.Parent
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
 local InputManager = require(ReplicatedStorage.Shared.InputManager)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
-local SoundManager = require(ReplicatedStorage.Shared.CharacterSounds)
 local BaseState = require(script.Parent.BaseState)
 local PhysCheck = require(controller.Common.PhysCheck)
 local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
@@ -43,8 +42,6 @@ local TRAGET_VERT_VEL_FAC = 3 -- factor for vertical wall movement velocity
 local WALL_MAX_SPEED = 135.0 -- studs/s, max speed on the wall
 local BOOST_FAC = 1.125 --1.32 -- by how much to boost the wall velocity on enter
 local WALL_SPEED_LOSS_FAC = 9.5 -- how much speed is reduced each phys update on the wall
-
-local PLAY_WALL_SOUNDS = true
 
 local PHYS_RADIUS = CharacterDef.PARAMS.LEGCOLL_SIZE.Z * 0.5
 local HIP_HEIGHT = CharacterDef.PARAMS.LEGCOLL_SIZE.X
@@ -208,16 +205,16 @@ function Wall:stateEnter(stateId: number, params: any?)
     jumpKeyPressedOnEnter = InputManager:getJumpKeyDown()
 
     -- play entry sounds and start looped wall-run sound
-    if (PLAY_WALL_SOUNDS) then
-        local soundArr = {
-            SoundManager.SOUND_ITEMS.WALL_ENTER_0,
-            SoundManager.SOUND_ITEMS.WALL_ENTER_1
-        }
-        local chosen = soundArr[math.random(1, 2)]
-        SoundManager:updateGlobalSound(chosen, true)
-        -- looped sound
-        SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WALL_SLIDE, true)
-    end
+    -- if (PLAY_WALL_SOUNDS) then
+    --     local soundArr = {
+    --         SoundManager.SOUND_ITEMS.WALL_ENTER_0,
+    --         SoundManager.SOUND_ITEMS.WALL_ENTER_1
+    --     }
+    --     local chosen = soundArr[math.random(1, 2)]
+    --     SoundManager:updateGlobalSound(chosen, true)
+    --     -- looped sound
+    --     SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WALL_SLIDE, true)
+    -- end
 end
 
 function Wall:stateLeave()
@@ -233,7 +230,7 @@ function Wall:stateLeave()
 
     peakedJumpAfterEntry = false
 
-    SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WALL_SLIDE, false)
+    --SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WALL_SLIDE, false)
 end
 
 -- Registers jump input and transitions to ground, when a dismount is executed
@@ -278,13 +275,13 @@ function Wall:handleDismount(dt: number, wallNorm: Vector3)
     primaryPart:ApplyImpulse(impulse)
 
     -- play dismount sound
-    if (PLAY_WALL_SOUNDS) then
-        if (dashExit) then
-            SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.JUMP_BLAST, true)
-        else
-            SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.JUMP, true) 
-        end
-    end
+    -- if (PLAY_WALL_SOUNDS) then
+    --     if (dashExit) then
+    --         SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.JUMP_BLAST, true)
+    --     else
+    --         SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.JUMP, true) 
+    --     end
+    -- end
 
     self._simulation:transitionState(PlayerStateId.GROUND)
 end

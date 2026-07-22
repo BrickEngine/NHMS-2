@@ -238,6 +238,16 @@ local function onPlayerRequestFireWeapon(plr: Player, pos: Vector3?, dir: Vector
     ServNetApi.events[Network.serverEvents.fireWeapon]:FireAllClients(currWeapon.uid, params)
 end
 
+local function onPlayerSendSimData(plr: Player, payload: buffer?)
+    if (not payload or typeof(payload) ~= "buffer") then
+        warn(`'{plr}' did not send a payload buffer`); return
+    end
+    if (buffer.len(payload) > 2) then
+        warn(`'{plr}' sent invalid payload`); return
+    end
+    ServNetApi.fastEvents[Network.serverFastEvents.plrDataToClient]:FireAllClients(plr, payload)
+end
+
 local remEventFunctions = {
     [Network.clientEvents.requestSpawn] = function(plr: Player)
         onPlayerRequestSpawn(plr)
@@ -260,11 +270,8 @@ local remEventFunctions = {
 }
 
 local fastRemEventFunctions = {
-    [Network.clientFastEvents.jointsDataToServer] = function(plr: Player)
-        -- TODO
-    end,
-    [Network.clientFastEvents.plrDataToServer] = function(plr: Player)
-        -- TODO
+    [Network.clientFastEvents.plrDataToServer] = function(plr: Player, ...)
+        onPlayerSendSimData(plr, ...)
     end,
 }
 

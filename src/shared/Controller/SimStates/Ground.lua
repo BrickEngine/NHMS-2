@@ -9,10 +9,9 @@ local Workspace = game:GetService("Workspace")
 local controller = script.Parent.Parent
 local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
+local CharacterSounds = require(ReplicatedStorage.Shared.CharacterSounds)
 local InputManager = require(ReplicatedStorage.Shared.InputManager)
-local SoundManager = require(ReplicatedStorage.Shared.CharacterSounds)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
---local AnimationStateId = require(ReplicatedStorage.Shared.Enums.AnimationStateId)
 local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 local BaseState = require(controller.SimStates.BaseState)
 local PhysCheck = require(controller.Common.PhysCheck)
@@ -52,11 +51,8 @@ local COLL_HEIGHT = CharacterDef.PARAMS.MAINCOLL_SIZE.X
 local FORCE_STEPUP = false -- whether the player will be forced up steep inclines, if too low to the ground
 local GND_FORCE_DIST = 0.1 -- ground distance below or at which player will be forced up, if FORCE_STEUP is true
 
-local PLAY_JUMP_SOUND = true -- To be removed later
-
--- animation
--- local ANIM_THRESHHOLD = 0.1 -- Studs/s
--- local ANIM_SPEED_FAC = 0.06
+-- other
+local PLAY_JUMP_SOUND = true
 
 -- constants
 local VEC3_ZERO = Vector3.zero
@@ -218,19 +214,18 @@ function Ground:updateJump(dt: number, override: boolean?)
 
         -- execute jump
         if (jumpSignal or override) then
-            if (PLAY_JUMP_SOUND and not override) then
-                SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.JUMP, true) 
-            end
-
             self.forces.posForce.Enabled = false
-
+            
             local jumpInitVel: number = math.sqrt(Workspace.Gravity * 2 * JUMP_HEIGHT)
             local yVel = primaryPart.AssemblyLinearVelocity.Y
-            -- if (yVel < 0) then
-            --     yVel = 0
-            -- end
+
             primaryPart:ApplyImpulse(
                 VEC3_UP * (jumpInitVel - yVel * JUMP_Y_VEL_DAMP) * primaryPart.AssemblyMass)
+                
+            if (PLAY_JUMP_SOUND and not self._simulation.isDead) then
+                CharacterSounds:updateLocalSound(CharacterSounds.SOUND_ITEMS.JUMP, true)
+            end
+
             jumped = true
         end
     end
@@ -358,10 +353,6 @@ function Ground:update(dt: number)
         self.forces.posForce.MaxAxesForce = mass * (grav * 20 + currVel.Y * currVel.Y) * VEC3_UP
         self.forces.posForce.Position = Vector3.new(0, targetPosY, 0)
 
-        if (PLAY_JUMP_SOUND and offGroundTime >= 0.2 and not self._simulation.isDead) then
-            SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.FLOOR_HIT, true)
-        end
-
         -- force character to get more ground distance, if too close to ground
         if (FORCE_STEPUP) then
             local closestPosDiff = math.abs(groundData.closestPos.Y - primaryPart.CFrame.Position.Y)
@@ -404,15 +395,6 @@ function Ground:update(dt: number)
 
     -- update movement and switch to dash, if dashing
     self:updateMove(dt, rawMoveDir, groundData.normal, groundData.normalAngle)
-
-    -- update animation
-    -- if (currHoriVel.Magnitude >= ANIM_THRESHHOLD) then
-    --     self.animation:setState(AnimationStateId.WALK)
-    --     self.animation:adjustSpeed(currHoriVel.Magnitude * ANIM_SPEED_FAC)
-    -- else
-    --     self.animation:setState(AnimationStateId.IDLE)
-    --     self.animation:adjustSpeed(1)
-    -- end
 
     do
         local canMountWall
