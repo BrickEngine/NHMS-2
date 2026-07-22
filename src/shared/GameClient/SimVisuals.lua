@@ -200,8 +200,6 @@ function SimVisuals.updatePlayerEffects(dt: number, plr: Player)
             end
         end
 
-                print(submergedTime)
-
         if (not newSD.onWaterSurface) then
             submergedTime += dt
         else
