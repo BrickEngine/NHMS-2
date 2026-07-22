@@ -89,7 +89,6 @@ function SimVisuals.init()
         end
         disconnectConnTbl(soundConns)
         disconnectConnTbl(animConns)
-        SimVisuals.removePlayerVars(Players.LocalPlayer)
     end
 
     local function onGlobalPlayerAdded(plr: Player)
@@ -167,9 +166,9 @@ function SimVisuals.updatePlayerEffects(dt: number, plr: Player)
     local function updateWaterEffects(char: Model, newSD: ClientRoot.SimData, prevSD: ClientRoot.SimData)
         local splashTime = playerVars[plr].timeSinceSplash
         local submergedTime = playerVars[plr].submergedTime
-        if (newSD.playerStateId ~= PlayerStateId.WATER) then
-            --return
-        end
+        -- if (newSD.playerStateId ~= PlayerStateId.WATER) then
+        --     return
+        -- end
         if (not char.PrimaryPart) then
             error(`missing primary part of '{plr}'`)
         end
@@ -290,6 +289,8 @@ function SimVisuals.updateAnimations()
     end
 end
 
+------------------------------------------------------------------------------------------------------------------------
+-- Update functions
 ------------------------------------------------------------------------------------------------------------------------
 
 function SimVisuals.animUpdate(dt: number)

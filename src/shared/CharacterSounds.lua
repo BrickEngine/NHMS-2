@@ -14,7 +14,9 @@ local Workspace = game:GetService("Workspace")
 
 local Network = require(ReplicatedStorage.Shared.Network)
 local CliNetApi = require(ReplicatedStorage.Shared.GameClient.CliNetApi)
+local SoundAccumulator = require(ReplicatedStorage.Shared.Util.SoundAccumulator)
 
+local ACC_SIZE = 5 -- how many sound instaces to create for each sound
 local SOUND_PB_REG_HUGE = 100
 local PLAY_LOCAL = true -- whether to play non-looped sounds for the client locally
 --local SOUND_POOL_SIZE = 3 -- number of instances to create for each sound
@@ -127,7 +129,7 @@ local SOUND_DATA = table.freeze({
 --plasma: 140301279229381
 
 local soundEffectsMap = {} :: {[Sound]: {SoundEffect}}
-local playerSoundsMap = {} :: {[Player]: {[string]: Sound}}
+local playerSoundsMap = {} :: {[Player]: {[string]: Sound | SoundAccumulator.Object}}
 local playerConnTbl = {} :: {[Player]: {RBXScriptConnection}}
 
 local localPlr = Players.LocalPlayer
@@ -147,50 +149,67 @@ local function createSound(plr: Player, char: Model, item: string)
         sound[propName] = propVal
     end
 
-    -- set sound parent
-    if (plr == localPlr) then
-        sound.Parent = Workspace.CurrentCamera
-    else
-        sound.Parent = primaryPart
-    end
-
     -- map sound item to player
     if (not playerSoundsMap[plr]) then
         playerSoundsMap[plr] = {}
     end
-    playerSoundsMap[plr][item] = sound
+
+    if (sound.Looped) then
+        if (plr == localPlr) then
+            sound.Parent = Workspace.CurrentCamera
+        else
+            sound.Parent = primaryPart
+        end
+        playerSoundsMap[plr][item] = sound
+    else
+        local soundAcc = SoundAccumulator.new(char, sound, ACC_SIZE)
+        playerSoundsMap[plr][item] = soundAcc
+    end
 end
 
 -- Updates looped and non-looped 3D-Sounds
-local function updateSound(sound: Sound, play: boolean)
+local function updateSound(obj: Sound | SoundAccumulator.Object, play: boolean)
     local function resetSound(sound: Sound)
         sound:Stop()
         sound:Play()
     end
 
-    if (not play) then
-        if (sound.IsPlaying) then
-            sound:Stop()
-        end
-        sound.TimePosition = 0
+    -- call play on acc, if its not a sound
+    if (typeof(obj) ~= "Instance") then
+        obj:play()
         return
     end
-    if (sound.Looped) then
-        if (sound.IsPlaying) then
+
+    if (not play) then
+        if (obj.IsPlaying) then
+            obj:Stop()
+        end
+        obj.TimePosition = 0
+        return
+    end
+    if (obj.Looped) then
+        if (obj.IsPlaying) then
             return
         end
-        resetSound(sound)
+        resetSound(obj)
     else
         if (play) then
-            resetSound(sound)
+            resetSound(obj)
         end
     end
 end
 
-local function playLocalSound(sound: Sound, play: boolean)
-    if (play) then
-        SoundService:PlayLocalSound(sound)
+local function playLocalSound(obj: Sound | SoundAccumulator.Object, play: boolean)
+    if (not play) then
+        return
     end
+    local sound: Sound
+    if (typeof(obj) == "Instance") then
+        sound = obj
+    else
+        sound = obj:getRefSound()
+    end
+    SoundService:PlayLocalSound(sound)
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -216,8 +235,12 @@ function SoundManager.init()
         if (not playerSoundsMap[plr]) then
             return
         end
-        for _, sound: Sound in pairs(playerSoundsMap[plr]) do
-            sound:Destroy()
+        for _, obj: (Sound | SoundAccumulator.Object) in pairs(playerSoundsMap[plr]) do
+            if (typeof(obj) == "Instance") then
+                obj:Destroy()
+            else
+                obj:destroy()
+            end
         end
         playerSoundsMap[plr] = nil
     end
