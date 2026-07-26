@@ -402,7 +402,7 @@ function GameClient.updateDamage(dt: number)
             local primPart = character.PrimaryPart
             local ray = Workspace:Raycast(
                 primPart.CFrame.Position + VEC3_UP * 1.05, 
-                -VEC3_UP * CharacterDef.PARAMS.LEGCOLL_SIZE.X * 1.25, 
+                -VEC3_UP * CharacterDef.PARAMS.LEGCOLL_SIZE.X * 2, 
                 floorRayParams
             )
 
