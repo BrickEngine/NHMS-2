@@ -107,6 +107,8 @@ function Water.new(...)
 end
 
 function Water:stateEnter(stateId: number, params: any?)
+    self.shared.nearWall = false
+
     if (not self.forces) then
         warn("No forces to enable in state: 'Water'"); return
     end

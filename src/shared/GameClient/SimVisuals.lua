@@ -20,6 +20,9 @@ local BASE_EFF_COOLDOWN_TIME = 0.2 -- cooldown time for most effects
 local SPLASH_COOLDOWN_TIME = 0.25
 local MIN_DIVE_SURFACE_TIME = 0.25 -- how much time to spend underwater before gasp
 
+local VEC3_ZERO = Vector3.zero
+local VEC3_UP = Vector3.new(0, 1, 0)
+
 local preAnimConn = nil :: RBXScriptConnection?
 local renderConn = nil :: RBXScriptConnection?
 local soundConns = {} :: {RBXScriptConnection?}
@@ -37,6 +40,7 @@ end
 
 type PlayerVars = {
     lastSimData: ClientRoot.SimData,
+    wallEntityInfo: ParticleEffects.EntityInfo,
     offGroundTime: number,
     timeSinceSplash: number,
     submergedTime: number,
@@ -56,6 +60,11 @@ local SimVisuals = {
 
     DEFAULT_PLAYER_VARS = table.freeze({
         lastSimData = FuncUtil.deepCopy(ClientRoot.getDefaultSimData()),
+        wallEntityInfo = {
+            cf = CFrame.identity,
+            vel = VEC3_ZERO,
+            exit = false
+        },
         offGroundTime = 0,
         timeSinceSplash = 0,
         submergedTime = 0,
@@ -170,7 +179,7 @@ function SimVisuals.updatePlayerEffects(dt: number, plr: Player)
         --     return
         -- end
         if (not char.PrimaryPart) then
-            error(`missing primary part of '{plr}'`)
+            warn(`missing primary part of '{plr}'`); return
         end
 
         -- entering and leaving surface
@@ -217,14 +226,30 @@ function SimVisuals.updatePlayerEffects(dt: number, plr: Player)
     end
 
     local function updateWallEffects(char: Model, newSD: ClientRoot.SimData, prevSD: ClientRoot.SimData)
-        if (prevSD.nearWall ~= newSD.nearWall) then
-            local entering = newSD.nearWall
-            if (entering) then
+        local primPart = char.PrimaryPart
+        if (not primPart) then
+            warn(`missing primary part of '{plr}'`); return
+        end
+
+        local inWallState = newSD.playerStateId == PlayerStateId.WALL
+        playerVars[plr].wallEntityInfo.cf = primPart.CFrame
+        playerVars[plr].wallEntityInfo.vel = primPart.AssemblyLinearVelocity * 1.25
+        playerVars[plr].wallEntityInfo.exit = not inWallState
+
+        if (prevSD.playerStateId ~= newSD.playerStateId) then
+            -- entering the wall
+            if (inWallState) then
                 CharacterSounds:updatePlayerSound(plr, CharacterSounds.SOUND_ITEMS.WALL_ENTER_0, true)
+                ParticleEffects.createDirSparksUpdater(
+                    playerVars[plr].wallEntityInfo, true, Vector2.new(15,45), VEC3_UP * 0.25
+                )
             end
             -- looped wall sound
-            CharacterSounds:updatePlayerSound(plr, CharacterSounds.SOUND_ITEMS.WALL_SLIDE, entering)
+            CharacterSounds:updatePlayerSound(plr, CharacterSounds.SOUND_ITEMS.WALL_SLIDE, inWallState)
         end
+        --else
+        --    CharacterSounds:updatePlayerSound(plr, CharacterSounds.SOUND_ITEMS.WALL_SLIDE, false)
+        --end
     end
 
     local char = plr.Character
@@ -232,7 +257,7 @@ function SimVisuals.updatePlayerEffects(dt: number, plr: Player)
         return
     end
     if (not playerVars[plr]) then
-        error(`No existing playerVars entry for '{plr}'`)
+        warn(`No existing playerVars entry for '{plr}'`); return
     end
 
     do

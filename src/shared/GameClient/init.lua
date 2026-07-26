@@ -226,8 +226,10 @@ function GameClient.onHealthChanged(newHp: number, hpDiff: number, damageType: s
 
     -- play sounds
     if (hpDiff < 0) then
+        local underWater = rootSimData.inWater and not rootSimData.onWaterSurface
+
         if (newHp > 0) then
-            if (_damageType == DamageType.DROWN) then
+            if (_damageType == DamageType.DROWN or underWater) then
                 CharacterSounds:updateLocalSound(CharacterSounds.SOUND_ITEMS.DAMAGE_DROWN, true)
             else
                 local rmdSoundItem = DMG_SOUND_ARR[math.random(1, #DMG_SOUND_ARR)]
@@ -235,8 +237,8 @@ function GameClient.onHealthChanged(newHp: number, hpDiff: number, damageType: s
             end
         elseif (newHp == 0) then
             local deathSound = DEATH_SOUND_MAP[_damageType]
-            if (_damageType == DamageType.DROWN) then
-                CharacterSounds:updateLocalSound(deathSound, true)
+            if (_damageType == DamageType.DROWN or underWater) then
+                CharacterSounds:updateLocalSound(CharacterSounds.SOUND_ITEMS.DEATH_DROWN, true)
             else
                 CharacterSounds:updateGlobalSound(deathSound, true)
             end
@@ -337,7 +339,10 @@ end
 
 function GameClient.updateOxygen(dt: number)
     if (rootPlrData.waterBreathingActive) then
-        rootLocData.oxygen = 100; return
+        rootLocData.oxygen = LocalData.LIMITS.maxOxygen; return
+    end
+    if (rootPlrData.isDead) then
+        rootLocData.oxygen = 0; return
     end
 
     local oxygen = rootLocData.oxygen
@@ -396,7 +401,7 @@ function GameClient.updateDamage(dt: number)
         if (damageConditions) then
             local primPart = character.PrimaryPart
             local ray = Workspace:Raycast(
-                primPart.CFrame.Position, 
+                primPart.CFrame.Position + VEC3_UP * 1.05, 
                 -VEC3_UP * CharacterDef.PARAMS.LEGCOLL_SIZE.X * 1.25, 
                 floorRayParams
             )

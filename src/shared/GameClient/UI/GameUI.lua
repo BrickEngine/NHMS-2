@@ -140,8 +140,18 @@ local function updateOxygenDisplay(dt: number)
     local oxyBox = activeGuiObj.LowPanel.OxygenBox
     local oxyText = oxyBox.OxyDisplay
     local currOxygen = math.ceil(locData.oxygen)
+    local isDead = ClientRoot.getPlayerData().isDead
 
-    oxyBox.Visible = currOxygen < LocalData.LIMITS.maxOxygen or underWater
+    if (isDead) then
+        return
+    end
+
+    oxyBox.Visible =
+        underWater or (currOxygen < LocalData.LIMITS.maxOxygen and not isDead)
+
+    if (ClientRoot.getPlayerData().isDead and not underWater) then
+        oxyBox.Visible = false
+    end
 
     local numString = string.format("%03d", currOxygen)
     oxyText.Text = "OXYGEN: " .. numString .. "%"

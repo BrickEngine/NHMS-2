@@ -209,6 +209,9 @@ function Wall:stateEnter(stateId: number, params: any?)
 end
 
 function Wall:stateLeave()
+    self.shared.nearWall = false
+    peakedJumpAfterEntry = false
+
     if (not self.forces) then
         return
     end
@@ -218,12 +221,6 @@ function Wall:stateLeave()
 
     local primaryPart: BasePart = self.character.PrimaryPart
     assert(primaryPart, `Missing PrimaryPart of character '{self.character.name}'`)
-
-    self.shared.nearWall = false
-
-    peakedJumpAfterEntry = false
-
-    --SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WALL_SLIDE, false)
 end
 
 -- Registers jump input and transitions to ground, when a dismount is executed
@@ -300,7 +297,6 @@ function Wall:updateVerticalAnchor(dt: number)
 
     if (peakedJumpAfterEntry) then
         self.forces.posForce.Position = primaryPart.CFrame.Position + (VEC3_UP * targetVertVel * dt)
-
         return
     end
     

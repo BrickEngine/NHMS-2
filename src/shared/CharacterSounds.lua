@@ -64,7 +64,7 @@ local SOUND_DATA = table.freeze({
         Volume = 0.9,
     },
     [SOUND_ITEMS.DEATH_DROWN] = {
-        SoundId = "rbxassetid://134069985010030",
+        SoundId = "rbxassetid://131715735594054",
     },
     [SOUND_ITEMS.DEATH_FALL] = {
         SoundId = "rbxassetid://105918113497097", --125793119459513 95272958949487
