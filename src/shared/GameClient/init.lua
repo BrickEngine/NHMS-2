@@ -7,17 +7,21 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
 
 local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
---local CliNetApi = require(script.CliNetApi)
 local Network = require(ReplicatedStorage.Shared.Network)
 local CliApi = require(script.CliNetApi)
+local CharacterDef = require(script.Parent.CharacterDef)
+local Global = require(script.Parent.Global)
 local PlayerData = require(script.Parent.PlayerData)
+local LocalData = require(ReplicatedStorage.Shared.ClientRoot.LocalData)
 local CorePlayerUI = require(script.UI.CorePlayerUI)
 local SimVisuals = require(script.SimVisuals)
 local CharacterSounds = require(ReplicatedStorage.Shared.CharacterSounds)
 local Controller = require(ReplicatedStorage.Shared.Controller)
 local Simulation = require(ReplicatedStorage.Shared.Controller.Simulation)
+local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
 local InputManager = require(ReplicatedStorage.Shared.InputManager)
 local SlotSwitchType = require(ReplicatedStorage.Shared.InputManager.SlotSwitchType)
 
@@ -30,8 +34,11 @@ local INVENTORY_SIZE = PlayerData.LIMITS.maxInventorySize
 
 local MIN_FALL_DMG_VEL = 65.0
 local MIN_FALL_DMG = 2
-local FALL_DMG_COOLDOWN = 0.25
 local FALL_DMG_FAC = 1.5
+local DROWN_DMG = 10
+local LAVA_DMG = 17.5
+local DMG_DELAY = 0.35
+local DROWN_DMG_DELAY = 0.5
 
 local DEATH_SOUND_MAP = {
     [DamageType.NONE] = CharacterSounds.SOUND_ITEMS.DEATH,
@@ -50,6 +57,8 @@ local DMG_SOUND_ARR = {
     CharacterSounds.SOUND_ITEMS.DAMAGE_2,
 }
 
+local VEC3_UP = Vector3.new(0, 1, 0)
+
 local clientEvents = Network.clientEvents
 local localPlr = Players.LocalPlayer
 
@@ -57,14 +66,18 @@ local simulation = Controller:getSimulation()
 local controllerCamera = Controller:getCamera()
 local rootPlrData = ClientRoot.getPlayerData()
 local rootSimData = ClientRoot.getSimData()
-local rootGameData = ClientRoot.getGameData()
+local rootLocData = ClientRoot.getLocalData()
 
 local lastFallVel = 0
-local fallCooldown = 0
+local dmgCooldown = 0
 local switchFree = true -- mutex for controling weapon behavior during active inv slot changes
 local targetInvSlot = 0
 
---local weapIdMap = {} :: {[number]: BaseWeapon.Weapon}
+local floorRayParams = RaycastParams.new()
+floorRayParams.CollisionGroup = CollisionGroup.PLAYER
+floorRayParams.FilterType = Enum.RaycastFilterType.Exclude
+floorRayParams.IgnoreWater = true
+floorRayParams.RespectCanCollide = true
 
 local updateConn: RBXScriptConnection
 local charAddedConn: RBXScriptConnection
@@ -214,11 +227,19 @@ function GameClient.onHealthChanged(newHp: number, hpDiff: number, damageType: s
     -- play sounds
     if (hpDiff < 0) then
         if (newHp > 0) then
-            local rmdSoundItem = DMG_SOUND_ARR[math.random(1, #DMG_SOUND_ARR)]
-            CharacterSounds:updateGlobalSound(rmdSoundItem, true)
+            if (_damageType == DamageType.DROWN) then
+                CharacterSounds:updateLocalSound(CharacterSounds.SOUND_ITEMS.DAMAGE_DROWN, true)
+            else
+                local rmdSoundItem = DMG_SOUND_ARR[math.random(1, #DMG_SOUND_ARR)]
+                CharacterSounds:updateGlobalSound(rmdSoundItem, true)
+            end
         elseif (newHp == 0) then
             local deathSound = DEATH_SOUND_MAP[_damageType]
-            CharacterSounds:updateGlobalSound(deathSound, true)
+            if (_damageType == DamageType.DROWN) then
+                CharacterSounds:updateLocalSound(deathSound, true)
+            else
+                CharacterSounds:updateGlobalSound(deathSound, true)
+            end
         end
     end
 end
@@ -227,6 +248,7 @@ function GameClient.onDeathStateChanged(isDead: boolean, lastDamageType: string)
     if (not isDead) then
         -- Revival
         -- TODO: spawn / revive effects
+        rootLocData.oxygen = LocalData.LIMITS.maxOxygen
         controllerCamera:activateFPDeathCam(false)
         repeat 
             task.wait()
@@ -248,40 +270,190 @@ function GameClient.onDeathStateChanged(isDead: boolean, lastDamageType: string)
     end
 end
 
-function GameClient.updateFallDamage(dt: number)
-    local character = Players.LocalPlayer.Character
-    local isDead = rootPlrData.isDead
+-- function GameClient.updateFallDamage(dt: number)
+--     local character = Players.LocalPlayer.Character
+--     local isDead = rootPlrData.isDead
 
-    if (not character or isDead) then
-        return
+--     if (not character or not character.PrimaryPart or isDead) then
+--         return
+--     end
+
+--     local primPart = character.PrimaryPart
+--     local currFallVel = math.abs(math.min(primPart.AssemblyLinearVelocity.Y, 0))
+
+--     local damageConditions = 
+--         not rootPlrData.godModeActive
+--         and rootSimData.playerStateId == PlayerStateId.GROUND 
+--         and rootSimData.isGrounded 
+--         and lastFallVel >= MIN_FALL_DMG_VEL 
+--         and dmgCooldown <= 0
+
+--     if (damageConditions) then
+--         local damage = (lastFallVel - MIN_FALL_DMG_VEL) * FALL_DMG_FAC + MIN_FALL_DMG
+--         local newHp = rootPlrData.health - damage
+--         newHp = math.max(0, newHp)
+--         GameClient.changeHealth(newHp, DamageType.FALL)
+--         dmgCooldown = DMG_COOLDOWN
+--     end
+
+--     dmgCooldown = math.max(0, dmgCooldown - dt)
+--     lastFallVel = currFallVel
+-- end
+
+-- function GameClient.updateLavaDamage(dt: number)
+--     local character = Players.LocalPlayer.Character
+--     local isDead = rootPlrData.isDead
+
+--     if (not character or not character.PrimaryPart or isDead) then
+--         return
+--     end
+
+--     local damageConditions = 
+--         not rootPlrData.godModeActive
+--         and not rootPlrData.lavaResistanceActive
+--         and rootSimData.isGrounded 
+--         and dmgCooldown <= 0
+
+--     if (damageConditions) then
+--         local primPart = character.PrimaryPart
+--         local ray = Workspace:Raycast(
+--             primPart.CFrame.Position, 
+--             -VEC3_UP * CharacterDef.PARAMS.LEGCOLL_SIZE.X * 1.25, 
+--             floorRayParams
+--         )
+
+--         if (ray and ray.Instance) then
+--             if (ray.Instance:HasTag(Global.TAG_NAMES.LAVA)) then
+--                 dmgCooldown = DMG_COOLDOWN
+--                 local newHp = rootPlrData.health - LAVA_DMG
+--                 newHp = math.max(0, newHp)
+--                 GameClient.changeHealth(newHp, DamageType.NAPALM)
+--             end
+--         end 
+--     end
+
+--     dmgCooldown = math.max(0, dmgCooldown - dt)
+-- end
+
+function GameClient.updateOxygen(dt: number)
+    if (rootPlrData.waterBreathingActive) then
+        rootLocData.oxygen = 100; return
     end
 
-    local primPart = character.PrimaryPart
-    assert(primPart, "No primary part")
+    local oxygen = rootLocData.oxygen
+    local underWater = rootSimData.inWater and not rootSimData.onWaterSurface
+    local changeFac = if (underWater) then -18 else 80
 
-    local currFallVel = math.abs(math.min(primPart.AssemblyLinearVelocity.Y, 0))
-
-    local damageConditions = 
-        rootSimData.playerStateId == PlayerStateId.GROUND 
-        and rootSimData.isGrounded 
-        and lastFallVel >= MIN_FALL_DMG_VEL 
-        and fallCooldown <= 0
-
-    if (damageConditions) then
-        local damage = (lastFallVel - MIN_FALL_DMG_VEL) * FALL_DMG_FAC + MIN_FALL_DMG
-        local newHp = rootPlrData.health - damage
-        newHp = math.max(0, newHp)
-        GameClient.changeHealth(newHp, DamageType.FALL)
-        fallCooldown = FALL_DMG_COOLDOWN
-    end
-
-    fallCooldown = math.max(0, fallCooldown - dt)
-    lastFallVel = currFallVel
+    oxygen += dt * changeFac
+    oxygen = math.clamp(oxygen, LocalData.LIMITS.minOxygen, LocalData.LIMITS.maxOxygen)
+    rootLocData.oxygen = oxygen
 end
 
-function GameClient.updateGameTime(dt: number, override: number?)
-    local newTime = override or rootGameData.gameTime + dt
-    ClientRoot.setGameTime(newTime)
+function GameClient.updateDamage(dt: number)
+    local function calcFallDamage(dt): number
+        local character = Players.LocalPlayer.Character
+        local isDead = rootPlrData.isDead
+        local damage = 0
+
+        if (not character or not character.PrimaryPart or isDead) then
+            return damage
+        end
+
+        local primPart = character.PrimaryPart
+        local currFallVel = math.abs(math.min(primPart.AssemblyLinearVelocity.Y, 0))
+
+        local damageConditions = 
+            not rootPlrData.godModeActive
+            and rootSimData.playerStateId == PlayerStateId.GROUND 
+            and rootSimData.isGrounded 
+            and lastFallVel >= MIN_FALL_DMG_VEL 
+            and dmgCooldown <= 0
+
+        if (damageConditions) then
+            damage = (lastFallVel - MIN_FALL_DMG_VEL) * FALL_DMG_FAC + MIN_FALL_DMG
+        end
+
+        lastFallVel = currFallVel
+
+        return damage
+    end
+
+    local function calcLavaDamage(dt): number
+        local character = Players.LocalPlayer.Character
+        local isDead = rootPlrData.isDead
+        local damage = 0
+
+        if (not character or not character.PrimaryPart or isDead) then
+            return damage
+        end
+
+        local damageConditions = 
+            not rootPlrData.godModeActive
+            and not rootPlrData.lavaResistanceActive
+            and rootSimData.isGrounded 
+            and dmgCooldown <= 0
+
+        if (damageConditions) then
+            local primPart = character.PrimaryPart
+            local ray = Workspace:Raycast(
+                primPart.CFrame.Position, 
+                -VEC3_UP * CharacterDef.PARAMS.LEGCOLL_SIZE.X * 1.25, 
+                floorRayParams
+            )
+
+            if (ray and ray.Instance) then
+                if (ray.Instance:HasTag(Global.TAG_NAMES.LAVA)) then
+                    damage = LAVA_DMG
+                end
+            end 
+        end
+
+        return damage
+    end
+
+    local function calcDrownDamage(dt): number
+        local damage = 0
+
+        local damageConditions = 
+            rootSimData.inWater
+            and not rootSimData.onWaterSurface
+            and rootLocData.oxygen == 0
+            and dmgCooldown <= 0
+
+        if (damageConditions) then
+            damage = DROWN_DMG
+        end
+
+        return damage
+    end
+
+    local fallDmg = calcFallDamage(dt)
+    local lavaDmg = calcLavaDamage(dt)
+    local drownDmg = calcDrownDamage(dt)
+
+    local damageType = DamageType.NONE
+    local damageDelay = DMG_DELAY
+    if (fallDmg > 0) then
+        damageType = DamageType.FALL
+    elseif (drownDmg > 0) then
+        damageType = DamageType.DROWN
+        damageDelay = DROWN_DMG_DELAY
+    elseif (lavaDmg > 0) then
+        damageType = DamageType.NAPALM
+    end
+
+    local totalDmg = 
+        fallDmg + lavaDmg + drownDmg
+
+    if (totalDmg > 0 and dmgCooldown <= 0) then
+        local newHp = rootPlrData.health - totalDmg
+        newHp = math.max(0, newHp)
+
+        GameClient.changeHealth(newHp, damageType)
+        dmgCooldown = damageDelay
+    end
+
+    dmgCooldown = math.max(0, dmgCooldown - dt)
 end
 
 function GameClient.updateSimData(dt: number)
@@ -388,9 +560,11 @@ end
 -- GameClient update
 ------------------------------------------------------------------------------------------------------------------------
 function GameClient.update(dt: number)
-    GameClient.updateGameTime(dt)
     GameClient.updateSimData(dt)
-    GameClient.updateFallDamage(dt)
+    -- GameClient.updateFallDamage(dt)
+    -- GameClient.updateLavaDamage(dt)
+    GameClient.updateOxygen(dt)
+    GameClient.updateDamage(dt)
     GameClient.updateWeaponInventory(dt)
     GameClient.updateLocalSimData()
 end

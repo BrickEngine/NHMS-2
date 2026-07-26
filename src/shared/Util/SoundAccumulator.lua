@@ -3,7 +3,6 @@
 ]]
 
 export type Object = {
-    mdl: Model,
     refSound: Sound,
     size: number,
     currIndex: number, 
@@ -18,14 +17,18 @@ export type Object = {
 local SoundAcc = {}
 SoundAcc.__index = SoundAcc
 
-function SoundAcc.new(mdl: Model, refSound: Sound, accSize: number): Object
+--[[
+    Creates a sound acc from a given referece sound instance.
+    All created sounds are parented to the same instance the ref sound is parented to.
+    @param refSound - reference / template sound object
+    @param accSize - how many sounds to create
+]]
+function SoundAcc.new(refSound: Sound, accSize: number): Object
     local self = setmetatable({}, SoundAcc)
 
-    local sndRootPart = mdl.PrimaryPart
     assert(accSize >= 1, "Accumulator size must be at least 1")
-    assert(sndRootPart, "Mdl must have a primary part")
+    assert(refSound.Parent ~= nil, "refSound requires a parent")
 
-    self.mdl = mdl
     self.refSound = refSound
     self.size = accSize
     self.currIndex = 1
@@ -33,10 +36,9 @@ function SoundAcc.new(mdl: Model, refSound: Sound, accSize: number): Object
 
     for i=1, accSize, 1 do
         local soundCopy = refSound:Clone()
-        soundCopy.Parent = sndRootPart
+        soundCopy.Parent = refSound.Parent
         self.sounds[i] = soundCopy
     end
-    refSound.Parent = sndRootPart
 
     return self
 end
@@ -56,6 +58,14 @@ end
 
 function SoundAcc:getRefSound(): Sound
     return self.refSound
+end
+
+function SoundAcc:getParentInst(): Instance
+    local sound: Sound = self.refSound
+    if (not sound.Parent) then
+        error("Sound has no parent")
+    end
+    return sound.Parent
 end
 
 function SoundAcc:getCurrentSound(): Sound

@@ -266,19 +266,7 @@ end
 
 function KeyboardMouse:connectFocusEventListeners()
 	local function onFocusReleased()
-		self.moveVector = VEC3_ZERO
-		self.f_val, self.b_val, self.l_val, self.r_val = 0, 0, 0, 0
-		self.jumpInp = false
-		self.dashInp = false
-		self.interInp = false
-		self.fireInp = false
-		self.altFireInp = false
-
-		self:updateMoveVec()
-		self:updateJump()
-		self:updateDash()
-		self:updateMouse()
-		self:updateInteract()
+		self:resetAllInputs()
 	end
 
 	local function onTextFocusGained(textboxFocused)

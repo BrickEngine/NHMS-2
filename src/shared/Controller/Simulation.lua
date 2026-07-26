@@ -206,7 +206,8 @@ function Simulation:toggleReadInput(readInput: boolean)
     if (self.isDead) then
         self.camAngleReset = false
     end
-    InputManager:setControlsEnabled(readInput)
+    --InputManager:setControlsEnabled(readInput)
+    InputManager:setVoidInput(not readInput)
 end
 
 -- Stuns the player by forcing state transitions or other effects, depending on the current state

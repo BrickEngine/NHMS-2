@@ -8,6 +8,7 @@ local Workspace = game:GetService("Workspace")
 
 local controller = script.Parent.Parent
 local CharacterDef = require(ReplicatedStorage.Shared.CharacterDef)
+local CharacterSounds = require(ReplicatedStorage.Shared.CharacterSounds)
 local InputManager = require(ReplicatedStorage.Shared.InputManager)
 local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local BaseState = require(script.Parent.BaseState)
@@ -18,6 +19,7 @@ local STATE_ID = PlayerStateId.WALL
 
 local DISMOUNT_SPEED = 0.1--2.4 -- studs/s (should be lower than mount speed in the Ground state)
 local ALLOW_DASH_EXIT = false -- whether to allow a more powerful dismount when holding the dash key
+local PLAY_LOCAL_WALL_SOUNDS = true
 
 local JUNP_INP_COOLDOWN = 0.1 -- seconds
 local JUMP_HEIGHT = 8.0
@@ -55,6 +57,7 @@ local jumpInpDebounce = JUNP_INP_COOLDOWN
 local peakedJumpAfterEntry = false
 local jumpKeyPressedOnEnter = false
 local isRightSideWall = false
+
 local scanVecRotFunc = nil
 local normVecRotFunc = nil
 
@@ -203,18 +206,6 @@ function Wall:stateEnter(stateId: number, params: any?)
 
     -- check if jump key is pressed on state enter
     jumpKeyPressedOnEnter = InputManager:getJumpKeyDown()
-
-    -- play entry sounds and start looped wall-run sound
-    -- if (PLAY_WALL_SOUNDS) then
-    --     local soundArr = {
-    --         SoundManager.SOUND_ITEMS.WALL_ENTER_0,
-    --         SoundManager.SOUND_ITEMS.WALL_ENTER_1
-    --     }
-    --     local chosen = soundArr[math.random(1, 2)]
-    --     SoundManager:updateGlobalSound(chosen, true)
-    --     -- looped sound
-    --     SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WALL_SLIDE, true)
-    -- end
 end
 
 function Wall:stateLeave()
@@ -274,14 +265,14 @@ function Wall:handleDismount(dt: number, wallNorm: Vector3)
 
     primaryPart:ApplyImpulse(impulse)
 
-    -- play dismount sound
-    -- if (PLAY_WALL_SOUNDS) then
-    --     if (dashExit) then
-    --         SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.JUMP_BLAST, true)
-    --     else
-    --         SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.JUMP, true) 
-    --     end
-    -- end
+    -- play dismount sound locally
+    if (PLAY_LOCAL_WALL_SOUNDS) then
+        if (dashExit) then
+            CharacterSounds:updateLocalSound(CharacterSounds.SOUND_ITEMS.JUMP_BLAST, true)
+        else
+            CharacterSounds:updateLocalSound(CharacterSounds.SOUND_ITEMS.JUMP, true) 
+        end
+    end
 
     self._simulation:transitionState(PlayerStateId.GROUND)
 end

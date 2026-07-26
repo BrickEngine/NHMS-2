@@ -6,6 +6,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
+local LocalData = require(ReplicatedStorage.Shared.ClientRoot.LocalData)
 local PlayerData = require(ReplicatedStorage.Shared.PlayerData)
 local BaseUI = require(script.Parent.BaseUI)
 local UIType = require(ReplicatedStorage.Shared.Enums.UIType)
@@ -110,7 +111,8 @@ end
 
 local blinkTime = 0
 local vis = true
-local function updateDisplays(dt: number)
+
+local function updateGeneralDisplays(dt: number)
     local hpTextBox = activeGuiObj.LowPanel.Vitals.StatsFrame.Health
     local currHp = ClientRoot.getPlayerData().health
 
@@ -131,6 +133,20 @@ local function updateDisplays(dt: number)
     end
 end
 
+local function updateOxygenDisplay(dt: number)
+    local simData = ClientRoot.getSimData()
+    local locData = ClientRoot.getLocalData()
+    local underWater = simData.inWater and not simData.onWaterSurface
+    local oxyBox = activeGuiObj.LowPanel.OxygenBox
+    local oxyText = oxyBox.OxyDisplay
+    local currOxygen = math.ceil(locData.oxygen)
+
+    oxyBox.Visible = currOxygen < LocalData.LIMITS.maxOxygen or underWater
+
+    local numString = string.format("%03d", currOxygen)
+    oxyText.Text = "OXYGEN: " .. numString .. "%"
+end
+
 local function updateFilter()
     local character: Model = Players.LocalPlayer.Character
     if (not (character and character.PrimaryPart)) then
@@ -143,6 +159,7 @@ local function updateFilter()
 end
 
 local messageTime = 0
+
 local function updateMessageBoxVisibility(dt: number)
     local messageTL = activeGuiObj.MessageBox.Message
     messageTL.Visible = messageTime > 0
@@ -388,7 +405,8 @@ function GameUI:update(dt: number)
         warn("Gui not loaded"); return
     end
 
-    updateDisplays(dt)
+    updateGeneralDisplays(dt)
+    updateOxygenDisplay(dt)
     updateDmgOverlayTransp(dt)
     updateMessageBoxVisibility(dt)
     updateFilter()

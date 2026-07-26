@@ -28,6 +28,7 @@ local SOUND_ITEMS = table.freeze({
     DAMAGE_0 = "Damage0Sound",
     DAMAGE_1 = "Damage1Sound",
     DAMAGE_2 = "Damage2Sound",
+    DAMAGE_DROWN = "DrownDamageSound",
     DEATH = "DeathSound",
     DEATH_DROWN = "DeathDrownSound",
     DEATH_FALL = "DeathFallSound",
@@ -53,6 +54,10 @@ local SOUND_DATA = table.freeze({
     [SOUND_ITEMS.DAMAGE_2] = { -- "uuuiii"
         SoundId = "rbxassetid://76277846903686",
         Volume = 0.8,
+    },
+    [SOUND_ITEMS.DAMAGE_DROWN] = {
+        SoundId = "rbxassetid://114387695653355",
+        Volume = 0.8
     },
     [SOUND_ITEMS.DEATH] = {
         SoundId = "rbxassetid://98940142026447",
@@ -109,7 +114,7 @@ local SOUND_DATA = table.freeze({
     [SOUND_ITEMS.WALL_ENTER_0] = {
         SoundId = "rbxassetid://81202220081219",
         PlaybackRegionsEnabled = true,
-        PlaybackRegion = NumberRange.new(0.1, SOUND_PB_REG_HUGE) --0.1
+        PlaybackRegion = NumberRange.new(0.1, SOUND_PB_REG_HUGE)
     },
     [SOUND_ITEMS.WALL_ENTER_1] = {
         SoundId = "rbxassetid://81202220081219", --15764092592
@@ -154,15 +159,12 @@ local function createSound(plr: Player, char: Model, item: string)
         playerSoundsMap[plr] = {}
     end
 
+    sound.Parent = if (plr == localPlr) then Workspace.CurrentCamera else primaryPart
+
     if (sound.Looped) then
-        if (plr == localPlr) then
-            sound.Parent = Workspace.CurrentCamera
-        else
-            sound.Parent = primaryPart
-        end
         playerSoundsMap[plr][item] = sound
     else
-        local soundAcc = SoundAccumulator.new(char, sound, ACC_SIZE)
+        local soundAcc = SoundAccumulator.new(sound, ACC_SIZE)
         playerSoundsMap[plr][item] = soundAcc
     end
 end

@@ -35,6 +35,7 @@ function InputManager.new()
     local self = setmetatable({}, InputManager)
 
     self.controlsEnabled = false
+    self.voidInput = false
 
     self.inputControllers = {}
     
@@ -103,7 +104,14 @@ function InputManager:setControlsEnabled(enable: boolean)
     self:updateActiveControlModuleEnabled()
 end
 
+function InputManager:setVoidInput(voidInp: boolean)
+    self.voidInput = voidInp
+end
+
 function InputManager:getMoveVec(): Vector3
+    if (self.voidInput) then
+        return VEC3_ZERO
+    end
     if (not self.activeInputController) then
         return VEC3_ZERO
     end
@@ -120,6 +128,9 @@ function InputManager:getMoveVec(): Vector3
 end
 
 function InputManager:getJumpKeyDown(): boolean
+    if (self.voidInput) then
+        return false
+    end
     if (not self.activeInputController) then
         return false
     end
@@ -127,6 +138,9 @@ function InputManager:getJumpKeyDown(): boolean
 end
 
 function InputManager:getDashKeyDown(): boolean
+    if (self.voidInput) then
+        return false
+    end
     if (not self.activeInputController) then
         return false
     end
@@ -134,6 +148,9 @@ function InputManager:getDashKeyDown(): boolean
 end
 
 function InputManager:getInteractKeyDown(): boolean
+    if (self.voidInput) then
+        return false
+    end
     if (not self.activeInputController) then
         return false
     end
@@ -146,6 +163,9 @@ end
     @return alt-fire key down
 ]]
 function InputManager:getFireKeysDown(): (boolean, boolean)
+    if (self.voidInput) then
+        return false, false
+    end
     if (not self.activeInputController) then
         return false, false
     end
@@ -160,6 +180,9 @@ end
     @return direct slot number
 ]]
 function InputManager:getInvSwitchInput(currSlot: number): (boolean, string, number?)
+    if (self.voidInput) then
+        return false, SlotSwitchType.NONE, nil
+    end
     if (not self.activeInputController) then
         return false, SlotSwitchType.NONE, nil
     end

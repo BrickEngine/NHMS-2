@@ -20,6 +20,10 @@ local LOOP_DT = 0.05
 local DEATH_REMOVE_DELAY = 2.0
 local DEATH_EVENT_COOLDOWN = 3.0
 
+local PLAYER_INST_FOLD_NAME = Global.FOLDER_NAMES.PLAYERS
+local WALL_INST_FOLD_NAME = Global.FOLDER_NAMES.WALLS
+local LAVA_INST_FOLD_NAME = Global.FOLDER_NAMES.LAVA
+
 local VALID_CLIENT_DAMAGE_TYPES = {
     [DamageType.FALL] = true,
     [DamageType.NAPALM] = true,
@@ -33,10 +37,10 @@ local deathCooldownList = {} :: {[Player]: number}
 -- Initialize Workspace
 do
     -- Create Workspace folder for runtime player characters
-    if (not Workspace:FindFirstChild(Global.PLAYERS_INST_FOLDER_NAME)) then
+    if (not Workspace:FindFirstChild(PLAYER_INST_FOLD_NAME)) then
         Instance.new(
             "Folder", Workspace
-        ).Name = Global.PLAYERS_INST_FOLDER_NAME
+        ).Name = PLAYER_INST_FOLD_NAME
     end
 
     -- Check if all collision groups are registered
@@ -46,16 +50,29 @@ do
         end
     end
 
-    -- Init walls
-    local wallsFold = Workspace:FindFirstChild(Global.WALL_INST_FOLDER_NAME, true)
-    if (wallsFold) then
-        for _, v: Instance in pairs(wallsFold:GetDescendants()) do
+    -- WallParts folder
+    local wallPartsFold = Workspace:FindFirstChild(WALL_INST_FOLD_NAME, true)
+    if (wallPartsFold) then
+        for _, v: Instance in pairs(wallPartsFold:GetDescendants()) do
             if (v:IsA("BasePart")) then
+                v:AddTag(Global.TAG_NAMES.WALL)
                 v.CollisionGroup = CollisionGroup.WALL
             end
         end
     else
-        warn("No 'Walls' folder present")
+        warn("No 'WallParts' folder present; level has no walkable walls")
+    end
+
+    -- LavaParts folder
+    local lavaPartsFold = Workspace:FindFirstChild(LAVA_INST_FOLD_NAME, true)
+    if (lavaPartsFold) then
+        for _, v: Instance in pairs(lavaPartsFold:GetDescendants()) do
+            if (v:IsA("BasePart")) then
+                v:AddTag(Global.TAG_NAMES.LAVA)
+            end
+        end
+    else
+        warn("No 'LavaParts' folder present; level has no lava tiles")
     end
 end
 
@@ -93,7 +110,7 @@ function Game.spawnPlayer(plr: Player)
 	local spawnPos : Vector3 = (tmpSpawn.CFrame.Position + Vector3.new(0,3,0)) or Vector3.new(0, 50, 0)
     do
         newCharacter.Name = tostring(plr.UserId)
-        newCharacter.Parent = Workspace:FindFirstChild(Global.PLAYERS_INST_FOLDER_NAME)
+        newCharacter.Parent = Workspace:FindFirstChild(PLAYER_INST_FOLD_NAME)
         newCharacter:MoveTo(spawnPos)
 
         newCharacter.PrimaryPart:SetNetworkOwner(plr)

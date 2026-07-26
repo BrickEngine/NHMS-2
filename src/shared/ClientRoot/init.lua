@@ -8,14 +8,13 @@ local Players = game:GetService("Players")
 
 --local PlayerStateId = require(ReplicatedStorage.Shared.Enums.PlayerStateId)
 local PlayerData = require(ReplicatedStorage.Shared.PlayerData)
+local LocalData = require(script.LocalData)
 local SimDataManager = require(script.SimDataManager)
 local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
 
-local gameData = {
-    gameTime = 0
-}
 local simData: SimDataManager.Data = SimDataManager.getData(Players.LocalPlayer)
 local plrData: PlayerData.Data = PlayerData.createPlayerData(Players.LocalPlayer)
+local locData: LocalData.Data = LocalData.createData()
 
 local function singleValChangedEvent(newVal: any, oldVal: any, bindEvent: BindableEvent)
     if (newVal == oldVal) then return end
@@ -51,12 +50,12 @@ local ClientRoot = {
 
 export type SimData = SimDataManager.Data
 export type PlrData = PlayerData.Data
-export type GameData = typeof(gameData)
+export type LocalData = LocalData.Data
 
 -- Getters
 
-function ClientRoot.getGameData(): GameData
-    return gameData
+function ClientRoot.getLocalData(): LocalData
+    return locData
 end
 
 function ClientRoot.getSimData()
@@ -72,18 +71,12 @@ function ClientRoot.getDefaultSimData(): SimData
     return SimDataManager.DEFAULT
 end
 
-function ClientRoot.writeSimData(plr: Player, newSimData: SimData)
-    SimDataManager.writeData(plr, newSimData)
-end
-
 function ClientRoot.getPlayerData(): PlayerData.Data
     return plrData
 end
 
--- Setters
-
-function ClientRoot.setGameTime(val: number)
-    gameData.gameTime = val
+function ClientRoot.writeSimData(plr: Player, newSimData: SimData)
+    SimDataManager.writeData(plr, newSimData)
 end
 
 function ClientRoot.setHealth(newHp: number, damageType: string?)

@@ -193,6 +193,7 @@ function SimVisuals.updatePlayerEffects(dt: number, plr: Player)
                     CharacterSounds:updatePlayerSound(plr, CharacterSounds.SOUND_ITEMS.WATER_SURFACE, true)
                 end
             else
+                -- only the local player is supposed to hear themselves dive
                 if (plr == Players.LocalPlayer) then
                     CharacterSounds:updateLocalSound(CharacterSounds.SOUND_ITEMS.WATER_DIVE, true)
                 end
@@ -215,6 +216,17 @@ function SimVisuals.updatePlayerEffects(dt: number, plr: Player)
         playerVars[plr].submergedTime = submergedTime
     end
 
+    local function updateWallEffects(char: Model, newSD: ClientRoot.SimData, prevSD: ClientRoot.SimData)
+        if (prevSD.nearWall ~= newSD.nearWall) then
+            local entering = newSD.nearWall
+            if (entering) then
+                CharacterSounds:updatePlayerSound(plr, CharacterSounds.SOUND_ITEMS.WALL_ENTER_0, true)
+            end
+            -- looped wall sound
+            CharacterSounds:updatePlayerSound(plr, CharacterSounds.SOUND_ITEMS.WALL_SLIDE, entering)
+        end
+    end
+
     local char = plr.Character
     if (not char or not char.PrimaryPart) then
         return
@@ -233,6 +245,7 @@ function SimVisuals.updatePlayerEffects(dt: number, plr: Player)
 
         updateGroundEffects(simData, prevSimData)
         updateWaterEffects(char, simData, prevSimData)
+        updateWallEffects(char, simData, prevSimData)
 
         copySimData(simData, prevSimData)
     end
