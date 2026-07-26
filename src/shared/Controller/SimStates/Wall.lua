@@ -219,6 +219,8 @@ function Wall:stateLeave()
     local primaryPart: BasePart = self.character.PrimaryPart
     assert(primaryPart, `Missing PrimaryPart of character '{self.character.name}'`)
 
+    self.shared.nearWall = false
+
     peakedJumpAfterEntry = false
 
     --SoundManager:updateGlobalSound(SoundManager.SOUND_ITEMS.WALL_SLIDE, false)
