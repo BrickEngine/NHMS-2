@@ -432,6 +432,12 @@ function GameClient.updateDamage(dt: number)
         return damage
     end
 
+    ------------------------------------------------
+
+    if (ClientRoot.getPlayerData().isDead) then
+        return
+    end
+
     local fallDmg = calcFallDamage(dt)
     local lavaDmg = calcLavaDamage(dt)
     local drownDmg = calcDrownDamage(dt)

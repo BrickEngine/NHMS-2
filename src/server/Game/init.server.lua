@@ -18,6 +18,7 @@ local ServNetApi = require(script.ServNetApi)
 
 local LOOP_DT = 0.05
 local DEATH_REMOVE_DELAY = 2.0
+local ENABLE_DEATH_EVENT_COOLDOWN = false
 local DEATH_EVENT_COOLDOWN = 3.0
 
 local PLAYER_INST_FOLD_NAME = Global.FOLDER_NAMES.PLAYERS
@@ -181,7 +182,7 @@ end
 -- Event methods
 
 local function onPlayerRequestSpawn(plr: Player)
-    if (deathCooldownList[plr] > 0) then
+    if (ENABLE_DEATH_EVENT_COOLDOWN and deathCooldownList[plr] > 0) then
         warn(`{plr} on cooldown`); return
     end
     Game.spawnPlayer(plr)
