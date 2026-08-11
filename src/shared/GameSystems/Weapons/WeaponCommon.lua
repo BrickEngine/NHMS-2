@@ -70,7 +70,7 @@ WeaponCommon.dynOffset = {
         @param baseCFOffset - base weapon offset CFrame
         @param dirVec - Vector3 which determines the corrected vertical dir
     ]]
-    calc = function(dt: number, vel: Vector3, baseCFOffset: CFrame): CFrame
+    apply = function(dt: number, vel: Vector3, baseCFOffset: CFrame): CFrame
         if (not RunService:IsClient()) then
             error("Can only be executed by client")
         end

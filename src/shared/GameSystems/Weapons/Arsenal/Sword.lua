@@ -37,15 +37,18 @@ local CF_SWING_TARGET =
 --local VEC3_UNEQUIP_TARGET = Vector3.new(0, 0, -4)
 local EQUIP_LERP_FAC = 18
 local EQUIP_DURATION = 0.25
-local SWING_RATE = 0.33
+local SWING_COOLDOWN = 0.6
+local THROW_COOLDOWN = 2
+local THROW_MINTIME = 0.8
 
 local VEC3_UP = Vector3.new(0, 1, 0)
 
 local localPlr = Players.LocalPlayer :: Player
 local mdlFold = ReplicatedStorage.Assets.WeaponModels.Sword
 
-local inSwing = false
-local altFireCharging = false
+local fireHoldTime = 0
+local fireCooldownTime = 0
+local currFireParams: SwordFireParams?
 
 local equipUpdateConn: RBXScriptConnection
 local unequipUpdateConn: RBXScriptConnection
@@ -55,7 +58,7 @@ local function updateSwordSwing(dt: number)
 end
 
 export type SwordFireParams = {
-    throw: boolean,
+    altFire: boolean,
     throwspeed: number
 }
 
@@ -99,6 +102,7 @@ function Sword:equip()
 
     -- case for other players
     if (self.owner ~= localPlr.Character) then
+        print("RARARARLALALAILILALALALALAL")
         -- TODO
         return
     end
@@ -172,7 +176,10 @@ function Sword:unequip()
         end
     end)
 
+    -- reset local and common vars
     WeaponCommon.dynOffset.reset()
+    fireCooldownTime = 0
+    fireHoldTime = 0
 
     task.wait(EQUIP_DURATION)
     weapModel.Parent = localPlr.Backpack
@@ -226,19 +233,37 @@ function Sword:update(dt: number)
     end
 
     --weapPrimPart.CFrame = camCFrame * CF_CAM_WEAP_OFFS
-    weapPrimPart.CFrame = WeaponCommon.dynOffset.calc(
+    weapPrimPart.CFrame = WeaponCommon.dynOffset.apply(
         dt, currCharVel, camCFrame * CF_DEF_WEAP_OFFS
     )
-    
-
-    if (fireInp) then
-        --self.fireLocked = true
-    end
 
     if (fireInp or altFireInp) then
-        self.fireLocked = true
-        self:fire(altFireInp)
+        if (self.fireLocked) then
+            return
+        end
+        currFireParams = {
+            altFire = altFireInp,
+            throwspeed = 0
+        }
+        fireCooldownTime = if altFireInp then THROW_COOLDOWN else SWING_COOLDOWN
+        -- self.fireLocked = true
+        -- self:fire()
     end
+
+    self.fireLocked = fireCooldownTime > 0
+
+    -- update weapon pre-fire
+    if (self.fireLocked) then
+        if (not currFireParams) then
+            warn("No fire params"); return
+        end
+
+        if (not currFireParams.altFire) then
+            self:fire()
+        end
+    end
+
+    fireCooldownTime = math.max(fireCooldownTime - dt, 0)
 end
 
 function Sword:destroy()

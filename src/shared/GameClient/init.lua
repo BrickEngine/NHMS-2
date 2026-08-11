@@ -272,71 +272,6 @@ function GameClient.onDeathStateChanged(isDead: boolean, lastDamageType: string)
     end
 end
 
--- function GameClient.updateFallDamage(dt: number)
---     local character = Players.LocalPlayer.Character
---     local isDead = rootPlrData.isDead
-
---     if (not character or not character.PrimaryPart or isDead) then
---         return
---     end
-
---     local primPart = character.PrimaryPart
---     local currFallVel = math.abs(math.min(primPart.AssemblyLinearVelocity.Y, 0))
-
---     local damageConditions = 
---         not rootPlrData.godModeActive
---         and rootSimData.playerStateId == PlayerStateId.GROUND 
---         and rootSimData.isGrounded 
---         and lastFallVel >= MIN_FALL_DMG_VEL 
---         and dmgCooldown <= 0
-
---     if (damageConditions) then
---         local damage = (lastFallVel - MIN_FALL_DMG_VEL) * FALL_DMG_FAC + MIN_FALL_DMG
---         local newHp = rootPlrData.health - damage
---         newHp = math.max(0, newHp)
---         GameClient.changeHealth(newHp, DamageType.FALL)
---         dmgCooldown = DMG_COOLDOWN
---     end
-
---     dmgCooldown = math.max(0, dmgCooldown - dt)
---     lastFallVel = currFallVel
--- end
-
--- function GameClient.updateLavaDamage(dt: number)
---     local character = Players.LocalPlayer.Character
---     local isDead = rootPlrData.isDead
-
---     if (not character or not character.PrimaryPart or isDead) then
---         return
---     end
-
---     local damageConditions = 
---         not rootPlrData.godModeActive
---         and not rootPlrData.lavaResistanceActive
---         and rootSimData.isGrounded 
---         and dmgCooldown <= 0
-
---     if (damageConditions) then
---         local primPart = character.PrimaryPart
---         local ray = Workspace:Raycast(
---             primPart.CFrame.Position, 
---             -VEC3_UP * CharacterDef.PARAMS.LEGCOLL_SIZE.X * 1.25, 
---             floorRayParams
---         )
-
---         if (ray and ray.Instance) then
---             if (ray.Instance:HasTag(Global.TAG_NAMES.LAVA)) then
---                 dmgCooldown = DMG_COOLDOWN
---                 local newHp = rootPlrData.health - LAVA_DMG
---                 newHp = math.max(0, newHp)
---                 GameClient.changeHealth(newHp, DamageType.NAPALM)
---             end
---         end 
---     end
-
---     dmgCooldown = math.max(0, dmgCooldown - dt)
--- end
-
 function GameClient.updateOxygen(dt: number)
     if (rootPlrData.waterBreathingActive) then
         rootLocData.oxygen = LocalData.LIMITS.maxOxygen; return
@@ -595,13 +530,14 @@ end
 local function onAddWeaponToPlayer(plr: Player, weapName: string, uid: number, switchToSlot: boolean)
     -- we trust the server to correctly add weapons, making sure old ones on the same slot are removed first
     local weapon = GameClient.createWeaponLocal(weapName, uid, plr.Character) :: BaseWeapon.Weapon
-    print(`adding local weapon to player with uid '{uid}'`)
+    print(`adding weapon to player with uid '{uid}', for player '{plr}'`)
 
     if (not plr.Character) then
         plr.CharacterAdded:Wait()
     end
     weapon:setOwner(plr.Character)
 
+    -- local player setup
     if (plr == localPlr) then
         local plrData = ClientRoot.getPlayerData()
         plrData.inventory[weapon.slot] = weapon
@@ -619,12 +555,28 @@ local function onRemoveWeaponFromPlayer(plr: Player, uid: number)
     GameClient.removeWeaponLocal(uid)
 end
 
-local function onFireWeapon(uid: number, altFire: boolean)
+local function onFireWeapon(plr: Player, uid: number, pos: Vector3, dir: Vector3, params: any?)
     local weapon = WeaponManager.getWeapFromUid(uid)
-    if (weapon.owner == localPlr.Character) then
+    if (plr == localPlr) then
         return
     end
-    weapon:fire(altFire)
+    weapon:fire(pos, dir, params)
+end
+
+local function onSwitchWeapon(plr: Player, oldUid: number, newUid: number)
+    if (plr == localPlr) then
+        return
+    end
+    print(`Switching weapon for player '{plr}'`)
+
+    -- check if valid id ~ old weapon exists
+    if (oldUid > 0) then
+        local oldWeap = WeaponManager.getWeapFromUid(oldUid)
+        oldWeap:unequip()
+    end
+    local newWeap = WeaponManager.getWeapFromUid(newUid)
+    print("NEW WEAPON IS: ".. newUid, newWeap)
+    newWeap:equip()
 end
 
 local function onPlrDataToClient(plr: Player, payload: buffer)
@@ -633,7 +585,6 @@ local function onPlrDataToClient(plr: Player, payload: buffer)
     end
 
     local newSimData = simulation:deserializeSimData(payload)
-    print(newSimData)
     ClientRoot.writeSimData(plr, newSimData)
 end
 
@@ -651,8 +602,11 @@ local cliREFunction = {
     [Network.serverEvents.removeWeaponFromPlayer] = function(plr: Player, uid: number)
         onRemoveWeaponFromPlayer(plr, uid)
     end,
-    [Network.serverEvents.fireWeapon] = function(uid: number, altFire: boolean)
-        onFireWeapon(uid, altFire)
+    [Network.serverEvents.switchWeapon] = function(plr: Player, oldUid: number, newUid: number)
+        onSwitchWeapon(plr, oldUid, newUid)
+    end,
+    [Network.serverEvents.fireWeapon] = function(plr: Player, uid: number, pos: Vector3, dir: Vector3, params: any?)
+        onFireWeapon(plr, uid, pos, dir, params)
     end,
 }
 

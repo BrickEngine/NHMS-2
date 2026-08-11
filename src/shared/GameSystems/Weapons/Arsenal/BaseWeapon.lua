@@ -52,7 +52,7 @@ export type Weapon = {
     equip: (self: Weapon) -> (),
     unequip: (self: Weapon) -> (),
     reload: (self: Weapon) -> (),
-    fire: (self: Weapon, altFire: boolean, pos: Vector3, dir: Vector3) -> (),
+    fire: (self: Weapon, pos: Vector3, dir: Vector3, params: any?) -> (),
     validateFireParams: (self: Weapon, params: any) -> (boolean, string?),
     createPickup: (self: Weapon) -> any,
     onHit: (self: Weapon) -> (),

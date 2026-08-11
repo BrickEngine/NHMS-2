@@ -31,6 +31,7 @@ local NetApi = table.freeze({
         setHealth = "SetHealth",
         addWeaponToPlayer = "AddWeapToPlr",
         removeWeaponFromPlayer = "RemWeapFromPlr",
+        switchWeapon = "SwitchWeapOfPlr",
         fireWeapon = "FireWeapon",
         setEffect = "SetEffect",
         addPickup = "AddPickup",

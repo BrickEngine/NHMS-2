@@ -228,11 +228,17 @@ local function onPlayerRequestActiveWeaponSwitch(plr: Player, newSlot: number?)
         warn(`{plr} already has slot {newSlot} active`); return
     end
     
-    local invSlotWeapon = plrData.inventory[newSlot]
-    if (not invSlotWeapon) then
+    local oldInvSlotWeapon = plrData.inventory[plrData.activeInvSlot]
+    local newInvSlotWeapon = plrData.inventory[newSlot]
+    if (not newInvSlotWeapon) then
         warn(`{plr} has no weapon in slot {newSlot}`); return
     end
     plrData.activeInvSlot = newSlot
+
+    -- set uid to invalid uid -1, if there is no previous weapon
+    local oldInvSlotWeapUID = if oldInvSlotWeapon then oldInvSlotWeapon.uid else -1
+
+    ServNetApi.events[Network.serverEvents.switchWeapon]:FireAllClients(plr, oldInvSlotWeapUID, newInvSlotWeapon.uid)
 end
 
 local function onPlayerRequestFireWeapon(plr: Player, pos: Vector3?, dir: Vector3?, params: any?)
@@ -253,7 +259,7 @@ local function onPlayerRequestFireWeapon(plr: Player, pos: Vector3?, dir: Vector
         warn(`{plr} sent illegal params: {err}`); return
     end
 
-    ServNetApi.events[Network.serverEvents.fireWeapon]:FireAllClients(currWeapon.uid, params)
+    ServNetApi.events[Network.serverEvents.fireWeapon]:FireAllClients(plr, currWeapon.uid, pos, dir, params)
 end
 
 local function onPlayerSendSimData(plr: Player, payload: buffer?)
@@ -318,6 +324,22 @@ local function onPlayerAdded(plr: Player)
     print(plr.Name .. " joined the game")
     deathCooldownList[plr] = 0
     ServerRoot.createPlayerData(plr)
+
+    -- send all existing weapons to player on join
+    for _, otherPlr: Player in pairs(Players:GetPlayers()) do
+        if (plr == otherPlr) then
+            continue
+        end
+
+        local plrData = ServerRoot.getPlayerData(otherPlr)
+        for i: number, weap: BaseWeapon.Weapon? in pairs(plrData.inventory) do
+            if (weap) then
+                ServNetApi.events[Network.serverEvents.addWeaponToPlayer]:FireClient(
+                    plr, otherPlr, weap.name, weap.uid, false
+                )
+            end
+        end
+    end
 end
 
 local function onPlayerRemoving(plr: Player)
