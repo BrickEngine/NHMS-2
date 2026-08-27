@@ -4,6 +4,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local weaponsFolder = ReplicatedStorage.Shared.GameSystems.Weapons
 local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
@@ -13,7 +14,9 @@ local NumUID = require(ReplicatedStorage.Shared.Util.NumUID)
 -- Weapons
 local Sword = require(weaponsFolder.Arsenal.Sword)
 local Plasma = require(ReplicatedStorage.Shared.GameSystems.Weapons.Arsenal.Plasma)
+local Global = require(ReplicatedStorage.Shared.Global)
 
+local WEAPON_STORE_FOLD_NAME = Global.FOLDER_NAMES.WEAPONS_LOCAL
 local MAX_WEAPON_IDS = 1000
 
 local WEAP_MODULE_MAP = {
@@ -38,6 +41,11 @@ for _, inst: Instance in pairs(weapAssetFold:GetDescendants()) do
     end
 end
 
+if (RunService:IsClient()) then
+   local weapInstContainer = Instance.new("Folder", Workspace)
+    weapInstContainer.Name = WEAPON_STORE_FOLD_NAME 
+end
+
 ------------------------------------------------------------------------------------------------------------------------
 -- Module
 ------------------------------------------------------------------------------------------------------------------------
@@ -51,8 +59,8 @@ function WeaponManager.createWeapon(ownerMdl: Model?, weapName: string): (BaseWe
     end
 
     local newUid = weapUids:alloc()
-    local weapon = weapModule.new(newUid) :: BaseWeapon.Weapon
-    weapon:setOwner(ownerMdl)
+    local weapon = weapModule.new(newUid, ownerMdl) :: BaseWeapon.Weapon
+    --weapon:setOwner(ownerMdl)
     weapUids:assignObj(weapon, weapon.uid)
 
     if (ownerMdl) then
@@ -76,8 +84,8 @@ function WeaponManager.createWeaponForClient(ownerMdl: Model?, weapName: string,
     end
 
     weapUids:forceAlloc(uid)
-    local weapon = weapModule.new(uid) :: BaseWeapon.Weapon
-    weapon:setOwner(ownerMdl)
+    local weapon = weapModule.new(uid, ownerMdl) :: BaseWeapon.Weapon
+    --weapon:setOwner(ownerMdl)
     weapUids:assignObj(weapon, uid)
 
     return weapon

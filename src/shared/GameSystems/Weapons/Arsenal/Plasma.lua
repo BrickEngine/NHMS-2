@@ -10,12 +10,12 @@ local BaseWeapon = require(weaponsFolder.Arsenal.BaseWeapon)
 local Plasma = setmetatable({} :: BaseWeapon.Weapon, BaseWeapon)
 Plasma.__index = Plasma
 
-function Plasma.new(uid: number)
+function Plasma.new(uid: number, ownerMdl: Model?)
     local self = BaseWeapon.new({
         uid = uid,
         name = WeaponName.PLASMA_SPELL,
         iconId = "rbxassetid://0",
-        owner = nil,
+        owner = ownerMdl or nil,
         weaponModel = nil,
         slot = 2,
         mainAmmoType = AmmoType.PLASMA_ORBS

@@ -12,6 +12,7 @@ return table.freeze({
 
     FOLDER_NAMES = {
         PLAYERS = "PlayerInstContainer",
+        WEAPONS_LOCAL = "WeapInstContainer",
         WALLS = "WallParts",
         LAVA = "LavaParts"
     },

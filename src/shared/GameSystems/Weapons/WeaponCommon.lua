@@ -38,15 +38,14 @@ function WeaponCommon.equipWeaponModelGlobal(mdl: Model, offsetPos: CFrame)
 
 end
 
---TODO: convert to a table with functions reset, calc and setEnabled
---[[
-    Calculates addition weapon offset dependent on vertical and horizontal character movement;
-    mouse movement delta is used to calculate the horizonal component.
-    @param dt - update time delta
-    @param vel - character primary part velocity
-    @param baseCFOffset - base weapon offset CFrame
-    @param dirVec - Vector3 which determines the corrected vertical dir
-]]
+-- useless
+-- function WeaponCommon.updateAnimations(animTracks: {AnimationTrack})
+--     for _, track: AnimationTrack in pairs(animTracks) do
+--         if (track.IsPlaying) then
+            
+--         end
+--     end
+-- end
 
 local lastYVel = 0
 local lastYDiff = 0
