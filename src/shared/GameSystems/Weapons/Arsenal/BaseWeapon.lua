@@ -21,7 +21,7 @@ export type WeaponConf = {
     uid: number,
     name: string,
     iconId: string,
-    owner: Model?,
+    owner: Player?,
     fireSchema: {[string]: (any?) -> boolean}?,
     weaponModel: Model?,
     slot: number,
@@ -36,7 +36,7 @@ export type Weapon = {
     uid: number,
     name: string,
     iconId: string,
-    owner: Model?,
+    owner: Player?,
     weaponModel: Model?,
     slot: number,
     mainAmmoType: string?,
@@ -87,8 +87,9 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- global methods
 
-function BaseWeapon:setOwner(ownerMdl: Model | nil)
-    self.owner = ownerMdl
+function BaseWeapon:setOwner(owner: Player | nil)
+    warn(`Overwriting owner of weapon with uid '{self.uid}'`)
+    self.owner = owner
 end
 
 function BaseWeapon:validateFireParams(params: any?): (boolean, string?)
@@ -100,9 +101,9 @@ end
 
 function BaseWeapon:isOwnedByLocalPlr()
     if (not RunService:IsClient()) then
-        error("Can only be called by client")
+        error("Weapon owner validation can only be done by client")
     end
-    return self.owner == (Players.LocalPlayer :: Player).Character
+    return self.owner == Players.LocalPlayer
 end
 
 function BaseWeapon:getIsFireLocked()

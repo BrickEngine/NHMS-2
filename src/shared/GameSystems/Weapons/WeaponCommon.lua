@@ -34,18 +34,30 @@ function WeaponCommon.joinWeaponToOwnerPrimPart(weaponMdl: Model, ownerMdl: Mode
     return joint
 end
 
-function WeaponCommon.equipWeaponModelGlobal(mdl: Model, offsetPos: CFrame)
+--[[
+    Welds and unanchors the weapon model to a player character's primary part.
+    This is useful when equipping weapons for 
+    @param mdl - character Model
+    @param weapMdl - weapon Model
+    @param offsetPos - offset of weapMdl from mdl
+]]
+function WeaponCommon.weldWeaponModel(mdl: Model, weapMdl: Model, offsetPos: CFrame)
+    assert(weapMdl.PrimaryPart, "Missing PrimaryPart of weapon model")
+    assert(mdl.PrimaryPart, "Missing PrimaryPart of character model")
 
+    for _, p: Instance in pairs(weapMdl:GetChildren()) do
+        if (p:IsA("BasePart")) then
+            p.Anchored = false
+        end
+    end
+
+    weapMdl.PrimaryPart.CFrame = mdl.PrimaryPart.CFrame * offsetPos
+
+    local weldConst = Instance.new("WeldConstraint", weapMdl.PrimaryPart)
+    weldConst.Name = "WeapToBodyWeld"
+    weldConst.Part0 = weapMdl.PrimaryPart
+    weldConst.Part1 = mdl.PrimaryPart
 end
-
--- useless
--- function WeaponCommon.updateAnimations(animTracks: {AnimationTrack})
---     for _, track: AnimationTrack in pairs(animTracks) do
---         if (track.IsPlaying) then
-            
---         end
---     end
--- end
 
 local lastYVel = 0
 local lastYDiff = 0

@@ -119,15 +119,8 @@ function GameClient.initPlayer()
     charRemovingConn = Players.LocalPlayer.CharacterRemoving:Connect(onCharRemoving)
 end
 
-function GameClient.createWeaponLocal(weapName: string, uid: number, ownerMdl: Model?): BaseWeapon.Weapon
-    -- local oldWeapon = WeaponManager.getWeapFromUid(uid)
-    -- if (oldWeapon) then
-    --     error(`Weapon with uid '{uid}' already exists`)
-    -- end
-    local weapon = WeaponManager.createWeaponForClient(ownerMdl, weapName, uid)
-    --weapIdMap[uid] = weapon
-
-    return weapon
+function GameClient.createWeaponLocal(weapName: string, uid: number, owner: Player): BaseWeapon.Weapon
+    return WeaponManager.createWeaponForClient(owner, weapName, uid)
 end
 
 function GameClient.removeWeaponLocal(uid: number)
@@ -140,7 +133,7 @@ function GameClient.removeWeaponLocal(uid: number)
 
     local plrData = ClientRoot.getPlayerData()
 
-    if (weapon.owner == localPlr.Character) then
+    if (weapon.owner == localPlr) then
         -- in case weapon is currently equipped in active slot
         if (plrData.inventory[plrData.activeInvSlot] == weapon) then
             GameClient.setTargetInvSlot(0)
@@ -148,8 +141,6 @@ function GameClient.removeWeaponLocal(uid: number)
         ClientRoot.freeInventorySlot(weapon.slot)
     end
     WeaponManager.destroyWeapon(uid)
-    -- weapIdMap[uid]:destroy()
-    -- weapIdMap[uid] = nil
 end
 
 function GameClient.equipWeaponInSlot(slot: number)
@@ -491,7 +482,7 @@ function GameClient.updateWeaponInventory(dt: number)
     -- update current weapon
     if (switchFree) then
         local currWeapon: BaseWeapon.Weapon = GameClient.getActiveWeapon()
-        if (not currWeapon or plrData.isDead) then
+        if (not currWeapon or not currWeapon.owner or plrData.isDead) then
             return
         end
         currWeapon:update(dt)
@@ -507,8 +498,6 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 function GameClient.update(dt: number)
     GameClient.updateSimData(dt)
-    -- GameClient.updateFallDamage(dt)
-    -- GameClient.updateLavaDamage(dt)
     GameClient.updateOxygen(dt)
     GameClient.updateDamage(dt)
     GameClient.updateWeaponInventory(dt)
@@ -527,55 +516,51 @@ local function onSetHealthRemote(plr: Player, newHp: number, damageType: string?
     GameClient.changeHealthLocal(newHp, _damageType)
 end
 
-local function onAddWeaponToPlayer(plr: Player, weapName: string, uid: number, switchToSlot: boolean)
+local function onAddWeapon(weapOwner: Player, weapName: string, uid: number, switchToSlot: boolean)
     -- we trust the server to correctly add weapons, making sure old ones on the same slot are removed first
-    local weapon = GameClient.createWeaponLocal(weapName, uid, plr.Character) :: BaseWeapon.Weapon
-    print(`adding weapon to player with uid '{uid}', for player '{plr}'`)
+    local weapon = GameClient.createWeaponLocal(weapName, uid, weapOwner) :: BaseWeapon.Weapon
+    --warn(`adding weapon to '{localPlr}' with uid '{uid}', owned by '{weapOwner}'`)
 
-    if (not plr.Character) then
-        plr.CharacterAdded:Wait()
-    end
-    weapon:setOwner(plr.Character)
-
-    -- local player setup
-    if (plr == localPlr) then
+    -- if local player owns the weapon, add it to inv
+    if (weapOwner == localPlr) then
         local plrData = ClientRoot.getPlayerData()
         plrData.inventory[weapon.slot] = weapon
         ClientRoot.occupyInventorySlot(weapon.slot, weapon)
 
-        --GameClient.setTargetInvSlot(weapon.slot)
         if (switchToSlot) then
-            --GameClient.switchWeaponSlot(weapon.slot)
             GameClient.setTargetInvSlot(weapon.slot)
         end
     end
 end
 
-local function onRemoveWeaponFromPlayer(plr: Player, uid: number)
+local function onRemoveWeapon(uid: number)
     GameClient.removeWeaponLocal(uid)
 end
 
-local function onFireWeapon(plr: Player, uid: number, pos: Vector3, dir: Vector3, params: any?)
+-- Fires the weapon of other players
+local function onFireWeapon(uid: number, pos: Vector3, dir: Vector3, params: any?)
     local weapon = WeaponManager.getWeapFromUid(uid)
-    if (plr == localPlr) then
+
+    if (weapon.owner == localPlr) then
         return
     end
     weapon:fire(pos, dir, params)
 end
 
-local function onSwitchWeapon(plr: Player, oldUid: number, newUid: number)
-    if (plr == localPlr) then
+local function onSwitchWeapon(weapOwnerPlr: Player, newUid: number, oldUid: number?)
+    if (weapOwnerPlr == localPlr) then
         return
     end
-    print(`Switching weapon for player '{plr}'`)
+    print(`Switching to weapon with uid '{newUid}' for '{weapOwnerPlr}'`)
 
-    -- check if valid id ~ old weapon exists
-    if (oldUid > 0) then
+    if (oldUid) then
         local oldWeap = WeaponManager.getWeapFromUid(oldUid)
         oldWeap:unequip()
     end
     local newWeap = WeaponManager.getWeapFromUid(newUid)
-    print("NEW WEAPON IS: ".. newUid, newWeap)
+    if (not newWeap) then
+        error("no new weapon sucka")
+    end
     newWeap:equip()
 end
 
@@ -595,18 +580,18 @@ local cliREFunction = {
     [Network.serverEvents.setHealth] = function(plr: Player, hp: number, damageType: string)
         onSetHealthRemote(plr, hp, damageType)
     end,
-    [Network.serverEvents.addWeaponToPlayer] = function(
-        plr: Player, weaponName: string, uid: number, switchToSlot: boolean)
-        onAddWeaponToPlayer(plr, weaponName, uid, switchToSlot)
+    [Network.serverEvents.addWeapon] = function(
+        weapOwnerPlr: Player, weaponName: string, uid: number, switchToSlot: boolean)
+        onAddWeapon(weapOwnerPlr, weaponName, uid, switchToSlot)
     end,
-    [Network.serverEvents.removeWeaponFromPlayer] = function(plr: Player, uid: number)
-        onRemoveWeaponFromPlayer(plr, uid)
+    [Network.serverEvents.removeWeapon] = function(uid: number)
+        onRemoveWeapon(uid)
     end,
-    [Network.serverEvents.switchWeapon] = function(plr: Player, oldUid: number, newUid: number)
-        onSwitchWeapon(plr, oldUid, newUid)
+    [Network.serverEvents.switchWeapon] = function(weapOwnerPlr: Player, newUid: number, oldUid: number?)
+        onSwitchWeapon(weapOwnerPlr, newUid, oldUid)
     end,
-    [Network.serverEvents.fireWeapon] = function(plr: Player, uid: number, pos: Vector3, dir: Vector3, params: any?)
-        onFireWeapon(plr, uid, pos, dir, params)
+    [Network.serverEvents.fireWeapon] = function(uid: number, pos: Vector3, dir: Vector3, params: any?)
+        onFireWeapon(uid, pos, dir, params)
     end,
 }
 

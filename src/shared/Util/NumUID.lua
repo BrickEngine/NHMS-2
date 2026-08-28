@@ -47,6 +47,12 @@ function NumUID.new(amount: number): NumUID
     self.occ = {} :: {[number]: boolean}
     self.free = createIdTbl(amount)
 
+    -- coroutine.wrap(function()
+    --     while (task.wait(0.5)) do
+    --         print("SERVER: ", RunService:IsServer(), " --- ", self.assigned) 
+    --     end
+    -- end)()
+
     return self :: any
 end
 
@@ -69,6 +75,9 @@ end
     should be called by the client only to apply server-side allocations
 ]]
 function NumUID:forceAlloc(id: number)
+    if (self.occ[id]) then
+        warn("OVERWRITTEN ID")
+    end
     self.occ[id] = true
 end
 

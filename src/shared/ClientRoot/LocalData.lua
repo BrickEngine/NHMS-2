@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local FuncUtil = require(ReplicatedStorage.Shared.Util.FuncUtil)
 
-local data = {} :: any
+local data: any
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Module
@@ -50,7 +50,7 @@ end
 
 function LocalData.fullyResetData()
     if (not data) then
-        error("No local data to reset")
+        warn("No local data to reset")
     end
     LocalData.removeData()
     LocalData.createData()

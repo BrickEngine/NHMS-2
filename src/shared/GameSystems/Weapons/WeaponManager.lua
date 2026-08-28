@@ -26,10 +26,6 @@ local WEAP_MODULE_MAP = {
 
 local weapUids = NumUID.new(MAX_WEAPON_IDS)
 
--- stores the uids of the weapons (and the respective owner model)
-local ownedWeapons = {} :: {Model: {number}}
-local unownedWeapons = {} :: {number}
-
 -- configure weapon models
 local weapAssetFold = ReplicatedStorage.Assets.WeaponModels
 for _, inst: Instance in pairs(weapAssetFold:GetDescendants()) do
@@ -51,41 +47,33 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 local WeaponManager = {}
 
--- Creates and registers a weapon by enum name for a given owner-model
-function WeaponManager.createWeapon(ownerMdl: Model?, weapName: string): (BaseWeapon.Weapon, number)
+-- Creates and registers a weapon by enum name for a given owner
+function WeaponManager.createWeapon(owner: Player, weapName: string): (BaseWeapon.Weapon, number)
     local weapModule = WEAP_MODULE_MAP[weapName]
     if (not weapModule) then
-        error(`No existing module for '{string}'`)
+        error(`No existing module for '{weapName}'`)
     end
 
     local newUid = weapUids:alloc()
-    local weapon = weapModule.new(newUid, ownerMdl) :: BaseWeapon.Weapon
-    --weapon:setOwner(ownerMdl)
+    local weapon = weapModule.new(newUid, owner) :: BaseWeapon.Weapon
     weapUids:assignObj(weapon, weapon.uid)
-
-    if (ownerMdl) then
-        local weapArr = ownedWeapons[ownerMdl] or {}
-        ownedWeapons[ownerMdl] = table.insert(weapArr, weapon)
-    else
-        table.insert(unownedWeapons, weapon)
-    end
 
     return weapon, newUid
 end
 
-function WeaponManager.createWeaponForClient(ownerMdl: Model?, weapName: string, uid: number): BaseWeapon.Weapon
+function WeaponManager.createWeaponForClient(owner: Player, weapName: string, uid: number): BaseWeapon.Weapon
     if (not RunService:IsClient()) then
         error("'createWeaponForClient' should be only called by the client")
     end
 
     local weapModule = WEAP_MODULE_MAP[weapName]
     if (not weapModule) then
-        error(`No existing module for '{string}'`)
+        error(`No existing module for '{weapName}'`)
     end
 
+    --print("############ ", uid, " --- ", owner, " ##################")
     weapUids:forceAlloc(uid)
-    local weapon = weapModule.new(uid, ownerMdl) :: BaseWeapon.Weapon
-    --weapon:setOwner(ownerMdl)
+    local weapon = weapModule.new(uid, owner) :: BaseWeapon.Weapon
     weapUids:assignObj(weapon, uid)
 
     return weapon
@@ -94,29 +82,6 @@ end
 function WeaponManager.getWeapFromUid(uid: number): BaseWeapon.Weapon?
     return weapUids:getObjById(uid)
 end
-
--- -- Creates and registers a weapon by enum name for an id and optional owner model
--- function WeaponManager.createWeaponWithId(ownerMdl: Model?, weapName: string, uid: number): BaseWeapon.Weapon
---     local weapModule = WEAP_MODULE_MAP[weapName]
---     if (not weapModule) then
---         error(`No existing module for '{string}'`)
---     end
---     if (not weapUids.occ[uid]) then
---         error(`Uid '{uid}' has not been allocated`)
---     end
-
---     local weapon = weapModule.new(uid)
---     weapon:setOwner(ownerMdl)
---     weapUids:assignObj(weapon, weapon.uid)
-
---     if (ownerMdl) then
---         local weapArr = ownedWeapons[ownerMdl] or {}
---         ownedWeapons[ownerMdl] = table.insert(weapArr, weapon)
---     else
---         table.insert(unownedWeapons, weapon)
---     end
---     return weapon
--- end
 
 function WeaponManager.destroyWeapon(uid: number)
     local weapon: BaseWeapon.Weapon = weapUids:getObjById(uid)
@@ -136,31 +101,6 @@ function WeaponManager.destroyWeapon(uid: number)
         print(`Destroying local weapon with uid '{uid}'`)
 
         weapUids:forceRelease(uid)
-    end
-end
-
-function WeaponManager.destroyAllWeaponsForOwner(ownerMdl: Model)
-    if (ownedWeapons[ownerMdl]) then
-        for _, uid: number in pairs(ownedWeapons[ownerMdl]) do
-            WeaponManager.destroyWeapon(uid)
-        end
-        ownedWeapons[ownerMdl] = {}
-    end
-end
-
-function WeaponManager.destroyAllUnownedWeapons()
-    for _, weapId: number in pairs(unownedWeapons) do
-        WeaponManager.destroyWeapon(weapId)
-    end
-    unownedWeapons = {}
-end
-
-function WeaponManager.destroyAllWeapons()
-    WeaponManager.destroyAllUnownedWeapons()
-    for _, ownerMdl: Model? in pairs(ownedWeapons) do
-        if (ownerMdl) then
-            WeaponManager.destroyAllWeaponsForOwner(ownerMdl)
-        end
     end
 end
 

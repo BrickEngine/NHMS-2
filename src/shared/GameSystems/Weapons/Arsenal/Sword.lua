@@ -24,12 +24,9 @@ end
 
 ------------------------------------------------------------------------------------------------------------------------
 
-local CF_DEF_WEAP_OFFS = 
-    CFrame.new(Vector3.new(0.95,-1.4,-1.25)) 
-    * CFrame.fromEulerAnglesXYZ(math.rad(0), math.rad(0), math.rad(0))
-
-local CF_UNEQUIP_TARGET = 
-    CFrame.new(Vector3.new(0, -4, 0))
+local CF_DEF_WEAP_OFFS = CFrame.new(Vector3.new(0.95, -1.4, -1.25)) 
+local CF_DEF_BODY_WEAP_OFFS = CFrame.new(Vector3.new(1.3, 0.4, -2.25)) 
+local CF_UNEQUIP_TARGET = CFrame.new(Vector3.new(0, -4, 0))
 
 -- local CF_SWING_TARGET = 
 --     CFrame.new(Vector3.new(0.95,-1.4,-1.25)) 
@@ -102,29 +99,8 @@ local fireHoldTime = 0
 local fireCooldownTime = 0
 local currSpinAng = 0 -- rad
 
-local currFireParams: SwordFireParams?
-
-local animationController: AnimationController?
-local animator: Animator?
-local animationTracks = {} :: {[string]: AnimationTrack}
-local sounds = {} :: {[string]: Sound}
-
 local equipUpdateConn: RBXScriptConnection
 local unequipUpdateConn: RBXScriptConnection
-
-local function createInitAnims()
-    assert(animationController, "No AnimationController instance")
-    assert(animator, "No animator instance")
-
-    for name: string, id: string in pairs(ANIM_IDS) do
-        local newAnimation = Instance.new("Animation", animator)
-        newAnimation.Name = name
-        newAnimation.AnimationId = id
-
-        local animTrack = animator:LoadAnimation(newAnimation)
-        animationTracks[id] = animTrack
-    end
-end
 
 export type SwordFireParams = {
     altFire: boolean,
@@ -137,7 +113,7 @@ export type SwordFireParams = {
 local Sword = setmetatable({}, BaseWeapon)
 Sword.__index = Sword
 
-function Sword.new(uid: number, ownerMdl: Model?)
+function Sword.new(uid: number, owner: Player?)
     local swordModel = mdlFold.ClassicSword:Clone()
     assert(swordModel.PrimaryPart, "Sword model does not have a primary part")
 
@@ -147,6 +123,30 @@ function Sword.new(uid: number, ownerMdl: Model?)
             p.Anchored = (p == swordModel.PrimaryPart) and true or false
         end
     end
+    swordModel:SetAttribute("Owner", owner or "None")
+
+    local self: BaseWeapon.Weapon = BaseWeapon.new({
+        uid = uid,
+        name = WeaponName.SWORD,
+        iconId = "rbxassetid://0",
+        owner = owner or nil,
+        fireSchema = {
+            altFire = Schema.boolean(),
+            throwSpeed = Schema.number()
+        },
+        weaponModel = swordModel,
+        slot = 1
+    })
+
+    self.currFireParams = {
+        altFire = false,
+        throwSpeed = 0
+    } :: SwordFireParams
+
+    self.animationController = nil
+    self.animator = nil
+    self.animationTracks = {} :: {[string]: AnimationTrack}
+    self.sounds = {} :: {[string]: Sound}
     
     if (RunService:IsClient()) then
         -- anims
@@ -155,9 +155,22 @@ function Sword.new(uid: number, ownerMdl: Model?)
             foundAnimController:Destroy()
         end
 
-        animationController = Instance.new("AnimationController", swordModel)
-        animator = Instance.new("Animator", animationController)
-        createInitAnims()
+        -- init animations
+        self.animationController = Instance.new("AnimationController", swordModel)
+        self.animator = Instance.new("Animator", self.animationController)
+        do
+            assert(self.animationController, "No AnimationController instance")
+            assert(self.animator, "No animator instance")
+
+            for name: string, id: string in pairs(ANIM_IDS) do
+                local newAnimation = Instance.new("Animation", self.animator)
+                newAnimation.Name = name
+                newAnimation.AnimationId = id
+
+                local animTrack = self.animator:LoadAnimation(newAnimation)
+                self.animationTracks[id] = animTrack
+            end
+        end
 
         -- sounds
         for _, soundId: string in pairs(SOUND_IDS) do
@@ -169,22 +182,17 @@ function Sword.new(uid: number, ownerMdl: Model?)
                     newSound[prop] = val
                 end
             end
-            sounds[soundId] = newSound
+            self.sounds[soundId] = newSound
+        end
+
+        if (owner and owner ~= localPlr) then
+            local ownerChar = owner.Character
+            if (not ownerChar) then
+                owner.CharacterAdded:Wait()
+            end
+            WeaponCommon.weldWeaponModel(ownerChar, swordModel, CF_DEF_BODY_WEAP_OFFS)
         end
     end
-
-    local self: BaseWeapon.Weapon = BaseWeapon.new({
-        uid = uid,
-        name = WeaponName.SWORD,
-        iconId = "rbxassetid://0",
-        owner = ownerMdl or nil,
-        fireSchema = {
-            altFire = Schema.boolean(),
-            throwSpeed = Schema.number()
-        },
-        weaponModel = swordModel,
-        slot = 1
-    })
 
     return setmetatable(self, Sword) :: any
 end
@@ -195,18 +203,22 @@ function Sword:equip()
     end
 
     local weapModel: Model = self.weaponModel
-    local ownerMdl: Model = self.owner
+    local ownerMdl: Model = self.owner.Character
+
     assert(weapModel.PrimaryPart, `Model '{weapModel}' has no primary part`)
     assert(ownerMdl.PrimaryPart, `Owner model '{ownerMdl}' has no primary part`)
 
     --WeaponCommon.joinWeaponToOwnerPrimPart(weapModel, ownerMdl)
 
+    weapModel.Parent = Workspace:WaitForChild(Global.FOLDER_NAMES.WEAPONS_LOCAL)
+
+    -------------------------------------------------------------------------------------
     -- case for other players
     if (not self:isOwnedByLocalPlr()) then
-        -- TODO
         return
     end
 
+    -------------------------------------------------------------------------------------
     -- below here: everything that happens for weapon owner only
     print("EQUIPPING SWORD")
 
@@ -219,7 +231,6 @@ function Sword:equip()
     local targetOffsLerpCFrame = downPosOffsCFrame
     local equipTime = 0
 
-    weapModel.Parent = Workspace:WaitForChild(Global.FOLDER_NAMES.WEAPONS_LOCAL) --self.owner
     weapModel.PrimaryPart.CFrame = camCFrame * downPosOffsCFrame
 
     equipUpdateConn = RunService.PreRender:Connect(function(dt: number)
@@ -242,23 +253,25 @@ function Sword:unequip()
         error("No weapon owner")
     end
 
+    local weapModel: Model = self.weaponModel
+    local ownerChar: Model = self.owner.Character
+    assert(weapModel.PrimaryPart, `Model '{weapModel}' has no primary part`)
+    assert(ownerChar.PrimaryPart, `Owner model '{ownerChar}' has no primary part`)
+
+    -------------------------------------------------------------------------------------
     -- case for other players
     if (not self:isOwnedByLocalPlr()) then
-        -- TODO
+        weapModel.Parent = localPlr.Backpack
         return
     end
 
+    -------------------------------------------------------------------------------------
     -- below here: everything that happens for weapon owner only
     print("UNEQUIPPING SWORD")
 
     if (equipUpdateConn) then
         equipUpdateConn:Disconnect()
     end
-
-    local weapModel: Model = self.weaponModel
-    local ownerMdl: Model = self.owner
-    assert(weapModel.PrimaryPart, `Model '{weapModel}' has no primary part`)
-    assert(ownerMdl.PrimaryPart, `Owner model '{ownerMdl}' has no primary part`)
 
     local downPosOffsCFrame = CF_DEF_WEAP_OFFS * CF_UNEQUIP_TARGET
     local camCFrame = Workspace.CurrentCamera.CFrame
@@ -279,7 +292,7 @@ function Sword:unequip()
         end
     end)
 
-    for _, s: Sound in pairs(sounds) do
+    for _, s: Sound in pairs(self.sounds) do
         if (s.IsPlaying) then
             s:Stop()
         end
@@ -301,18 +314,17 @@ function Sword:fire(pos: Vector3, dir: Vector3, fireParams: SwordFireParams)
     local weapPrimPart = weapModel.PrimaryPart
     
     if (not fireParams.altFire) then
-        animationTracks[ANIM_IDS.SWING]:Play(0, 1, SWING_ANIM_SPEED)
-        sounds[SOUND_IDS.SWORD_SLASH]:Play()
+        self.animationTracks[ANIM_IDS.SWING]:Play(0, 1, SWING_ANIM_SPEED)
+        self.sounds[SOUND_IDS.SWORD_SLASH]:Play()
     else
-        sounds[SOUND_IDS.LAUNCH]:Play()
+        self.sounds[SOUND_IDS.LAUNCH]:Play()
     end
 
     if (self:isOwnedByLocalPlr()) then
+        print(`### {localPlr} FIRE EVENT OF WEAPON '{self.uid}' WITH OWNER '{self.owner}'`)
         -- TODO
         CliApi.events[Network.clientEvents.requestFireWeapon]:FireServer(pos, dir, fireParams)
     end
-
-    print(fireParams.throwSpeed)
 
 end
 
@@ -337,7 +349,7 @@ function Sword:update(dt: number)
         return
     end
 
-    local charMdl = self.owner :: Model
+    local charMdl = self.owner.Character :: Model
     local weapModel: Model = self.weaponModel
 
     local charPrimPart = charMdl.PrimaryPart
@@ -354,7 +366,7 @@ function Sword:update(dt: number)
 
     local anyInput = fireInp or altFireInp
     if (not self.fireLocked and anyInput) then
-        currFireParams = {
+        self.currFireParams = {
             altFire = altFireInp,
             throwSpeed = BASE_THROW_SPEED
         }
@@ -365,22 +377,20 @@ function Sword:update(dt: number)
 
     self.fireLocked = fireCooldownTime > 0 or fireHoldTime > 0
 
-    print(self.fireLocked)
-
     local newRotCFrame = CFrame.identity
 
     -- weapon fire logic
     if (self.fireLocked) then
-        if (not currFireParams) then
+        if (not self.currFireParams) then
             error("No fire params")
         end
 
         -- update weapon pre-fire
         if (updatePreFire) then
-            if (currFireParams.altFire) then
+            if (self.currFireParams.altFire) then
                 fireHoldTime += dt
 
-                local spinSound = sounds[SOUND_IDS.SPIN] :: Sound
+                local spinSound = self.sounds[SOUND_IDS.SPIN] :: Sound
                 if (not spinSound.IsPlaying) then
                     spinSound:Play()
                 end
@@ -399,12 +409,12 @@ function Sword:update(dt: number)
                     ).Magnitude
 
                     if (pastMinSpinTime) then
-                        currFireParams.throwSpeed = 
+                        self.currFireParams.throwSpeed = 
                             math.max(BASE_THROW_SPEED, currPlaneVelMag * 0.5) + BONUS_THROW_SPEED
                     end
 
                     fireSignal = true
-                    sounds[SOUND_IDS.LAUNCH]:Play()
+                    self.sounds[SOUND_IDS.LAUNCH]:Play()
                     spinSound:Stop()
                     fireHoldTime = 0
                 end
@@ -421,9 +431,8 @@ function Sword:update(dt: number)
 
         -- fire weapon
         if (fireSignal) then
-            print("HUZZAHHH")
             fireSignal, updatePreFire = false, false
-            self:fire(charPrimPart.Position, camCFrame.LookVector.Unit, currFireParams)
+            self:fire(charPrimPart.Position, camCFrame.LookVector.Unit, self.currFireParams)
         end
     end
 
