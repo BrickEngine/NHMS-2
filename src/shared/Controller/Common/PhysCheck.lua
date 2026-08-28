@@ -3,6 +3,7 @@ local Workspace = game:GetService("Workspace")
 
 local DebugVisualize = require(script.Parent.DebugVisualize)
 local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
+local Global = require(ReplicatedStorage.Shared.Global)
 
 -- [[checkFloor]]
 
@@ -31,8 +32,6 @@ local TARGET_CLOSEST = true
 -- whether to only register wall proximity when multiple rays successfully hit
 local REQUIRE_MIN_RAYS = false
 local MIN_REGISTER_RAYS = 4
--- determines which coll group to use for wall detection (false = default)
-local USE_WALL_COLL_GROUP = true
 
 -- [[checkWater]]
 
@@ -408,7 +407,7 @@ function PhysCheck.checkWall(
 		if (ray and ray.Instance and ray.Instance:IsA("BasePart")) then
 			local hitPart = ray.Instance :: BasePart
 
-			if (hitPart.CollisionGroup == (USE_WALL_COLL_GROUP and CollisionGroup.WALL or CollisionGroup.DEFAULT)) then
+			if (hitPart:HasTag(Global.TAG_NAMES.WALL)) then
 				if (not hitWallsSet[ray.Instance]) then
 					hitWallsSet[ray.Instance] = true
 					hitWallsArr[#hitWallsArr + 1] = ray.Instance

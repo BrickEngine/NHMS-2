@@ -28,11 +28,23 @@ end
 	@param v0 - current
 	@param v1 - target
 	@param dt - time delta
-	@return quad lerped number
+	@return lerped number
 ]]
 function MathUtil.easeOutQuad(v0: number, v1: number, dt: number): number
     return -(v1 - v0) * dt * (dt - 2) + v0
 end
+
+--[[
+	Quadratic ease-out function.
+	@param v0 - current
+	@param v1 - target
+	@param dt - time delta
+	@return lerped number
+]]
+function MathUtil.easeInQuad(v0: number, v1: number, dt: number): number
+    return (v1 - v0) * dt * dt + v0
+end
+
 
 --[[
 	Framerate independent lerp function - slightly less efficient than lerp.

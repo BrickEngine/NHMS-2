@@ -12,6 +12,7 @@ local Global = require(ReplicatedStorage.Shared.Global)
 local BaseWeapon = require(weaponsFolder.Arsenal.BaseWeapon)
 local Schema = require(ReplicatedStorage.Shared.Util.Schema)
 local Network = require(ReplicatedStorage.Shared.Network)
+local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
 
 -- client only modules
 local InputManager
@@ -98,6 +99,7 @@ local updatePreFire = false
 local fireHoldTime = 0
 local fireCooldownTime = 0
 local currSpinAng = 0 -- rad
+local rechargeYOffs = 0
 
 local equipUpdateConn: RBXScriptConnection
 local unequipUpdateConn: RBXScriptConnection
@@ -123,7 +125,8 @@ function Sword.new(uid: number, owner: Player?)
             p.Anchored = (p == swordModel.PrimaryPart) and true or false
         end
     end
-    swordModel:SetAttribute("Owner", owner or "None")
+    local attValString = owner and owner.Name or "None"
+    swordModel:SetAttribute("Owner", attValString)
 
     local self: BaseWeapon.Weapon = BaseWeapon.new({
         uid = uid,
@@ -316,12 +319,14 @@ function Sword:fire(pos: Vector3, dir: Vector3, fireParams: SwordFireParams)
     if (not fireParams.altFire) then
         self.animationTracks[ANIM_IDS.SWING]:Play(0, 1, SWING_ANIM_SPEED)
         self.sounds[SOUND_IDS.SWORD_SLASH]:Play()
+
+        local ray = Workspace:Raycast(pos, dir * 5)
+        
     else
         self.sounds[SOUND_IDS.LAUNCH]:Play()
     end
 
     if (self:isOwnedByLocalPlr()) then
-        print(`### {localPlr} FIRE EVENT OF WEAPON '{self.uid}' WITH OWNER '{self.owner}'`)
         -- TODO
         CliApi.events[Network.clientEvents.requestFireWeapon]:FireServer(pos, dir, fireParams)
     end
@@ -337,6 +342,7 @@ function Sword:reset()
     fireCooldownTime = 0
     fireHoldTime = 0
     currSpinAng = 0
+    rechargeYOffs = 0
 end
 
 function Sword:update(dt: number)
@@ -431,15 +437,24 @@ function Sword:update(dt: number)
 
         -- fire weapon
         if (fireSignal) then
+            if (self.currFireParams.altFire) then
+                rechargeYOffs = -10
+            end
             fireSignal, updatePreFire = false, false
             self:fire(charPrimPart.Position, camCFrame.LookVector.Unit, self.currFireParams)
         end
     end
 
+    local rechargeCFrameOffs = CFrame.new(Vector3.new(0, rechargeYOffs, 0))
+    rechargeYOffs = MathUtil.easeOutQuad(rechargeYOffs, 0, dt * 2)
+    --rechargeYOffs = math.min(rechargeYOffs + dt * 3.5, 0)
+
     -- update root CFrame
     weapPrimPart.CFrame = WeaponCommon.dynOffset.apply(
         dt, currCharVel, camCFrame * CF_DEF_WEAP_OFFS
-    ) * newRotCFrame
+    ) * newRotCFrame * rechargeCFrameOffs
+
+
 
     if (not updatePreFire) then
         fireCooldownTime = math.max(fireCooldownTime - dt, 0)

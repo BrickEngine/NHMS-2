@@ -57,7 +57,7 @@ do
         for _, v: Instance in pairs(wallPartsFold:GetDescendants()) do
             if (v:IsA("BasePart")) then
                 v:AddTag(Global.TAG_NAMES.WALL)
-                v.CollisionGroup = CollisionGroup.WALL
+                --v.CollisionGroup = CollisionGroup.WALL
             end
         end
     else
