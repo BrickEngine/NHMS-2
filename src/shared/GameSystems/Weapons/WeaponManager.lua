@@ -61,6 +61,10 @@ function WeaponManager.createWeapon(owner: Player, weapName: string): (BaseWeapo
     return weapon, newUid
 end
 
+function WeaponManager.checkWeaponRegisteredAndExist(uid: number)
+    return weapUids:isOccupied(uid)
+end
+
 function WeaponManager.createWeaponForClient(owner: Player, weapName: string, uid: number): BaseWeapon.Weapon
     if (not RunService:IsClient()) then
         error("'createWeaponForClient' should be only called by the client")
@@ -81,6 +85,17 @@ end
 
 function WeaponManager.getWeapFromUid(uid: number): BaseWeapon.Weapon?
     return weapUids:getObjById(uid)
+end
+
+function WeaponManager.getWeapFromUidSecure(uid: number): BaseWeapon.Weapon
+    local timeStart = os.clock()
+    while (os.clock() - timeStart < 5) do
+        local weapObj = weapUids:getObjById(uid)
+        if weapObj then return weapObj end
+        task.wait()
+    end
+
+    error(`Weapon UID '${uid}' not found after timeout`)
 end
 
 function WeaponManager.destroyWeapon(uid: number)

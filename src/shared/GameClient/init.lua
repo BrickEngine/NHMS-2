@@ -134,7 +134,7 @@ function GameClient.removeWeaponLocal(uid: number)
     local plrData = ClientRoot.getPlayerData()
 
     if (weapon.owner == localPlr) then
-        -- in case weapon is currently equipped in active slot
+        -- in case weapon is owned by localPlr and currently equipped in active slot
         if (plrData.inventory[plrData.activeInvSlot] == weapon) then
             GameClient.setTargetInvSlot(0)
         end
@@ -143,20 +143,8 @@ function GameClient.removeWeaponLocal(uid: number)
     WeaponManager.destroyWeapon(uid)
 end
 
-function GameClient.equipWeaponInSlot(slot: number)
-    local plrData = ClientRoot.getPlayerData()
-    if (plrData.isDead) then
-        return
-    end
-
-    CliApi.events[Network.clientEvents.requestActiveWeaponSwitch]:FireServer(slot)
-    GameClient.setTargetInvSlot(slot)
-    ClientRoot.setActiveInvSlot(slot)
-    
-    GameClient.getActiveWeapon():equip()
-end
-
-function GameClient.switchWeapon(newSlot)
+-- Handles switching or unequipping the current weapon
+function GameClient.switchWeapon(newSlot: number?)
     if (not switchFree) then
         warn(`attempted to switch to slot '{newSlot}' while busy`); return
     end
@@ -166,14 +154,30 @@ function GameClient.switchWeapon(newSlot)
     local plrData = ClientRoot.getPlayerData()
     local activeInvSlot = plrData.activeInvSlot
 
-    if (not plrData.inventory[newSlot]) then
-        error(`No weapon in slot '{newSlot}' to transition to`)
+    if (newSlot and newSlot == activeInvSlot) then
+        warn(`Cannot switch to current active inv slot '{newSlot}'`); return
     end
 
     if (plrData.inventory[activeInvSlot]) then
         plrData.inventory[activeInvSlot]:unequip()
     end
-    GameClient.equipWeaponInSlot(newSlot)
+
+    -- if newSlot is nil, weapon just gets unequipped
+    if (newSlot) then
+        if (not plrData.inventory[newSlot]) then
+            error(`No weapon in slot '{newSlot}' to transition to`)
+        end
+
+        if (plrData.isDead) then
+            warn(`Cannot switch to new slot '{newSlot}', player is dead`); return
+        end
+
+        GameClient.setTargetInvSlot(newSlot)
+        ClientRoot.setActiveInvSlot(newSlot)
+        GameClient.getActiveWeapon():equip()
+    end
+
+    CliApi.events[Network.clientEvents.requestActiveWeaponSwitch]:FireServer(newSlot)
 
     switchFree = true
 end
@@ -256,7 +260,8 @@ function GameClient.onDeathStateChanged(isDead: boolean, lastDamageType: string)
 
         local currWeapon: BaseWeapon.Weapon? = GameClient.getActiveWeapon()
         if (currWeapon) then
-            currWeapon:unequip()
+            GameClient.switchWeapon(nil)
+            --currWeapon:unequip()
         end
         ClientRoot.setActiveInvSlot(0)
         targetInvSlot = 0
@@ -547,21 +552,22 @@ local function onFireWeapon(uid: number, pos: Vector3, dir: Vector3, params: any
     weapon:fire(pos, dir, params)
 end
 
-local function onSwitchWeapon(weapOwnerPlr: Player, newUid: number, oldUid: number?)
-    if (weapOwnerPlr == localPlr) then
+-- Equip or unequip weapons of other players
+local function onSwitchWeapon(weapOwner: Player, newUid: number?, oldUid: number?)
+    if (weapOwner == localPlr) then
         return
     end
-    print(`Switching to weapon with uid '{newUid}' for '{weapOwnerPlr}'`)
+
+    print(`Switching to weapon with uid '{newUid}' for '{weapOwner}'`)
 
     if (oldUid) then
-        local oldWeap = WeaponManager.getWeapFromUid(oldUid)
+        local oldWeap = WeaponManager.getWeapFromUidSecure(oldUid)
         oldWeap:unequip()
     end
-    local newWeap = WeaponManager.getWeapFromUid(newUid)
-    if (not newWeap) then
-        error("no new weapon sucka")
+    if (newUid) then
+        local newWeap = WeaponManager.getWeapFromUidSecure(newUid)
+        newWeap:equip()
     end
-    newWeap:equip()
 end
 
 local function onPlrDataToClient(plr: Player, payload: buffer)

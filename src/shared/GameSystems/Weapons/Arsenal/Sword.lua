@@ -6,6 +6,8 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
 local weaponsFolder = ReplicatedStorage.Shared.GameSystems.Weapons
+local CollisionGroup = require(ReplicatedStorage.Shared.Enums.CollisionGroup)
+local DamageType = require(ReplicatedStorage.Shared.Enums.DamageType)
 local WeaponName = require(ReplicatedStorage.Shared.Enums.WeaponName)
 local WeaponCommon = require(ReplicatedStorage.Shared.GameSystems.Weapons.WeaponCommon)
 local Global = require(ReplicatedStorage.Shared.Global)
@@ -13,6 +15,7 @@ local BaseWeapon = require(weaponsFolder.Arsenal.BaseWeapon)
 local Schema = require(ReplicatedStorage.Shared.Util.Schema)
 local Network = require(ReplicatedStorage.Shared.Network)
 local MathUtil = require(ReplicatedStorage.Shared.Util.MathUtil)
+local ParticleEffects = require(ReplicatedStorage.Shared.Util.ParticleEffects)
 
 -- client only modules
 local InputManager
@@ -39,15 +42,20 @@ local EQUIP_DURATION = 0.25
 local SWING_COOLDOWN = 0.55
 local THROW_COOLDOWN = 1.7
 local THROW_MINTIME = 0.8
-local SWING_ANIM_SPEED = 10
 
+local SWING_ANIM_SPEED = 10
+local SLASH_ANIM_SPEED = 1
 local SLOW_SPIN_SOUND_SPEED = 20.5
 local FAST_SPIN_SOUND_SPEED = 40
 local SLOW_SPIN_SPEED = 3
 local FAST_SPIN_SPEED = 4
+local VEC2_SPARKS_SPREAD = Vector2.new(30,30)
 
 local BASE_THROW_SPEED = 70
 local BONUS_THROW_SPEED = 25
+
+local SWING_SCAN_DIST = 15
+local SWING_BASE_DAMAGE = 25
 
 local ANIM_IDS = table.freeze({
     SWING = "rbxassetid://102246589048865",
@@ -59,8 +67,13 @@ local SOUND_IDS = table.freeze({
     LAUNCH = "rbxassetid://112053896516106",
     SLICE = "rbxassetid://116173653232904",
     SPIN = "rbxassetid://138269694368715",
-    SWORD_LUNGE = "http://www.roblox.com/asset/?id=12222208",
-    SWORD_SLASH = "http://www.roblox.com/asset/?id=12222216",
+    HIT_FLESH_0 = "rbxassetid://96278024968375",
+    HIT_FLESH_1 = "rbxassetid://134106511934613",
+    HIT_FLESH_2 = "rbxassetid://106108068780898",
+    HIT_BLOCK_0 = "rbxassetid://100159020945742",
+    HIT_BLOCK_1 = "rbxassetid://107136980202866",
+    LUNGE = "http://www.roblox.com/asset/?id=12222208",
+    SLASH = "http://www.roblox.com/asset/?id=12222216",
     UNSHEATH = "http://www.roblox.com/asset/?id=12222225",
 })
 
@@ -79,17 +92,21 @@ local SOUND_DATA = table.freeze({
         PlaybackRegionsEnabled = true,
         PlaybackRegion = NumberRange.new(0.1, 0.725)
     },
-    [SOUND_IDS.SWORD_LUNGE] = {
+    [SOUND_IDS.LUNGE] = {
         Volume = 0.6
     },
-    [SOUND_IDS.SWORD_SLASH] = {
+    [SOUND_IDS.SLASH] = {
         Volume = 0.7,
         PlaybackRegionsEnabled = true,
         PlaybackRegion = NumberRange.new(0.39, 9999)
     },
+    [SOUND_IDS.HIT_FLESH_0] = {
+        Volume = 1.5
+    }
 })
 
 local PI_2 = math.pi * 2
+local VEC3_UP = Vector3.new(0, 1, 0)
 
 local localPlr = Players.LocalPlayer :: Player
 local mdlFold = ReplicatedStorage.Assets.WeaponModels.Sword
@@ -152,6 +169,18 @@ function Sword.new(uid: number, owner: Player?)
     self.sounds = {} :: {[string]: Sound}
     
     if (RunService:IsClient()) then
+
+        -- ensure character exists
+        if (owner) then
+            local char = owner.Character or owner.CharacterAdded:Wait()
+            repeat task.wait() until char.PrimaryPart ~= nil 
+        end
+
+        if (owner and owner ~= localPlr) then
+            local ownerChar = owner.Character
+            WeaponCommon.weldWeaponModel(ownerChar, swordModel, CF_DEF_BODY_WEAP_OFFS)
+        end
+
         -- anims
         local foundAnimController = swordModel:FindFirstChildWhichIsA("AnimationController")
         if (foundAnimController) then
@@ -188,12 +217,22 @@ function Sword.new(uid: number, owner: Player?)
             self.sounds[soundId] = newSound
         end
 
-        if (owner and owner ~= localPlr) then
-            local ownerChar = owner.Character
-            if (not ownerChar) then
-                owner.CharacterAdded:Wait()
+        -- filter params and hit registering
+        local sRayParams = RaycastParams.new()
+        sRayParams.CollisionGroup = CollisionGroup.TRIGGER
+        sRayParams.IgnoreWater = false
+        sRayParams.RespectCanCollide = false
+        sRayParams.ExcludeInstances = {}
+
+        self.swordRayParams = sRayParams
+
+        if (self.owner) then
+            if (self.owner.Character) then
+                self.swordRayParams.ExcludeInstances = self.owner.Character:GetChildren()
             end
-            WeaponCommon.weldWeaponModel(ownerChar, swordModel, CF_DEF_BODY_WEAP_OFFS)
+            self.owner.CharacterAdded:Connect(function(newOwnerChar: Model)
+                self.swordRayParams.ExcludeInstances = newOwnerChar:GetChildren()
+            end)
         end
     end
 
@@ -216,7 +255,7 @@ function Sword:equip()
     weapModel.Parent = Workspace:WaitForChild(Global.FOLDER_NAMES.WEAPONS_LOCAL)
 
     -------------------------------------------------------------------------------------
-    -- case for other players
+    -- only for other players
     if (not self:isOwnedByLocalPlr()) then
         return
     end
@@ -262,7 +301,7 @@ function Sword:unequip()
     assert(ownerChar.PrimaryPart, `Owner model '{ownerChar}' has no primary part`)
 
     -------------------------------------------------------------------------------------
-    -- case for other players
+    -- only for other players
     if (not self:isOwnedByLocalPlr()) then
         weapModel.Parent = localPlr.Backpack
         return
@@ -313,24 +352,86 @@ function Sword:reload()
 end
 
 function Sword:fire(pos: Vector3, dir: Vector3, fireParams: SwordFireParams)
-    local weapModel: Model = self.weaponModel
-    local weapPrimPart = weapModel.PrimaryPart
+    local localPlrChar = localPlr.Character
+    local localPlrPrimPart = localPlrChar.PrimaryPart
+
+    if (self:isOwnedByLocalPlr()) then
+        assert(localPlrChar, `Cannot fire own weapon '{self.name}' with missing character`)
+        assert(localPlrPrimPart, `Missing character PrimaryPart`)
+
+        -- only weapon owner can send fire event
+        CliApi.events[Network.clientEvents.requestFireWeapon]:FireServer(pos, dir, fireParams)
+    end
     
+    -- fire logic for all clients
+    -- regular swing logic
     if (not fireParams.altFire) then
         self.animationTracks[ANIM_IDS.SWING]:Play(0, 1, SWING_ANIM_SPEED)
-        self.sounds[SOUND_IDS.SWORD_SLASH]:Play()
+        self.sounds[SOUND_IDS.SLASH]:Play()
 
-        local ray = Workspace:Raycast(pos, dir * 5)
-        
+        task.wait(0.2)
+
+        local swingRay = Workspace:Raycast(pos - dir * 2, dir * SWING_SCAN_DIST, self.swordRayParams)
+        if (swingRay :: RaycastResult) then
+            local hitInst = swingRay.Instance
+            local hitPos = swingRay.Position
+            local hitNormal = swingRay.Normal
+
+            -- water surface hits
+            if (swingRay.Material == Enum.Material.Water) then
+                ParticleEffects.summonWaterSplash(hitPos, VEC3_UP * 8, true)
+                return
+            end
+
+            -- player hits
+            if (hitInst.CollisionGroup == CollisionGroup.PLAYER) then
+                local hitChar = hitInst.Parent
+
+                if (hitChar:IsA("Model")) then
+                    local hitPlr = Players:GetPlayerFromCharacter(hitChar)
+
+                    -- only local player can fire a damage request
+                    if (hitPlr and self:isOwnedByLocalPlr()) then
+                        local plrVelMag = localPlrPrimPart.AssemblyLinearVelocity.Magnitude
+                        local speedDmgBonus = math.min(plrVelMag * 0.05, 10)
+                        local swingDmg = SWING_BASE_DAMAGE + speedDmgBonus
+
+                        -- the char must be sent, since the remoteEvent expects an "entity" model
+                        CliApi.events[Network.clientEvents.requestDamage]:FireServer(
+                            hitChar, swingDmg, DamageType.BLADE
+                        )
+                    end
+                end
+                
+                local rmdNum = math.random(0,2)
+                local rdmSoundId = 
+                    if (rmdNum == 0) then SOUND_IDS.HIT_FLESH_0 
+                    elseif(rmdNum == 1) then SOUND_IDS.HIT_FLESH_1
+                    else SOUND_IDS.HIT_FLESH_2
+
+                self.sounds[rdmSoundId]:Play()
+                ParticleEffects.summonBloodSplatter(pos)
+                return
+            end
+
+            -- hitting anything else
+            for _, track: AnimationTrack in pairs(self.animationTracks) do
+                if (track.IsPlaying) then
+                    track:Stop()
+                end
+            end
+            self.animationTracks[ANIM_IDS.PARRY]:Play(0.5, 2, SLASH_ANIM_SPEED)
+
+            ParticleEffects.summonSparks(hitPos + hitNormal * 0.5, -hitNormal * 4, VEC2_SPARKS_SPREAD)
+
+            local rmdSoundId = math.random(0, 1) == 0 and SOUND_IDS.HIT_BLOCK_0 or SOUND_IDS.HIT_BLOCK_1
+            self.sounds[rmdSoundId]:Play()
+        end
+
+    -- altfire logic (spin)
     else
         self.sounds[SOUND_IDS.LAUNCH]:Play()
     end
-
-    if (self:isOwnedByLocalPlr()) then
-        -- TODO
-        CliApi.events[Network.clientEvents.requestFireWeapon]:FireServer(pos, dir, fireParams)
-    end
-
 end
 
 function Sword:onHit()
@@ -439,15 +540,15 @@ function Sword:update(dt: number)
         if (fireSignal) then
             if (self.currFireParams.altFire) then
                 rechargeYOffs = -10
+                newRotCFrame = CFrame.identity
             end
             fireSignal, updatePreFire = false, false
-            self:fire(charPrimPart.Position, camCFrame.LookVector.Unit, self.currFireParams)
+            self:fire(camCFrame.Position, camCFrame.LookVector.Unit, self.currFireParams)
         end
     end
 
     local rechargeCFrameOffs = CFrame.new(Vector3.new(0, rechargeYOffs, 0))
     rechargeYOffs = MathUtil.easeOutQuad(rechargeYOffs, 0, dt * 2)
-    --rechargeYOffs = math.min(rechargeYOffs + dt * 3.5, 0)
 
     -- update root CFrame
     weapPrimPart.CFrame = WeaponCommon.dynOffset.apply(
@@ -462,7 +563,6 @@ function Sword:update(dt: number)
 end
 
 function Sword:destroy()
-    print("destroying sword")
     if (self.weaponModel) then
         (self.weaponModel :: Model):Destroy()
     end

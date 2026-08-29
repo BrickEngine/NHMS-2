@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local ClientRoot = require(ReplicatedStorage.Shared.ClientRoot)
@@ -12,7 +13,10 @@ local BaseUI = require(script.Parent.BaseUI)
 local UIType = require(ReplicatedStorage.Shared.Enums.UIType)
 
 local GAME_UI_NAME = "GameUI"
+
 local ENABLE_DEATH_FILTER = true
+local ENABLE_CROSSHAIR = true
+
 local DMG_OVERL_TRANSP_MIN = 0.25
 local DMG_OVERL_TRANSP_MAX = 0.8
 local DMG_OVERL_CHANGE_RATE = 0.8
@@ -130,6 +134,20 @@ local function updateGeneralDisplays(dt: number)
     if (blinkTime > DISPLAY_BLINK_TIME) then
         blinkTime = 0
         vis = not vis
+    end
+end
+
+local function updateCrosshairOnMouseLock()
+    local setVisible = 
+        UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter 
+        or UserInputService.MouseBehavior == Enum.MouseBehavior.LockCurrentPosition
+
+    if (not ENABLE_CROSSHAIR) then
+        setVisible = false
+    end
+
+    if (activeGuiObj.Crosshair.Visible ~= setVisible) then
+        activeGuiObj.Crosshair.Visible = setVisible
     end
 end
 
@@ -420,6 +438,7 @@ function GameUI:update(dt: number)
     updateDmgOverlayTransp(dt)
     updateMessageBoxVisibility(dt)
     updateFilter()
+    updateCrosshairOnMouseLock()
 
     local currLPanelVis = activeGuiObj.LowPanel.Visible
     if (getHideUIInputSignal()) then

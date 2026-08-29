@@ -7,6 +7,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local WATER_SPLASH_DEL_DELAY = 5
+local SPARKS_DEL_DELAY = 3
 
 local VEC3_ZERO = Vector3.zero
 
@@ -21,7 +22,7 @@ export type EntityInfo = {
 ------------------------------------------------------------------------------------------------------------------------
 local ParticleEffects = {}
 
-function ParticleEffects.summonWaterSplash(pos: Vector3, vel: Vector3?)
+function ParticleEffects.summonWaterSplash(pos: Vector3, vel: Vector3?, createSplashSound: boolean?)
     local waterSplashPart = sfxFold.Other.WaterSplash:Clone()
     waterSplashPart.Parent = Workspace
     waterSplashPart.Anchored = true
@@ -41,9 +42,61 @@ function ParticleEffects.summonWaterSplash(pos: Vector3, vel: Vector3?)
         pEmitter:Emit(emitCount)
     end
 
+    if (createSplashSound) then
+        local splashSound = Instance.new("Sound", waterSplashPart)
+        splashSound.SoundId = "rbxassetid://72842661683082"
+        splashSound.Volume = 1.08
+        splashSound.PlaybackSpeed = 2
+        splashSound:Play()
+    end
+
     task.delay(
         WATER_SPLASH_DEL_DELAY,
         function() waterSplashPart:Destroy() end
+    )
+end
+
+function ParticleEffects.summonSparks(pos: Vector3, vel: Vector3?, spreadVec: Vector2?)
+    local sparkPart = sfxFold.Explosions.PlainSparks:Clone()
+    local sparks: ParticleEmitter = sparkPart.Attachment.Sparks
+    local actVel = vel or VEC3_ZERO
+    sparkPart.Parent = Workspace
+    sparkPart.Anchored = true
+    sparkPart.CFrame = CFrame.lookAt(pos, pos - actVel.Unit)
+
+    sparks.EmissionDirection = Enum.NormalId.Front
+    sparks.SpreadAngle = spreadVec or Vector2.new(360, 360)
+    sparks.VelocityInheritance = 1
+    sparkPart.AssemblyLinearVelocity = vel or VEC3_ZERO
+
+    sparks.Enabled = false
+    sparks:Emit(10)
+
+    task.delay(
+        SPARKS_DEL_DELAY,
+        function() sparkPart:Destroy() end
+    )
+end
+
+function ParticleEffects.summonBloodSplatter(pos: Vector3, vel: Vector3?, spreadVec: Vector2?)
+    local bloodPart = sfxFold.Bio.PlainBlood:Clone()
+    local sparks: ParticleEmitter = bloodPart.Attachment.Sparks
+    local actVel = vel or VEC3_ZERO
+    bloodPart.Parent = Workspace
+    bloodPart.Anchored = true
+    bloodPart.CFrame = CFrame.lookAt(pos, pos - actVel.Unit)
+
+    sparks.EmissionDirection = Enum.NormalId.Front
+    sparks.SpreadAngle = spreadVec or Vector2.new(360, 360)
+    sparks.VelocityInheritance = vel and 1 or 0
+    bloodPart.AssemblyLinearVelocity = vel or VEC3_ZERO
+
+    sparks.Enabled = false
+    sparks:Emit(10)
+
+    task.delay(
+        SPARKS_DEL_DELAY,
+        function() bloodPart:Destroy() end
     )
 end
 

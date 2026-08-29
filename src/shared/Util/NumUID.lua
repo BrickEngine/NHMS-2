@@ -61,9 +61,9 @@ end
 	@return id
 ]]
 function NumUID:alloc(): number
-    local id = table.remove(self.free)
-    if (type(id) ~= "number") then
-        error("Id nan")
+    local id = table.remove(self.free) :: number
+    if (self.occ[id]) then
+        error(`Id '{id}' was already allocated`)
     end
     self.occ[id] = true
 
@@ -76,7 +76,7 @@ end
 ]]
 function NumUID:forceAlloc(id: number)
     if (self.occ[id]) then
-        warn("OVERWRITTEN ID")
+        warn(`Overwritten id '{id}'`)
     end
     self.occ[id] = true
 end

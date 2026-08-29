@@ -33,6 +33,7 @@ local VALID_CLIENT_DAMAGE_TYPES = {
 }
 
 local deathCooldownList = {} :: {[Player]: number}
+local spawnedPlrMap = {} :: {[Player]: boolean?}
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Initialize Workspace
@@ -57,7 +58,6 @@ do
         for _, v: Instance in pairs(wallPartsFold:GetDescendants()) do
             if (v:IsA("BasePart")) then
                 v:AddTag(Global.TAG_NAMES.WALL)
-                --v.CollisionGroup = CollisionGroup.WALL
             end
         end
     else
@@ -88,11 +88,15 @@ function Game.removePlayerCharacter(plr: Player)
         plr.Character:Destroy() 
         plr.Character = nil
     end
+    spawnedPlrMap[plr] = nil
 end
 
 function Game.revivePlayer(plr: Player)
-    ServerRoot.resetPlayerData(plr)
+    -- DO NOT REMOVE WEAPONS HERE
+    --ServerRoot.resetPlayerData(plr)
     ServerRoot.fullyHealPlayer(plr)
+    ServerRoot.resetActiveInvSlot(plr)
+    
     deathCooldownList[plr] = DEATH_EVENT_COOLDOWN
 end
 
@@ -126,6 +130,8 @@ function Game.spawnPlayer(plr: Player)
 
     Game.revivePlayer(plr)
 
+    spawnedPlrMap[plr] = true
+
 	return newCharacter
 end
 
@@ -139,16 +145,14 @@ function Game.removeWeaponFromPlayerInventory(plr: Player, uid: number)
     ServNetApi.events[Network.serverEvents.removeWeapon]:FireAllClients(weap.uid)
 
     WeaponManager.destroyWeapon(uid)
-    --plrData.inventory[weap.slot]:destroy()
     plrData.inventory[weap.slot] = nil
 end
 
 function Game.removeAllWeaponsFromPlayerInventory(plr)
     local plrData = ServerRoot.getPlayerData(plr)
-    for i=1, #plrData.inventory, 1 do
-        local weapon = plrData.inventory[i] :: BaseWeapon.Weapon?
-        if (weapon) then
-            Game.removeWeaponFromPlayerInventory(plr, weapon.uid)
+    for _, weap: BaseWeapon.Weapon? in pairs(plrData.inventory) do
+        if (weap) then
+            Game.removeWeaponFromPlayerInventory(plr, weap.uid)
         end
     end
 end
@@ -162,6 +166,7 @@ function Game.createAndAddWeaponToPlayer(weapOwner: Player, weapName: string, sw
 
     -- if a weapon already exists in this slot, remove iit
     if (plrData.inventory[weapSlot]) then
+        warn(`Weapon in slot '{weapSlot}' of '{weapOwner}' was overwritten`)
         Game.removeWeaponFromPlayerInventory(weapOwner, plrData.inventory[weapSlot].uid)
     end
     plrData.inventory[weapSlot] = newWeapObj
@@ -174,7 +179,7 @@ end
 
 function Game.equipPlayerStaterGear(plr: Player)
     Game.createAndAddWeaponToPlayer(plr, WeaponName.SWORD, true)
-    --Game.createAndAddWeaponToPlayer(plr, WeaponName.PLASMA_SPELL)
+    Game.createAndAddWeaponToPlayer(plr, WeaponName.PLASMA_SPELL)
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -186,35 +191,9 @@ local function onPlayerRequestSpawn(plr: Player)
     if (ENABLE_DEATH_EVENT_COOLDOWN and deathCooldownList[plr] > 0) then
         warn(`{plr} on cooldown`); return
     end
-    Game.spawnPlayer(plr)
     Game.removeAllWeaponsFromPlayerInventory(plr)
+    Game.spawnPlayer(plr)
     Game.equipPlayerStaterGear(plr)
-
-    -- send all existing weapons to player on spawn request
-    -- -> try with players if fails
-    for _, otherPlrChar: Model in pairs(Workspace[PLAYER_INST_FOLD_NAME]:GetChildren()) do
-        local weapOwner = Players:GetPlayerFromCharacter(otherPlrChar)
-        if (plr == weapOwner) then
-            continue
-        end
-
-        local otherPlrData = ServerRoot.getPlayerData(weapOwner)
-        for i: number, weap: BaseWeapon.Weapon in pairs(otherPlrData.inventory) do
-            print(`Sending weapon of '{weapOwner}' with uid '{weap.uid}' after '{plr}' joined`)
-            ServNetApi.events[Network.serverEvents.addWeapon]:FireClient(
-                plr, weapOwner, weap.name, weap.uid, false
-            )
-        end
-
-        if (otherPlrData.activeInvSlot > 0) then
-            local activeWeapOfOtherPlr = otherPlrData.inventory[otherPlrData.activeInvSlot] :: BaseWeapon.Weapon
-            if (activeWeapOfOtherPlr) then
-                ServNetApi.events[Network.serverEvents.switchWeapon]:FireClient(
-                    plr, weapOwner, activeWeapOfOtherPlr.uid, nil
-                )
-            end
-        end
-    end
 end
 
 local function onPlayerRequestDespawn(plr: Player)
@@ -246,27 +225,56 @@ local function onPlayerRequestChangeHealth(plr: Player, newHp: number?, damageTy
     ServerRoot.changePlayerHealth(plr, newHp, damageType)
 end
 
+-- Handles any damage requests from players to Entities, including other players
+local function onPlayerRequestDamageToEntity(plr: Player, entityMdl: Model?, damage: number?)
+    if (typeof(entityMdl) ~= "Instance") then
+        warn(`'{plr}' sent invalid entityMdl type for entity damage request`); return
+    end
+    if (typeof(damage) ~= "number") then
+        warn(`'{plr}' sent invalid damage value for entity damage request`); return
+    end
+
+    -- TODO: better security and weapon based damage verification
+
+    if (entityMdl and entityMdl:IsA("Model")) then
+        local plrFromMdl = Players:GetPlayerFromCharacter(entityMdl)
+        if (plrFromMdl) then
+            local currVictimData = ServerRoot.getPlayerData(plrFromMdl)
+            local newVictimHp = currVictimData.health - damage
+            ServerRoot.changePlayerHealth(plrFromMdl, newVictimHp, DamageType.BLADE)
+        else
+            -- TODO: case for non-player entities
+        end
+    else
+        warn(`No entity from instance '{entityMdl}' found from damage request of '{plr}'`);
+        return
+    end
+end
+
 local function onPlayerRequestActiveWeaponSwitch(weapOwner: Player, newSlot: number?)
     local plrData = ServerRoot.getPlayerData(weapOwner)
-    if (typeof(newSlot) ~= "number") then
-        warn(`{weapOwner} sent invalid newSlot parameter`); return
-    end
-    if (plrData.activeInvSlot == newSlot) then
-        warn(`{weapOwner} already has slot {newSlot} active`); return
-    end
-    
     local oldInvSlotWeapon = plrData.inventory[plrData.activeInvSlot]
-    local newInvSlotWeapon = plrData.inventory[newSlot]
-    if (not newInvSlotWeapon) then
-        warn(`{weapOwner} has no weapon in slot {newSlot}`); return
-    end
-    plrData.activeInvSlot = newSlot
+    local newInvSlotWeapon = nil
 
-    -- if there is no previous weapon, return nil for the old uid
+    if (newSlot and typeof(newSlot) == "number") then
+        if (plrData.activeInvSlot == newSlot) then
+            warn(`{weapOwner} already has slot {newSlot} active`); return
+        end
+
+        newInvSlotWeapon = plrData.inventory[newSlot]
+        if (not newInvSlotWeapon) then
+            warn(`{weapOwner} has no weapon in slot {newSlot}`); return
+        end
+
+        plrData.activeInvSlot = newSlot
+    end
+
+    -- if there is no weapon, return nil for the uid
     local oldInvSlotWeapUID = if oldInvSlotWeapon then oldInvSlotWeapon.uid else nil
+    local newInvSlotWeapUID = if newInvSlotWeapon then newInvSlotWeapon.uid else nil
 
     ServNetApi.events[Network.serverEvents.switchWeapon]:FireAllClients(
-        weapOwner, newInvSlotWeapon.uid, oldInvSlotWeapUID
+        weapOwner, newInvSlotWeapUID, oldInvSlotWeapUID
     )
 end
 
@@ -320,6 +328,9 @@ local remEventFunctions = {
     [Network.clientEvents.requestActiveWeaponSwitch] = function(plr: Player, ...)
         onPlayerRequestActiveWeaponSwitch(plr, ...)
     end,
+    [Network.clientEvents.requestDamage] = function(plr: Player, ...)
+        onPlayerRequestDamageToEntity(plr, ...)
+    end,
 }
 
 local fastRemEventFunctions = {
@@ -353,6 +364,42 @@ local function onPlayerAdded(plr: Player)
     print(plr.Name .. " joined the game")
     deathCooldownList[plr] = 0
     ServerRoot.createPlayerData(plr)
+
+    -- send all existing weapons to player when they spawn
+
+    repeat task.wait(); print("ASDASDASD") until spawnedPlrMap[plr] == true
+
+    for _, otherPlrChar: Model in pairs(Workspace[PLAYER_INST_FOLD_NAME]:GetChildren()) do
+        local weapOwner = Players:GetPlayerFromCharacter(otherPlrChar)
+        if (plr == weapOwner) then
+            continue
+        end
+
+        local otherPlrData = ServerRoot.getPlayerData(weapOwner)
+        for i: number, weap: BaseWeapon.Weapon in pairs(otherPlrData.inventory) do
+            print(`Sending weapon of '{weapOwner}' with uid '{weap.uid}' after '{plr}' joined`)
+            ServNetApi.events[Network.serverEvents.addWeapon]:FireClient(
+                plr, weapOwner, weap.name, weap.uid, false
+            )
+
+            local activeInvSlotWeap = otherPlrData.inventory[otherPlrData.activeInvSlot]
+            if (activeInvSlotWeap == weap) then
+                ServNetApi.events[Network.serverEvents.switchWeapon]:FireClient(
+                    plr, weapOwner, weap.uid, nil
+                )
+            end
+        end
+        -- if (otherPlrData.activeInvSlot > 0) then
+        --     local activeWeapOfOtherPlr = otherPlrData.inventory[otherPlrData.activeInvSlot] :: BaseWeapon.Weapon
+        --     if (activeWeapOfOtherPlr) then
+        --         ServNetApi.events[Network.serverEvents.switchWeapon]:FireClient(
+        --             plr, weapOwner, activeWeapOfOtherPlr.uid, nil
+        --         )
+        --     end
+        -- end
+    end
+
+    -- TODO: also add non owned weapons for each player
 end
 
 local function onPlayerRemoving(plr: Player)
@@ -377,4 +424,9 @@ while (task.wait(LOOP_DT)) do
             deathCooldownList[plr] = newTime
         end
     end
+
+    -- for _, p: Player in pairs(Players:GetPlayers()) do
+    --     local d = ServerRoot.getPlayerData(p)
+    --     print(d.inventory)
+    -- end
 end

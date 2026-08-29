@@ -107,7 +107,7 @@ local function createCharacter(playermodel: Model?): Model
     local legColl = createPart(PARAMS.LEGCOLL_NAME, PARAMS.LEGCOLL_SIZE, PARAMS.LEGCOLL_CF, PARAMS.LEGCOLL_SHAPE)
 
     rootPart.Parent, mainColl.Parent, legColl.Parent = character, character, character
-    rootPart.CanCollide, rootPart.CanQuery, rootPart.CanTouch = false, false, false
+    rootPart.CanCollide, rootPart.CanTouch, rootPart.CanQuery = false, false, false
     createParentedWeld(rootPart, mainColl)
     createParentedWeld(rootPart, legColl)
     legColl.CanCollide = false
@@ -131,9 +131,7 @@ local function createCharacter(playermodel: Model?): Model
     for _, inst: Instance in pairs(plrMdlClone:GetDescendants()) do
         if (inst:IsA("BasePart")) then
             inst.Parent = character
-            inst.CanCollide = false
-            inst.CanTouch = false
-            inst.CanQuery = false
+            inst.CanCollide, inst.CanTouch, inst.CanQuery = false, false, true
             inst:AddTag(CHARACTER_PART_TAG_NAME)
 
             if (not PLAYERMDL_MASS_ENABLED) then

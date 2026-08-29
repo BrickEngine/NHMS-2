@@ -43,7 +43,8 @@ function ServerRoot.changePlayerHealth(plr: Player, newHealth: number, damageTyp
     local currPlrData = PlayerData.getPlayerData(plr)
     --local oldPlrHealth = currPlrData.health
     currPlrData.lastDamageType = damageType
-    currPlrData.health = math.max(newHealth, 0)
+    currPlrData.health = math.clamp(newHealth, PlayerData.LIMITS.minHealth, PlayerData.LIMITS.healthWithBonus)
+    --math.max(newHealth, 0)
     
     if (currPlrData.health == 0) then
         ServerRoot.killPlayer(plr)
@@ -94,6 +95,11 @@ function ServerRoot.fullyHealPlayer(plr: Player, bonus: boolean?)
         ServerRoot.signals.playerRevived:Fire(plr)
     end
     ServNetApi.events[Network.serverEvents.setHealth]:FireAllClients(plr, plrData.health)
+end
+
+function ServerRoot.resetActiveInvSlot(plr: Player)
+    local plrData = PlayerData.getPlayerData(plr)
+    plrData.activeInvSlot = PlayerData.DEFAULTS.activeInvSlot
 end
 
 return ServerRoot
